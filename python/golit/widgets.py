@@ -43,7 +43,10 @@ class Widget:
 
     # -- helpers -----------------------------------------------------------
     def _label_html(self) -> str:
-        return f'<label class="golit-label" for="golit-{esc(self.name)}">{esc(self.label)}</label>'
+        return (
+            '<label class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant" '
+            f'for="golit-{esc(self.name)}">{esc(self.label)}</label>'
+        )
 
     def _post_attrs(self, *, trigger: str = "change") -> str:
         return (
@@ -81,12 +84,15 @@ class Slider(Widget):
 
     def render(self, value: Any) -> str:
         return (
-            f'<div class="golit-widget golit-slider" x-data="{{ v: {esc(value)} }}">'
-            f"{self._label_html()} <output x-text=\"v\">{esc(value)}</output>"
+            f'<div class="golit-widget flex flex-col gap-2" x-data="{{ v: {esc(value)} }}">'
+            f'<div class="flex items-center justify-between">{self._label_html()}'
+            '<output class="font-mono text-sm text-primary bg-primary-fixed px-2.5 py-0.5 '
+            f'rounded-full" x-text="v">{esc(value)}</output></div>'
             f'<input type="range" name="value" min="{esc(self.low)}" max="{esc(self.high)}" '
             f'step="{esc(self.step)}" value="{esc(value)}" '
+            'class="w-full accent-primary-container cursor-pointer" '
             f'x-on:input="v = $event.target.value" {self._post_attrs()}>'
-            f"</div>"
+            "</div>"
         )
 
 
@@ -116,9 +122,11 @@ class NumberInput(Widget):
         if self.high is not None:
             bounds += f' max="{esc(self.high)}"'
         return (
-            f'<div class="golit-widget golit-number">{self._label_html()}'
-            f'<input type="number" name="value" value="{esc(value)}"'
-            f'{bounds} step="{esc(self.step)}" {self._post_attrs()}></div>'
+            f'<div class="golit-widget flex flex-col gap-2">{self._label_html()}'
+            f'<input type="number" name="value" value="{esc(value)}"{bounds} '
+            f'step="{esc(self.step)}" class="bg-surface-container-highest border-none rounded-lg '
+            'px-3 py-2 text-sm font-body text-on-surface focus:ring-2 focus:ring-primary" '
+            f"{self._post_attrs()}></div>"
         )
 
 
@@ -145,8 +153,10 @@ class Select(Widget):
             for o in self.options
         )
         return (
-            f'<div class="golit-widget golit-select">{self._label_html()}'
-            f'<select name="value" {self._post_attrs()}>{opts}</select></div>'
+            f'<div class="golit-widget flex flex-col gap-2">{self._label_html()}'
+            '<select name="value" class="bg-surface-container-highest border-none rounded-lg '
+            'px-3 py-2 text-sm font-body text-on-surface focus:ring-2 focus:ring-primary" '
+            f"{self._post_attrs()}>{opts}</select></div>"
         )
 
 
@@ -166,9 +176,11 @@ class TextInput(Widget):
 
     def render(self, value: Any) -> str:
         return (
-            f'<div class="golit-widget golit-text">{self._label_html()}'
+            f'<div class="golit-widget flex flex-col gap-2">{self._label_html()}'
             f'<input type="text" name="value" value="{esc(value)}" '
             f'placeholder="{esc(self.placeholder)}" '
+            'class="bg-surface-container-highest border-none rounded-lg px-3 py-2 text-sm '
+            'font-body text-on-surface focus:ring-2 focus:ring-primary" '
             f'{self._post_attrs(trigger="change, keyup changed delay:400ms")}></div>'
         )
 
@@ -184,9 +196,11 @@ class Checkbox(Widget):
         checked = " checked" if value else ""
         # Post an explicit boolean via hx-vals so an unchecked box still commits.
         return (
-            f'<div class="golit-widget golit-checkbox">{self._label_html()}'
+            '<div class="golit-widget flex items-center gap-3 py-2">'
             f'<input type="checkbox" name="value"{checked} '
-            f"hx-vals='js:{{value: event.target.checked}}' {self._post_attrs()}></div>"
+            'class="w-4 h-4 accent-primary-container rounded cursor-pointer" '
+            f"hx-vals='js:{{value: event.target.checked}}' {self._post_attrs()}>"
+            f"{self._label_html()}</div>"
         )
 
 
@@ -210,9 +224,11 @@ class Upload(Widget):
     def render(self, value: Any) -> str:
         accept = f' accept="{esc(self.accept)}"' if self.accept else ""
         return (
-            f'<div class="golit-widget golit-upload">{self._label_html()}'
+            f'<div class="golit-widget flex flex-col gap-2">{self._label_html()}'
             f'<input type="file" name="value"{accept} hx-encoding="multipart/form-data" '
-            f"{self._post_attrs()}></div>"
+            'class="text-sm text-on-surface-variant file:mr-3 file:py-2 file:px-4 file:rounded-lg '
+            'file:border-0 file:bg-primary file:text-on-primary file:font-semibold '
+            f'file:cursor-pointer hover:file:opacity-90" {self._post_attrs()}></div>'
         )
 
 

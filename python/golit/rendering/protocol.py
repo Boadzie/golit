@@ -32,7 +32,10 @@ class Renderer(Protocol):
 
 
 def _wrap_svg(svg: str) -> str:
-    return f'<div class="golit-chart">{svg}</div>'
+    return (
+        '<div class="golit-chart bg-surface-container-lowest rounded-xl p-4 '
+        f'shadow-sm overflow-auto">{svg}</div>'
+    )
 
 
 def _to_text(value: Any) -> str:
@@ -41,19 +44,28 @@ def _to_text(value: Any) -> str:
 
 def _dataframe_table(df: pl.DataFrame, *, max_rows: int = 50) -> str:
     head = df.head(max_rows)
-    cols = "".join(f"<th>{html.escape(str(c))}</th>" for c in head.columns)
+    cols = "".join(
+        f'<th class="px-4 py-3 text-left">{html.escape(str(c))}</th>' for c in head.columns
+    )
+    td = '<td class="px-4 py-2.5 font-mono text-xs">{}</td>'
     rows = "".join(
-        "<tr>" + "".join(f"<td>{html.escape(str(v))}</td>" for v in row) + "</tr>"
+        '<tr class="hover:bg-surface-container transition-all">'
+        + "".join(td.format(html.escape(str(v))) for v in row)
+        + "</tr>"
         for row in head.iter_rows()
     )
     more = (
-        f'<caption class="golit-table-more">showing {max_rows} of {df.height} rows</caption>'
+        f'<p class="text-[10px] text-on-surface-variant text-right pt-2 font-mono uppercase '
+        f'tracking-widest">showing {max_rows} of {df.height} rows</p>'
         if df.height > max_rows
         else ""
     )
     return (
-        f'<table class="golit-table">{more}'
-        f"<thead><tr>{cols}</tr></thead><tbody>{rows}</tbody></table>"
+        '<div class="overflow-x-auto"><table class="golit-table w-full text-left border-collapse">'
+        '<thead><tr class="bg-surface-container-high/50 font-mono text-[10px] uppercase '
+        f'tracking-widest text-outline">{cols}</tr></thead>'
+        f'<tbody class="divide-y divide-outline-variant/10 text-sm">{rows}</tbody>'
+        f"</table>{more}</div>"
     )
 
 
@@ -90,4 +102,7 @@ def render_value(value: Any) -> str:
         return _to_text(repr_html())
     if _is_mpl_figure(value):
         return _mpl_svg(value)
-    return f'<pre class="golit-value">{html.escape(str(value))}</pre>'
+    return (
+        '<pre class="golit-value font-mono text-xs bg-surface-container-highest '
+        f'rounded-lg p-3 text-on-surface">{html.escape(str(value))}</pre>'
+    )

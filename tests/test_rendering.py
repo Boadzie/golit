@@ -23,8 +23,8 @@ def test_dataframe_renders_table():
     df = pl.DataFrame({"region": ["N", "S"], "revenue": [10, 40]})
     out = render_value(df)
     assert "golit-table" in out
-    assert "<th>region</th>" in out and "<th>revenue</th>" in out
-    assert "<td>40</td>" in out
+    assert ">region</th>" in out and ">revenue</th>" in out
+    assert ">40</td>" in out
 
 
 def test_custom_renderer_protocol():
@@ -56,5 +56,6 @@ def test_view_slot_and_oob_fragment():
 def test_page_shell_includes_scripts_and_title():
     out = page("Sales Explorer", "<div>body</div>")
     assert "<title>Sales Explorer</title>" in out
-    assert "htmx.org" in out and "alpinejs" in out
+    assert "htmx.org" in out and "alpinejs" in out and "cdn.tailwindcss.com" in out
+    assert "primary-container" in out  # token palette injected
     assert "<div>body</div>" in out
