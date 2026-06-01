@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from .html import oob_fragment, page, view_slot
+from .html import controls_panel, oob_fragment, page, view_slot
 from .protocol import Renderer, render_value
 
-__all__ = ["render_value", "Renderer", "page", "view_slot", "oob_fragment"]
+__all__ = [
+    "render_value",
+    "Renderer",
+    "page",
+    "view_slot",
+    "oob_fragment",
+    "controls_panel",
+]

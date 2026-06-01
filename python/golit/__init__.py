@@ -10,6 +10,7 @@ from golit._golit import kernel_version
 from .app import App
 from .engine import Session
 from .nodes import NodeKind
+from .server import create_app
 from .widgets import (
     Checkbox,
     NumberInput,
@@ -33,6 +34,7 @@ __all__ = [
     "kernel_version",
     "App",
     "Session",
+    "create_app",
     "NodeKind",
     "Widget",
     "Slider",
