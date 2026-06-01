@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit Documentation Hub | System Architecture</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#d6e3ff",
+                        "on-secondary": "#ffffff",
+                        "primary": "#004d99",
+                        "on-primary-container": "#dae5ff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#001b3d",
+                        "on-surface-variant": "#424752",
+                        "surface": "#f7f9fb",
+                        "secondary-fixed-dim": "#b2c7f1",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "primary-fixed-dim": "#a9c7ff",
+                        "surface-dim": "#d8dadc",
+                        "on-primary-fixed-variant": "#00468c",
+                        "surface-container-high": "#e6e8ea",
+                        "inverse-primary": "#a9c7ff",
+                        "on-tertiary-fixed": "#321200",
+                        "on-background": "#191c1e",
+                        "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline-variant": "#c2c6d4",
+                        "primary-fixed": "#d6e3ff",
+                        "surface-bright": "#f7f9fb",
+                        "secondary": "#4a5f83",
+                        "on-secondary-container": "#475c80",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#005db7",
+                        "tertiary-container": "#a64c00",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-fixed-variant": "#32476a",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-container": "#eceef0",
+                        "outline": "#727783",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#c0d5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffdece",
+                        "on-error": "#ffffff",
+                        "background": "#f7f9fb",
+                        "on-secondary-fixed": "#021b3c",
+                        "primary-container": "#1565c0",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#813900",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-low": "#f2f4f6",
+                        "tertiary-fixed": "#ffdbc9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .glass-panel {
+            background: rgba(236, 238, 240, 0.8);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-fixed">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-sm dark:shadow-none h-16">
+<div class="max-w-[1440px] mx-auto px-6 h-full flex justify-between items-center relative">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-blue-900 dark:text-blue-100">Golit</span>
+<nav class="hidden md:flex gap-6 items-center font-['Manrope'] font-bold text-sm tracking-tight">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 transition-colors" href="#">Documentation</a>
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 pb-1" href="#">Components</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 transition-colors" href="#">Roadmap</a>
+</nav>
+</div>
+<div class="flex items-center gap-4 flex-1 max-w-md ml-auto mr-4">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+<input class="w-full bg-surface-container border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-outline transition-all" placeholder="Search documentation..." type="text"/>
+</div>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-md transition-all text-blue-700 dark:text-blue-400">
+<span class="material-symbols-outlined" data-icon="code">code</span>
+</button>
+</div>
+<div class="bg-slate-200/50 dark:bg-slate-800/50 h-[1px] w-full absolute bottom-0 left-0"></div>
+</div>
+</header>
+<div class="flex max-w-[1440px] mx-auto pt-16">
+<!-- SideNavBar -->
+<aside class="h-[calc(100vh-4rem)] w-64 border-r border-slate-200/50 dark:border-slate-800/50 sticky top-16 hidden lg:flex flex-col py-8 px-4 gap-y-2 overflow-y-auto font-['Inter'] text-sm font-medium">
+<div class="mb-6 px-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" style="font-size: 20px;">layers</span>
+</div>
+<div>
+<div class="text-lg font-black text-blue-900 dark:text-blue-50">Documentation</div>
+<div class="text-[10px] text-slate-500 uppercase tracking-tighter">v1.2.0-stable</div>
+</div>
+</div>
+</div>
+<!-- Main TOC -->
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">description</span>Executive Summary</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">psychology</span>Philosophy</a>
+<a class="flex items-center gap-3 px-3 py-2 text-blue-700 bg-blue-50 dark:bg-blue-950/30 rounded-lg font-semibold translate-x-1 transition-transform" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">hub</span>Architecture</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">database</span>State</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">sync</span>Lifecycle</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">verified_user</span>Fault Tolerance</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">rocket_launch</span>Deployment</a>
+</div>
+<div class="mt-8 pt-8 border-t border-slate-100 dark:border-slate-900">
+<h4 class="px-3 text-[10px] uppercase tracking-widest text-slate-400 mb-2 font-bold">Getting Started</h4>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">play_arrow</span>Introduction</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">download</span>Installation</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">map</span>Roadmap</a>
+</div>
+</div>
+<div class="mt-auto pt-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">settings</span>Settings</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 rounded-lg transition-all" href="#"><span class="material-symbols-outlined" style="font-size: 18px;">help</span>Support</a>
+<div class="mt-4 px-3">
+<button class="w-full py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all">View on GitHub</button>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 min-w-0 bg-surface-container-low px-8 lg:px-16 py-12">
+<div class="max-w-4xl mx-auto">
+<header class="mb-12">
+<nav class="flex items-center gap-2 text-xs text-outline mb-6">
+<span>Core Concepts</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-primary font-semibold">System Architecture</span>
+</nav>
+<h1 class="text-5xl font-bold tracking-tight text-on-surface mb-6 leading-[1.1]">The Golit <br/><span class="text-primary">System Architecture</span></h1>
+<p class="text-xl text-on-surface-variant max-w-2xl leading-relaxed">
+                        Golit follows an opinionated "Modern Monolith" strategy, unifying the power of Pythonic high-performance backends with reactive, low-latency frontends without the complexity of SPA frameworks.
+                    </p>
+</header>
+<!-- Architecture Diagram Section -->
+<section class="mb-16">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+<!-- Connecting Line SVG (Simulated DAG) -->
+<div class="absolute inset-0 z-0 pointer-events-none opacity-20">
+<svg class="w-full h-full" fill="none" viewbox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+<path d="M250 150 H550" stroke="#004d99" stroke-dasharray="4 4" stroke-width="2"></path>
+<path d="M550 150 H750" stroke="#004d99" stroke-dasharray="4 4" stroke-width="2"></path>
+</svg>
+</div>
+<!-- Litestar Node -->
+<div class="relative z-10 p-6 bg-surface-container-lowest rounded-xl shadow-sm border-l-4 border-primary">
+<div class="text-[10px] font-bold text-primary uppercase tracking-widest mb-2">Back-End</div>
+<h3 class="text-xl font-bold mb-3">Litestar</h3>
+<p class="text-sm text-on-surface-variant mb-4">High-performance ASGI framework handling routing, security, and data persistence.</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 bg-surface-container-high rounded text-[10px] font-mono">Pydantic v2</span>
+<span class="px-2 py-1 bg-surface-container-high rounded text-[10px] font-mono">SQLAlchemy</span>
+</div>
+</div>
+<!-- HTMX Node -->
+<div class="relative z-10 p-6 bg-surface-container-lowest rounded-xl shadow-sm border-l-4 border-secondary">
+<div class="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2">Transport</div>
+<h3 class="text-xl font-bold mb-3">HTMX</h3>
+<p class="text-sm text-on-surface-variant mb-4">Hypermedia-driven interaction layer. Transforms standard HTML into reactive components.</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 bg-surface-container-high rounded text-[10px] font-mono">hx-target</span>
+<span class="px-2 py-1 bg-surface-container-high rounded text-[10px] font-mono">SSE/WS</span>
+</div>
+</div>
+<!-- Alpine.js Node -->
+<div class="relative z-10 p-6 bg-surface-container-lowest rounded-xl shadow-sm border-l-4 border-tertiary">
+<div class="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2">Front-End</div>
+<h3 class="text-xl font-bold mb-3">Alpine.js</h3>
+<p class="text-sm text-on-surface-variant mb-4">The "jQuery of the modern age" for handling complex client-side state and transitions.</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-1 bg-surface-container-high rounded text-[10px] font-mono">x-data</span>
+<span class="px-2 py-1 bg-surface-container-high rounded text-[10px] font-mono">x-transition</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Installation Section -->
+<section class="mb-16">
+<h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+<span class="w-8 h-8 rounded-full bg-primary-fixed text-primary flex items-center justify-center text-sm">01</span>
+                        Getting Started
+                    </h2>
+<div class="bg-surface-container-highest rounded-xl p-6 group relative">
+<div class="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 bg-surface rounded hover:bg-primary-fixed-dim transition-colors text-primary">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+</div>
+<div class="flex items-center gap-2 mb-4">
+<div class="w-3 h-3 rounded-full bg-error/40"></div>
+<div class="w-3 h-3 rounded-full bg-tertiary/40"></div>
+<div class="w-3 h-3 rounded-full bg-primary/40"></div>
+</div>
+<pre class="text-sm leading-relaxed text-on-surface overflow-x-auto"><code><span class="text-primary-container font-bold"># Create a new environment</span>
+python -m venv .venv
+source .venv/bin/activate
+
+<span class="text-primary-container font-bold"># Install Golit Framework</span>
+pip install golit[all]
+
+<span class="text-primary-container font-bold"># Initialize a new project</span>
+golit init my_awesome_app --blueprint=saas</code></pre>
+</div>
+</section>
+<!-- Minimal Example -->
+<section class="mb-16">
+<h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+<span class="w-8 h-8 rounded-full bg-primary-fixed text-primary flex items-center justify-center text-sm">02</span>
+                        Defining a Controller
+                    </h2>
+<p class="text-on-surface-variant mb-6">Controllers in Golit are standard Python classes decorated with the framework's reactive decorators. This allows Litestar to handle the ASGI lifecycle while automatically generating HTMX-compatible responses.</p>
+<div class="bg-surface-container-highest rounded-xl p-6 group relative">
+<pre class="text-sm leading-relaxed text-on-surface overflow-x-auto"><code><span class="text-primary-container font-bold">from</span> golit <span class="text-primary-container font-bold">import</span> Controller, get, html
+
+<span class="text-primary-container font-bold">class</span> <span class="text-tertiary">HomeController</span>(Controller):
+    path = <span class="text-secondary-container">"/"</span>
+
+    @get()
+    <span class="text-primary-container font-bold">async def</span> <span class="text-tertiary">index</span>(self) -&gt; <span class="text-on-tertiary-fixed-variant">Template</span>:
+        <span class="text-outline"># Standard Jinja2 integration</span>
+        <span class="text-primary-container font-bold">return</span> html(<span class="text-secondary-container">"index.html"</span>, {<span class="text-secondary-container">"title"</span>: <span class="text-secondary-container">"Welcome"</span>})
+
+    @get(<span class="text-secondary-container">"/partial"</span>)
+    <span class="text-primary-container font-bold">async def</span> <span class="text-tertiary">get_partial</span>(self) -&gt; <span class="text-on-tertiary-fixed-variant">Fragment</span>:
+        <span class="text-outline"># HTMX fragment response</span>
+        <span class="text-primary-container font-bold">return</span> html(<span class="text-secondary-container">"partials/stats.html"</span>)</code></pre>
+</div>
+</section>
+<!-- Footer Component (Integrated) -->
+<footer class="w-full py-12 border-t border-slate-200/50 dark:border-slate-800/50 mt-12 bg-slate-50 dark:bg-slate-950">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center px-8 gap-6">
+<div class="font-['Inter'] text-xs uppercase tracking-widest text-slate-400">
+                            © 2024 Golit Framework. Built for engineering precision.
+                        </div>
+<div class="flex gap-8">
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Privacy</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Terms</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Changelog</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Security</a>
+</div>
+</div>
+</footer>
+</div>
+</main>
+<!-- Right Side Nav (Asymmetric Layout Extra) -->
+<aside class="hidden xl:block w-64 py-12 px-6 sticky top-16 h-[calc(100vh-4rem)]">
+<div class="mb-8">
+<h4 class="text-[10px] font-bold text-primary uppercase tracking-widest mb-4">On This Page</h4>
+<div class="space-y-4 border-l border-outline-variant/30 pl-4">
+<a class="block text-xs font-semibold text-primary" href="#">System Architecture</a>
+<a class="block text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">The Modern Monolith</a>
+<a class="block text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Litestar Backend</a>
+<a class="block text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Transport with HTMX</a>
+<a class="block text-xs text-on-surface-variant hover:text-primary transition-colors" href="#">Client Reactivity</a>
+</div>
+</div>
+<div class="p-4 bg-surface-container-high rounded-xl">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-lg">info</span>
+<span class="text-[10px] font-bold uppercase">Pro Tip</span>
+</div>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">
+                    Use the <code class="text-primary">--no-alpine</code> flag during initialization if you prefer Vanilla JS for client-side interactions.
+                </p>
+</div>
+</aside>
+</div>
+</body></html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit Architecture &amp; Deployment</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-tertiary-fixed": "#321200",
+                        "on-secondary-fixed-variant": "#32476a",
+                        "tertiary-container": "#a64c00",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "surface": "#f7f9fb",
+                        "primary-fixed": "#d6e3ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-primary-fixed": "#001b3d",
+                        "on-primary-container": "#dae5ff",
+                        "secondary": "#4a5f83",
+                        "tertiary": "#813900",
+                        "primary": "#004d99",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#c0d5ff",
+                        "surface-dim": "#d8dadc",
+                        "primary-container": "#1565c0",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline-variant": "#c2c6d4",
+                        "inverse-primary": "#a9c7ff",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-fixed-dim": "#a9c7ff",
+                        "on-primary-fixed-variant": "#00468c",
+                        "on-secondary-fixed": "#021b3c",
+                        "outline": "#727783",
+                        "on-secondary-container": "#475c80",
+                        "inverse-surface": "#2d3133",
+                        "on-surface-variant": "#424752",
+                        "surface-tint": "#005db7",
+                        "on-tertiary": "#ffffff",
+                        "background": "#f7f9fb",
+                        "on-background": "#191c1e",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-container": "#ffdece",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#b2c7f1",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .node-connector {
+            background-image: radial-gradient(#1565C0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .blueprint-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(194, 198, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(194, 198, 212, 0.1) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopNavBar -->
+<header class="bg-slate-50 dark:bg-slate-900 font-manrope text-sm font-semibold tracking-tight full-width top-0 sticky z-50 flat no shadows h-16 w-full max-w-full flex justify-between items-center px-8">
+<div class="flex items-center gap-8">
+<span class="font-manrope text-xl font-bold text-blue-800 dark:text-blue-500">Golit</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Documentation</a>
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 pb-1 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Components</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Roadmap</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="bg-surface-container-low border-none rounded-xl pl-10 pr-4 py-1.5 text-sm focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search architecture..." type="text"/>
+</div>
+<button class="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-lg text-sm font-bold scale-95 active:opacity-80 transition-all">Sign In</button>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="bg-slate-50 dark:bg-slate-950 font-inter text-sm font-medium h-screen w-64 fixed left-0 border-r-0 flat no shadows flex flex-col py-6 pr-4 space-y-2 z-40 hidden lg:flex">
+<div class="px-6 mb-8">
+<h2 class="font-manrope font-bold text-blue-700 uppercase tracking-widest text-[10px]">Framework Guide</h2>
+<p class="text-[10px] text-slate-500 font-mono">v1.0.4-stable</p>
+</div>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">info</span>
+<span>Introduction</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span>Installation</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-blue-700 dark:text-blue-400 font-bold bg-slate-200/50 dark:bg-slate-800/50 rounded-r-lg translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">account_tree</span>
+<span>Core Concepts</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">api</span>
+<span>API Reference</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+<span>Deployment</span>
+</a>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 lg:ml-64 bg-surface blueprint-grid min-h-screen">
+<div class="max-w-6xl mx-auto px-8 py-12">
+<!-- Header Section -->
+<header class="mb-16">
+<div class="inline-flex items-center gap-2 px-3 py-1 bg-primary-container/10 border border-primary-container/20 rounded-full mb-4">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-mono text-[10px] font-bold text-primary tracking-tighter uppercase">Architecture Specification 042</span>
+</div>
+<h1 class="font-headline text-5xl font-extrabold text-on-surface mb-4 tracking-tight leading-tight">Technical <span class="text-primary">Blueprint</span> &amp;<br/>Scaling Strategy</h1>
+<p class="max-w-2xl text-on-surface-variant font-body text-lg leading-relaxed">
+                        A modern approach to full-stack reliability. Golit integrates the reactivity of Alpine.js, the hypermedia-driven flow of HTMX, and the high-performance async capabilities of Litestar.
+                    </p>
+</header>
+<!-- 3-Tier Architecture Diagram -->
+<section class="mb-24 relative">
+<h2 class="font-headline text-2xl font-bold mb-8 flex items-center gap-3">
+<span class="w-8 h-[2px] bg-primary"></span>
+                        System Architecture
+                    </h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+<!-- Connecting Line Overlay -->
+<div class="hidden md:block absolute top-1/2 left-0 w-full h-[2px] bg-primary/20 -translate-y-1/2 z-0"></div>
+<!-- Tier 1: Frontend -->
+<div class="relative z-10 bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(25,28,30,0.06)] border-l-4 border-primary">
+<div class="mb-6 flex justify-between items-start">
+<span class="font-mono text-xs text-primary font-bold">TIER 01</span>
+<span class="material-symbols-outlined text-primary-container">web</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-2">Interactivity</h3>
+<p class="text-on-surface-variant text-sm mb-6">Alpine.js handles the client-side micro-interactions and ephemeral state.</p>
+<div class="bg-surface-container-high p-4 rounded-lg">
+<code class="font-mono text-[11px] text-on-surface-variant">x-data="{ open: false }"</code>
+</div>
+</div>
+<!-- Tier 2: Orchestration -->
+<div class="relative z-10 bg-surface-container p-8 rounded-xl shadow-[0px_12px_32px_rgba(25,28,30,0.06)] border-t-4 border-primary">
+<div class="mb-6 flex justify-between items-start">
+<span class="font-mono text-xs text-primary font-bold">TIER 02</span>
+<span class="material-symbols-outlined text-primary-container">swap_horiz</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-2">Hypermedia</h3>
+<p class="text-on-surface-variant text-sm mb-6">HTMX manages the seamless partial page updates without JSON overhead.</p>
+<div class="bg-surface-container-highest p-4 rounded-lg">
+<code class="font-mono text-[11px] text-on-surface-variant">hx-post="/update" hx-target="#main"</code>
+</div>
+</div>
+<!-- Tier 3: Core -->
+<div class="relative z-10 bg-surface-container-lowest p-8 rounded-xl shadow-[0px_12px_32px_rgba(25,28,30,0.06)] border-r-4 border-primary">
+<div class="mb-6 flex justify-between items-start">
+<span class="font-mono text-xs text-primary font-bold">TIER 03</span>
+<span class="material-symbols-outlined text-primary-container">terminal</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-2">Business Logic</h3>
+<p class="text-on-surface-variant text-sm mb-6">Litestar provides high-speed, typed Python ASGI endpoints.</p>
+<div class="bg-surface-container-high p-4 rounded-lg">
+<code class="font-mono text-[11px] text-on-surface-variant">@get("/") async def index(): ...</code>
+</div>
+</div>
+</div>
+</section>
+<!-- State Hierarchy: Three Tiers of State -->
+<section class="mb-24">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<div class="order-2 lg:order-1">
+<div class="space-y-12">
+<div class="flex gap-6 group">
+<div class="flex-shrink-0 w-12 h-12 rounded-full border-2 border-primary/30 flex items-center justify-center font-mono font-bold text-primary bg-surface-container-lowest group-hover:bg-primary group-hover:text-on-primary transition-colors">01</div>
+<div>
+<h4 class="font-headline text-lg font-bold mb-1">Ephemeral State</h4>
+<p class="text-on-surface-variant text-sm">Stored in DOM/RAM (Alpine.js). Toggles, form inputs, and modal states. Lost on refresh.</p>
+</div>
+</div>
+<div class="flex gap-6 group">
+<div class="flex-shrink-0 w-12 h-12 rounded-full border-2 border-primary/30 flex items-center justify-center font-mono font-bold text-primary bg-surface-container-lowest group-hover:bg-primary group-hover:text-on-primary transition-colors">02</div>
+<div>
+<h4 class="font-headline text-lg font-bold mb-1">Committed State</h4>
+<p class="text-on-surface-variant text-sm">The "Source of Truth" (PostgreSQL). Persistent records, user data, and financial transactions.</p>
+</div>
+</div>
+<div class="flex gap-6 group">
+<div class="flex-shrink-0 w-12 h-12 rounded-full border-2 border-primary/30 flex items-center justify-center font-mono font-bold text-primary bg-surface-container-lowest group-hover:bg-primary group-hover:text-on-primary transition-colors">03</div>
+<div>
+<h4 class="font-headline text-lg font-bold mb-1">Derived State</h4>
+<p class="text-on-surface-variant text-sm">Cached values (Redis). Session data, analytics aggregations, and computed UI fragments.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="order-1 lg:order-2 bg-surface-container-low p-2 rounded-2xl">
+<div class="bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/20 shadow-sm relative overflow-hidden">
+<div class="absolute inset-0 node-connector opacity-10"></div>
+<div class="relative z-10 flex flex-col items-center gap-4">
+<div class="w-full h-24 border-2 border-dashed border-primary/20 rounded-lg flex items-center justify-center group hover:border-primary/50 transition-colors">
+<span class="font-mono text-xs font-bold text-primary/60">UI CONTEXT [EPHEMERAL]</span>
+</div>
+<span class="material-symbols-outlined text-primary">arrow_downward</span>
+<div class="w-full h-24 bg-primary rounded-lg flex items-center justify-center shadow-lg transform rotate-1">
+<span class="font-mono text-xs font-bold text-on-primary">CORE DB [COMMITTED]</span>
+</div>
+<span class="material-symbols-outlined text-primary">arrow_upward</span>
+<div class="w-full h-24 border-2 border-primary rounded-lg flex items-center justify-center bg-primary-container/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">database</span>
+<span class="font-mono text-xs font-bold text-primary">REDIS CACHE [DERIVED]</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Scaling Strategy Bento -->
+<section class="mb-24">
+<h2 class="font-headline text-2xl font-bold mb-8 flex items-center gap-3">
+<span class="w-8 h-[2px] bg-primary"></span>
+                        Scaling &amp; Deployment
+                    </h2>
+<div class="grid grid-cols-1 md:grid-cols-12 grid-rows-2 gap-4 h-[600px] md:h-[500px]">
+<!-- Redis Strategy -->
+<div class="md:col-span-8 bg-surface-container-high rounded-2xl p-8 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-8">
+<span class="material-symbols-outlined text-primary text-4xl opacity-20 group-hover:opacity-100 transition-opacity">memory</span>
+</div>
+<h3 class="font-headline text-xl font-bold mb-4">Redis-First Scaling</h3>
+<p class="text-on-surface-variant max-w-md mb-8">Utilize Redis for session management and Pub/Sub events between Litestar workers. This allows for horizontal scaling across multiple containers without state fragmentation.</p>
+<div class="flex gap-4">
+<span class="px-3 py-1 bg-surface-container-highest rounded font-mono text-[10px]">PUB/SUB</span>
+<span class="px-3 py-1 bg-surface-container-highest rounded font-mono text-[10px]">LUA SCRIPTS</span>
+<span class="px-3 py-1 bg-surface-container-highest rounded font-mono text-[10px]">STREAMS</span>
+</div>
+</div>
+<!-- Docker/K8s -->
+<div class="md:col-span-4 bg-primary text-on-primary rounded-2xl p-8 flex flex-col justify-between">
+<h3 class="font-headline text-xl font-bold">Cloud Native</h3>
+<div>
+<p class="text-on-primary/80 text-sm mb-4">Native support for OCI-compliant containers and Kubernetes orchestration.</p>
+<span class="material-symbols-outlined text-4xl">box</span>
+</div>
+</div>
+<!-- Edge Delivery -->
+<div class="md:col-span-4 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl p-8 flex flex-col justify-between shadow-sm">
+<h3 class="font-headline text-lg font-bold">Edge-Ready</h3>
+<div class="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+<div class="w-2/3 h-full bg-primary"></div>
+</div>
+<p class="text-on-surface-variant text-xs">Global content delivery with optimized static asset pipelining.</p>
+</div>
+<!-- Monitoring -->
+<div class="md:col-span-8 bg-surface-container p-8 rounded-2xl flex items-center gap-8">
+<div class="flex-1">
+<h3 class="font-headline text-lg font-bold mb-2">Observability</h3>
+<p class="text-on-surface-variant text-sm">Integrated Prometheus metrics and OpenTelemetry tracing for the entire 3-tier stack.</p>
+</div>
+<div class="flex gap-2 items-end h-16">
+<div class="w-2 bg-primary/20 h-8 rounded-t"></div>
+<div class="w-2 bg-primary/40 h-12 rounded-t"></div>
+<div class="w-2 bg-primary h-16 rounded-t"></div>
+<div class="w-2 bg-primary/60 h-10 rounded-t"></div>
+<div class="w-2 bg-primary/30 h-6 rounded-t"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Code Section -->
+<section class="mb-24">
+<div class="bg-slate-900 rounded-xl overflow-hidden shadow-2xl">
+<div class="bg-slate-800 px-4 py-2 flex items-center justify-between border-b border-slate-700">
+<div class="flex gap-1.5">
+<div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+<div class="w-3 h-3 rounded-full bg-amber-500/50"></div>
+<div class="w-3 h-3 rounded-full bg-emerald-500/50"></div>
+</div>
+<span class="font-mono text-[10px] text-slate-400">deploy/docker-compose.yml</span>
+</div>
+<div class="p-6">
+<pre class="font-mono text-xs text-blue-300 leading-relaxed"><span class="text-slate-500">services:</span>
+  <span class="text-blue-400">api:</span>
+    <span class="text-slate-500">image:</span> golit/litestar-app:latest
+    <span class="text-slate-500">environment:</span>
+      - REDIS_URL=redis://cache:6379/0
+    <span class="text-slate-500">depends_on:</span>
+      - cache
+  
+  <span class="text-blue-400">cache:</span>
+    <span class="text-slate-500">image:</span> redis:7-alpine
+    <span class="text-slate-500">command:</span> redis-server --save 60 1</pre>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-slate-50 dark:bg-slate-950 font-inter text-xs tracking-wide uppercase full-width py-12 border-t border-slate-200/10 dark:border-slate-800/50 flat no shadows relative z-50">
+<div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex flex-col items-center md:items-start gap-2">
+<span class="font-manrope font-extrabold text-slate-900 dark:text-white text-lg">Golit</span>
+<p class="text-slate-500 dark:text-slate-400 normal-case tracking-normal">© 2024 Golit Framework. Architectural Precision.</p>
+</div>
+<nav class="flex gap-8">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline transition-opacity opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline transition-opacity opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline transition-opacity opacity-80 hover:opacity-100" href="#">Security</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline transition-opacity opacity-80 hover:opacity-100" href="#">GitHub</a>
+</nav>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit Framework | Roadmap</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-tertiary-fixed": "#321200",
+                        "on-secondary-fixed-variant": "#32476a",
+                        "tertiary-container": "#a64c00",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "surface": "#f7f9fb",
+                        "primary-fixed": "#d6e3ff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-primary-fixed": "#001b3d",
+                        "on-primary-container": "#dae5ff",
+                        "secondary": "#4a5f83",
+                        "tertiary": "#813900",
+                        "primary": "#004d99",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#c0d5ff",
+                        "surface-dim": "#d8dadc",
+                        "primary-container": "#1565c0",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline-variant": "#c2c6d4",
+                        "inverse-primary": "#a9c7ff",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-container-high": "#e6e8ea",
+                        "primary-fixed-dim": "#a9c7ff",
+                        "on-primary-fixed-variant": "#00468c",
+                        "on-secondary-fixed": "#021b3c",
+                        "outline": "#727783",
+                        "on-secondary-container": "#475c80",
+                        "inverse-surface": "#2d3133",
+                        "on-surface-variant": "#424752",
+                        "surface-tint": "#005db7",
+                        "on-tertiary": "#ffffff",
+                        "background": "#f7f9fb",
+                        "on-background": "#191c1e",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-tertiary-container": "#ffdece",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#b2c7f1",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .dag-connector {
+            background-image: radial-gradient(circle, #a9c7ff 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+        .blueprint-grid {
+            background-image: linear-gradient(to right, rgba(194, 198, 212, 0.1) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(194, 198, 212, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-slate-50 dark:bg-slate-900 font-manrope text-sm font-semibold tracking-tight full-width top-0 sticky z-50 flat no shadows flex justify-between items-center px-8 h-16 w-full max-w-full">
+<div class="flex items-center gap-8">
+<span class="font-manrope text-xl font-bold text-blue-800 dark:text-blue-500">Golit</span>
+<nav class="hidden md:flex space-x-6">
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors scale-95 active:opacity-80 transition-transform" href="#">Documentation</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors scale-95 active:opacity-80 transition-transform" href="#">Components</a>
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 pb-1 scale-95 active:opacity-80 transition-transform" href="#">Roadmap</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="bg-surface-container-low border-none rounded-lg pl-8 pr-4 py-1.5 text-xs focus:ring-1 focus:ring-primary outline-none w-48" placeholder="Search..." type="text"/>
+</div>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90 transition-all active:scale-95">Sign In</button>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- NavigationDrawer -->
+<aside class="h-screen w-64 fixed left-0 border-r-0 bg-slate-50 dark:bg-slate-950 font-inter text-sm font-medium flex flex-col py-6 pr-4 space-y-2">
+<div class="px-6 mb-8">
+<h2 class="font-manrope font-bold text-blue-700 uppercase tracking-widest text-xs">Framework Guide</h2>
+<p class="text-[10px] text-outline font-mono mt-1">v1.0.4-stable</p>
+</div>
+<nav class="flex flex-col space-y-1">
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-lg">info</span> Introduction
+                </a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-lg">download</span> Installation
+                </a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-lg">account_tree</span> Core Concepts
+                </a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-lg">api</span> API Reference
+                </a>
+<a class="flex items-center gap-3 px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-lg">rocket_launch</span> Deployment
+                </a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-64 p-12 bg-surface blueprint-grid min-h-screen">
+<div class="max-w-6xl mx-auto">
+<!-- Hero Section / Editorial Header -->
+<section class="mb-20 flex flex-col md:flex-row md:items-end justify-between gap-8">
+<div class="max-w-2xl">
+<div class="flex items-center gap-2 text-primary font-mono text-xs mb-4">
+<span class="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                            ACTIVE DEVELOPMENT PHASE
+                        </div>
+<h1 class="font-headline text-display-lg leading-tight text-on-surface mb-6">
+                            Project Roadmap: <br/><span class="text-primary-container">Architectural Evolution</span>
+</h1>
+<p class="font-body text-on-surface-variant text-lg leading-relaxed">
+                            Following the "Blueprint Editorial" philosophy, our trajectory is defined by structural integrity and performance precision. We are building for the next decade of distributed systems.
+                        </p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary">
+<p class="font-mono text-[10px] text-outline uppercase mb-2">Current System Health</p>
+<div class="text-2xl font-bold text-on-surface">94.2% Stable</div>
+<div class="w-48 h-1 bg-surface-container-highest mt-4 overflow-hidden rounded-full">
+<div class="w-[94%] h-full bg-primary"></div>
+</div>
+</div>
+</section>
+<!-- Roadmap Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-16 relative">
+<!-- Background Visual Connectors -->
+<div class="absolute inset-0 pointer-events-none dag-connector opacity-20 -z-10"></div>
+<!-- Phase 1 -->
+<div class="group relative bg-surface-container-low p-8 rounded-xl transition-all hover:bg-surface-container">
+<div class="absolute -top-6 left-8 bg-primary text-on-primary px-4 py-1 font-mono text-xs rounded-lg shadow-sm">
+                            PHASE_01
+                        </div>
+<div class="flex justify-between items-start mb-6 pt-4">
+<h3 class="font-headline text-headline-sm text-on-surface">Core Engine (MVP)</h3>
+<span class="font-mono text-primary text-xs bg-primary-container/10 px-2 py-1 rounded">100% COMPLETE</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-8">Establishment of the fundamental execution environment and kernel modules.</p>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-mono text-xs text-on-surface">Micro-kernel initialization</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-mono text-xs text-on-surface">Memory management protocol</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-mono text-xs text-on-surface">Basic I/O lifecycle</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10">
+<img class="w-full h-32 object-cover rounded-lg opacity-80 group-hover:opacity-100 transition-opacity grayscale hover:grayscale-0" data-alt="Close-up of high-tech circuit board with blue glowing neon lights in a dark server room environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBao6pc8ltGY7-DttPv41t1vAmBTgjlU-OrIgeogVWkf7PIrkDUn5UCDEfA1WV9lIIrpcdrFlQuwplWvyqDK2Gv-VRJZ6Xfv3rZ6pt7TNuKI6aTJTtZ_9DGaHFabloZvXDmX8xsCo6LLE5ZV3klmCt-NDLreI_DlVsTDHl0ZUTcdknCXieYN_wZ3TlQYEh-TC6IiixEa6CK686RDf07BdCh3DkJBoWPskZiQuo_tk9QiynfDN01_q_zjAJlr-J5I2uImhrYNaWas0Q"/>
+</div>
+</div>
+<!-- Phase 2 -->
+<div class="group relative bg-surface-container p-8 rounded-xl transition-all shadow-sm ring-1 ring-primary/20">
+<div class="absolute -top-6 left-8 bg-primary-container text-on-primary-container px-4 py-1 font-mono text-xs rounded-lg">
+                            PHASE_02
+                        </div>
+<div class="flex justify-between items-start mb-6 pt-4">
+<h3 class="font-headline text-headline-sm text-on-surface">Data Layer</h3>
+<span class="font-mono text-primary text-xs bg-primary-container/20 px-2 py-1 rounded">IN PROGRESS</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-8">Implementation of high-throughput persistence and distributed state management.</p>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-mono text-xs text-on-surface">Write-ahead logging (WAL)</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-mono text-xs text-on-surface">Raft consensus integration</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">Vector indexing prototype</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">Edge-caching synchronization</span>
+</div>
+</div>
+<div class="mt-12 bg-surface-container-highest p-4 rounded-lg relative">
+<div class="flex justify-between text-[10px] font-mono text-outline mb-2 uppercase">
+<span>Optimization Level</span>
+<span>65%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 65%;"></div>
+</div>
+</div>
+</div>
+<!-- Phase 3 -->
+<div class="group relative bg-surface-container-low p-8 rounded-xl transition-all hover:bg-surface-container">
+<div class="absolute -top-6 left-8 bg-outline text-surface px-4 py-1 font-mono text-xs rounded-lg">
+                            PHASE_03
+                        </div>
+<div class="flex justify-between items-start mb-6 pt-4">
+<h3 class="font-headline text-headline-sm text-on-surface">Production Hardening</h3>
+<span class="font-mono text-outline text-xs bg-outline-variant/20 px-2 py-1 rounded">SCHEDULED</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-8">Focus on security audits, performance profiling, and fault tolerance stress tests.</p>
+<div class="space-y-4">
+<div class="flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">TLS 1.3 mTLS enforcement</span>
+</div>
+<div class="flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">Chaos engineering suite</span>
+</div>
+<div class="flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">Hot-reloading runtime nodes</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10">
+<img class="w-full h-32 object-cover rounded-lg opacity-80 grayscale group-hover:grayscale-0 transition-all" data-alt="Macro photography of shiny silver server cooling fans with precise industrial symmetry and metallic textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtkUKgWdz-Ipm_JAyDYufuIlx5TdvnXCTyZ5wmwsEzo4IcoIn42x38cMKqpgraw_w_L9A1SwXOMOLSYGpf0gQa-V8jDDz6IPMGKj5LcCSn47HYSauqcJPiqau-tC8QeufhzidTbx3A3wTz4clCnmF4Xv_PBNMDaDImWeSucz30n37RXucq6QPFT6dkpdBf7Hvcc9uP_GLVQycxiFcYMVLhkj1pqlB8r9Vz-nbuBdGn8yve7K9O0SpjAfJToBVaAEQ109KNYUKlMVQ"/>
+</div>
+</div>
+<!-- Phase 4 -->
+<div class="group relative bg-surface-container-low p-8 rounded-xl transition-all hover:bg-surface-container">
+<div class="absolute -top-6 left-8 bg-outline text-surface px-4 py-1 font-mono text-xs rounded-lg">
+                            PHASE_04
+                        </div>
+<div class="flex justify-between items-start mb-6 pt-4">
+<h3 class="font-headline text-headline-sm text-on-surface">Ecosystem &amp; DX</h3>
+<span class="font-mono text-outline text-xs bg-outline-variant/20 px-2 py-1 rounded">PLANNING</span>
+</div>
+<p class="text-on-surface-variant text-sm mb-8">Empowering the community with tooling, plugins, and seamless developer workflows.</p>
+<div class="space-y-4">
+<div class="flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">CLI visualizer tool</span>
+</div>
+<div class="flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">VS Code Extension suite</span>
+</div>
+<div class="flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-outline text-xl">radio_button_unchecked</span>
+<span class="font-mono text-xs text-on-surface">Marketplace for kernel hooks</span>
+</div>
+</div>
+<div class="mt-12 flex gap-2">
+<div class="flex-1 h-1 bg-primary/20 rounded-full"></div>
+<div class="flex-1 h-1 bg-outline-variant/20 rounded-full"></div>
+<div class="flex-1 h-1 bg-outline-variant/20 rounded-full"></div>
+<div class="flex-1 h-1 bg-outline-variant/20 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Footer-style Call to Action -->
+<section class="mt-24 mb-12 p-12 bg-primary-container rounded-2xl relative overflow-hidden">
+<div class="relative z-10 text-center">
+<h2 class="font-headline text-2xl text-on-primary-container mb-4">Want to contribute to the build?</h2>
+<p class="text-on-primary-container/80 mb-8 max-w-lg mx-auto">Our roadmap is open-source. Join the discussions on GitHub and help shape the future of Golit.</p>
+<div class="flex justify-center gap-4">
+<button class="bg-surface text-primary px-8 py-3 rounded-lg font-bold text-sm hover:bg-surface-dim transition-colors">View GitHub Repository</button>
+<button class="border border-on-primary-container text-on-primary-container px-8 py-3 rounded-lg font-bold text-sm hover:bg-on-primary-container hover:text-primary-container transition-colors">Join Discord</button>
+</div>
+</div>
+<!-- Abstract Background Graphic -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+<div class="absolute bottom-0 left-0 w-48 h-48 bg-blue-400/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl"></div>
+</section>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-slate-50 dark:bg-slate-950 full-width py-12 border-t border-slate-200/10 dark:border-slate-800/50 flat no shadows">
+<div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex flex-col gap-2">
+<span class="font-manrope font-extrabold text-slate-900 dark:text-white text-lg">Golit</span>
+<p class="font-inter text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400">© 2024 Golit Framework. Architectural Precision.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-8 font-inter text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400">
+<a class="hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-opacity" href="#">Privacy Policy</a>
+<a class="hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-opacity" href="#">Terms of Service</a>
+<a class="hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-opacity" href="#">Security</a>
+<a class="hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-opacity" href="#">GitHub</a>
+</div>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit Sales Analytics Dashboard</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#d6e3ff",
+                        "on-secondary": "#ffffff",
+                        "primary": "#004d99",
+                        "on-primary-container": "#dae5ff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#001b3d",
+                        "on-surface-variant": "#424752",
+                        "surface": "#f7f9fb",
+                        "secondary-fixed-dim": "#b2c7f1",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "primary-fixed-dim": "#a9c7ff",
+                        "surface-dim": "#d8dadc",
+                        "on-primary-fixed-variant": "#00468c",
+                        "surface-container-high": "#e6e8ea",
+                        "inverse-primary": "#a9c7ff",
+                        "on-tertiary-fixed": "#321200",
+                        "on-background": "#191c1e",
+                        "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline-variant": "#c2c6d4",
+                        "primary-fixed": "#d6e3ff",
+                        "surface-bright": "#f7f9fb",
+                        "secondary": "#4a5f83",
+                        "on-secondary-container": "#475c80",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#005db7",
+                        "tertiary-container": "#a64c00",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-fixed-variant": "#32476a",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-container": "#eceef0",
+                        "outline": "#727783",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#c0d5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffdece",
+                        "on-error": "#ffffff",
+                        "background": "#f7f9fb",
+                        "on-secondary-fixed": "#021b3c",
+                        "primary-container": "#1565c0",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#813900",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-low": "#f2f4f6",
+                        "tertiary-fixed": "#ffdbc9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(236, 238, 240, 0.8);
+            backdrop-filter: blur(24px);
+        }
+        .dirty-update {
+            position: relative;
+        }
+        .dirty-update::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(214, 227, 255, 0.2);
+            border: 2px dashed #004d99;
+            border-radius: inherit;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<div class="flex min-h-screen">
+<!-- SideNavBar Shared Component -->
+<aside class="h-screen w-64 border-r border-slate-200/50 dark:border-slate-800/50 bg-slate-50 dark:bg-slate-950 flex flex-col py-8 px-4 gap-y-2 shrink-0 sticky top-0">
+<div class="mb-8 px-2">
+<h1 class="text-lg font-black text-blue-900 dark:text-blue-50 font-headline tracking-tighter">Golit</h1>
+<p class="text-xs font-medium text-slate-500 uppercase tracking-widest mt-1">v1.2.0-stable</p>
+</div>
+<nav class="flex-1 flex flex-col gap-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="info">info</span> Introduction
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="download">download</span> Installation
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-blue-700 bg-blue-50 font-semibold rounded-lg text-sm transition-transform translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span> Core Concepts
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="api">api</span> API Reference
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span> Deployment
+                </a>
+</nav>
+<div class="mt-auto pt-4 border-t border-slate-200/50 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span> Settings
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all rounded-lg font-medium text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span> Support
+                </a>
+<button class="w-full mt-4 bg-primary text-on-primary py-2 px-4 rounded-lg text-sm font-semibold shadow-sm hover:opacity-90 transition-all">
+                    View on GitHub
+                </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 min-w-0 bg-surface">
+<!-- TopNavBar Shared Component -->
+<header class="fixed top-0 right-0 left-64 z-50 bg-slate-50/80 backdrop-blur-xl shadow-sm h-16 flex items-center px-8 justify-between">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-blue-900 font-headline">Sales Analytics Dashboard</span>
+<nav class="hidden md:flex gap-6">
+<a class="font-headline font-bold text-sm tracking-tight text-slate-600 hover:text-blue-600 transition-colors" href="#">Documentation</a>
+<a class="font-headline font-bold text-sm tracking-tight text-blue-700 border-b-2 border-blue-700 pb-1" href="#">Components</a>
+<a class="font-headline font-bold text-sm tracking-tight text-slate-600 hover:text-blue-600 transition-colors" href="#">Roadmap</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-slate-100 border-none rounded-md text-sm focus:ring-2 focus:ring-primary w-64 transition-all" placeholder="Search data..." type="text"/>
+</div>
+<button class="p-2 hover:bg-slate-100 rounded-md transition-all text-blue-700">
+<span class="material-symbols-outlined" data-icon="code">code</span>
+</button>
+</div>
+<div class="bg-slate-200/50 h-[1px] w-full absolute bottom-0 left-0"></div>
+</header>
+<div class="mt-16 p-8 max-w-[1440px] mx-auto space-y-8">
+<!-- Reactive Slider Section -->
+<section class="bg-surface-container-low rounded-xl p-8">
+<div class="flex justify-between items-end mb-6">
+<div>
+<h2 class="font-headline text-headline-sm text-on-surface mb-1">Time Dimension</h2>
+<p class="text-body-md text-on-surface-variant">Adjust the temporal range for sales aggregation</p>
+</div>
+<div class="font-mono text-label-md text-primary bg-primary-fixed px-3 py-1 rounded-full">
+                            RANGE: 2023-10-01 — 2024-03-31
+                        </div>
+</div>
+<div class="relative h-12 flex items-center">
+<div class="absolute w-full h-2 bg-surface-container-highest rounded-full"></div>
+<div class="absolute left-1/4 right-1/4 h-2 bg-primary rounded-full"></div>
+<!-- Thumb 1 -->
+<div class="absolute left-1/4 -translate-x-1/2 w-6 h-6 bg-white border-4 border-primary rounded-full shadow-lg cursor-pointer"></div>
+<!-- Thumb 2 -->
+<div class="absolute right-1/4 translate-x-1/2 w-6 h-6 bg-white border-4 border-primary rounded-full shadow-lg cursor-pointer"></div>
+</div>
+<div class="flex justify-between mt-4 font-mono text-[10px] text-outline uppercase tracking-widest">
+<span>Jan 2023</span>
+<span>Jul 2023</span>
+<span>Jan 2024</span>
+<span>Jun 2024</span>
+</div>
+</section>
+<!-- Analytics Grid (Bento Style) -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Summary Metric (Dirty/Updating State) -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-lowest rounded-xl p-6 shadow-sm dirty-update">
+<div class="flex items-center justify-between mb-4">
+<span class="text-xs font-bold font-headline text-primary uppercase tracking-widest">Total Revenue</span>
+<span class="material-symbols-outlined text-primary" data-icon="payments">payments</span>
+</div>
+<div class="space-y-1">
+<h3 class="font-headline text-[3rem] font-bold leading-none tracking-tight">$4,281,092</h3>
+<div class="flex items-center gap-2">
+<span class="text-tertiary font-mono text-sm">+12.4%</span>
+<span class="text-on-surface-variant text-xs">vs. previous range</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/15">
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                                Aggregated revenue across <span class="font-mono text-primary">1,402</span> transactions within the selected period.
+                            </p>
+</div>
+</div>
+<!-- Scatter Plot (Dirty/Updating State) -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container rounded-xl p-6 dirty-update">
+<div class="flex items-center justify-between mb-8">
+<h3 class="font-headline text-lg font-semibold">Revenue Distribution Over Time</h3>
+<div class="flex gap-2">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold bg-primary-container text-on-primary-container uppercase tracking-tighter">Live Updates</span>
+<span class="px-3 py-1 rounded-full text-[10px] font-bold bg-surface-container-highest text-on-surface-variant uppercase tracking-tighter">Scatter Mode</span>
+</div>
+</div>
+<!-- Simplified Scatter Plot Visualization -->
+<div class="h-64 relative">
+<!-- Axis Lines -->
+<div class="absolute bottom-0 left-0 w-full h-[1px] bg-outline-variant/30"></div>
+<div class="absolute bottom-0 left-0 h-full w-[1px] bg-outline-variant/30"></div>
+<!-- Plot Nodes -->
+<div class="absolute bottom-[20%] left-[10%] w-3 h-3 bg-primary rounded-full opacity-60"></div>
+<div class="absolute bottom-[45%] left-[25%] w-2 h-2 bg-primary rounded-full opacity-40"></div>
+<div class="absolute bottom-[60%] left-[30%] w-4 h-4 bg-primary rounded-full opacity-80"></div>
+<div class="absolute bottom-[30%] left-[45%] w-2 h-2 bg-primary rounded-full opacity-50"></div>
+<div class="absolute bottom-[80%] left-[60%] w-3 h-3 bg-primary rounded-full opacity-70"></div>
+<div class="absolute bottom-[55%] left-[75%] w-2 h-2 bg-primary rounded-full opacity-30"></div>
+<div class="absolute bottom-[90%] left-[85%] w-5 h-5 bg-primary rounded-full opacity-90"></div>
+<!-- Trend Line (Visual Link) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" preserveaspectratio="none">
+<path d="M 0 200 Q 150 180, 300 140 T 600 20" fill="none" stroke="#004d99" stroke-dasharray="4 4" stroke-width="2"></path>
+</svg>
+</div>
+<div class="flex justify-between mt-4 font-mono text-[10px] text-outline-variant uppercase">
+<span>Period Start</span>
+<span>Mid-Range</span>
+<span>Period End</span>
+</div>
+</div>
+</div>
+<!-- User Data Table Section (Static) -->
+<section class="bg-surface-container-low rounded-xl overflow-hidden">
+<div class="p-6 flex justify-between items-center border-b border-outline-variant/10">
+<h3 class="font-headline text-lg font-semibold">User Activity Log</h3>
+<button class="flex items-center gap-2 text-xs font-bold text-primary hover:bg-primary/5 px-3 py-1.5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span> FILTER VIEW
+                        </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high/50 font-mono text-[10px] text-outline uppercase tracking-widest">
+<th class="px-6 py-4">Transaction ID</th>
+<th class="px-6 py-4">Status</th>
+<th class="px-6 py-4">Volume</th>
+<th class="px-6 py-4">Latency</th>
+<th class="px-6 py-4">User Affinity</th>
+</tr>
+</thead>
+<tbody class="text-sm divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container transition-all group">
+<td class="px-6 py-4 font-mono text-primary-fixed-dim group-hover:text-primary">TXN_7721_A9</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-on-surface font-medium">Completed</span>
+</span>
+</td>
+<td class="px-6 py-4 font-mono">$1,204.00</td>
+<td class="px-6 py-4 font-mono text-xs text-outline">12ms</td>
+<td class="px-6 py-4">
+<div class="w-24 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[75%]"></div>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-all group">
+<td class="px-6 py-4 font-mono text-primary-fixed-dim group-hover:text-primary">TXN_8810_B2</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-on-surface font-medium">Completed</span>
+</span>
+</td>
+<td class="px-6 py-4 font-mono">$459.20</td>
+<td class="px-6 py-4 font-mono text-xs text-outline">8ms</td>
+<td class="px-6 py-4">
+<div class="w-24 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[40%]"></div>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container transition-all group">
+<td class="px-6 py-4 font-mono text-primary-fixed-dim group-hover:text-primary">TXN_4401_Z5</td>
+<td class="px-6 py-4">
+<span class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-on-surface font-medium">Pending</span>
+</span>
+</td>
+<td class="px-6 py-4 font-mono">$2,810.00</td>
+<td class="px-6 py-4 font-mono text-xs text-outline">42ms</td>
+<td class="px-6 py-4">
+<div class="w-24 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[90%]"></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-6 bg-surface-container-high/20 flex justify-center">
+<button class="text-xs font-bold text-outline hover:text-primary transition-colors flex items-center gap-2 uppercase tracking-widest">
+                            Load Full Dataset <span class="material-symbols-outlined text-sm" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</section>
+</div>
+<!-- Footer Shared Component -->
+<footer class="w-full py-12 border-t border-slate-200/50 bg-slate-50 mt-12">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center px-8 gap-6">
+<p class="font-['Inter'] text-xs uppercase tracking-widest text-slate-400">
+                        © 2024 Golit Framework. Built for engineering precision.
+                    </p>
+<div class="flex gap-8">
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Privacy</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Terms</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Changelog</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 underline underline-offset-4 transition-all" href="#">Security</a>
+</div>
+</div>
+</footer>
+</main>
+</div>
+</body></html>

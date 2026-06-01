@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit API Reference | Documentation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffdbc9",
+                    "on-tertiary-fixed": "#321200",
+                    "on-secondary-fixed-variant": "#32476a",
+                    "tertiary-container": "#a64c00",
+                    "surface-variant": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "surface": "#f7f9fb",
+                    "primary-fixed": "#d6e3ff",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-primary-fixed": "#001b3d",
+                    "on-primary-container": "#dae5ff",
+                    "secondary": "#4a5f83",
+                    "tertiary": "#813900",
+                    "primary": "#004d99",
+                    "error-container": "#ffdad6",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#c0d5ff",
+                    "surface-dim": "#d8dadc",
+                    "primary-container": "#1565c0",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "on-error-container": "#93000a",
+                    "on-surface": "#191c1e",
+                    "surface-container-highest": "#e0e3e5",
+                    "outline-variant": "#c2c6d4",
+                    "inverse-primary": "#a9c7ff",
+                    "error": "#ba1a1a",
+                    "surface-container-low": "#f2f4f6",
+                    "surface-container-high": "#e6e8ea",
+                    "primary-fixed-dim": "#a9c7ff",
+                    "on-primary-fixed-variant": "#00468c",
+                    "on-secondary-fixed": "#021b3c",
+                    "outline": "#727783",
+                    "on-secondary-container": "#475c80",
+                    "inverse-surface": "#2d3133",
+                    "on-surface-variant": "#424752",
+                    "surface-tint": "#005db7",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f7f9fb",
+                    "on-background": "#191c1e",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#f7f9fb",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-tertiary-container": "#ffdece",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#b2c7f1",
+                    "on-primary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"],
+                    "mono": ["JetBrains Mono"]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; color: #191c1e; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .headline-font { font-family: 'Manrope', sans-serif; }
+        .mono-font { font-family: 'JetBrains Mono', monospace; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<header class="bg-slate-50 dark:bg-slate-900 font-manrope text-sm font-semibold tracking-tight full-width top-0 sticky z-50 flat no shadows flex justify-between items-center px-8 h-16 w-full max-w-full">
+<div class="flex items-center gap-8">
+<span class="font-manrope text-xl font-bold text-blue-800 dark:text-blue-500">Golit</span>
+<nav class="hidden md:flex space-x-6">
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Documentation</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Components</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Roadmap</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center bg-surface-container rounded-lg px-3 py-1.5 border-none">
+<span class="material-symbols-outlined text-outline text-sm mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs w-48 font-label" placeholder="Search API..." type="text"/>
+<span class="text-[10px] bg-surface-container-highest px-1.5 py-0.5 rounded text-outline-variant font-mono">⌘K</span>
+</div>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-md font-label text-xs font-bold scale-95 active:opacity-80 transition-transform">Sign In</button>
+</div>
+</header>
+<div class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="bg-slate-50 dark:bg-slate-950 font-inter text-sm font-medium h-screen w-64 fixed left-0 border-r-0 flex flex-col py-6 pr-4 space-y-2 hidden md:flex">
+<div class="px-6 mb-8">
+<h2 class="font-manrope font-bold text-blue-700 uppercase tracking-widest text-[10px]">Framework Guide</h2>
+<p class="text-[10px] text-slate-500 mono-font">v1.0.4-stable</p>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-6 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="info">info</span>
+                    Introduction
+                </a>
+<a class="flex items-center gap-3 px-6 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="download">download</span>
+                    Installation
+                </a>
+<a class="flex items-center gap-3 px-6 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="account_tree">account_tree</span>
+                    Core Concepts
+                </a>
+<a class="flex items-center gap-3 px-6 py-2 text-blue-700 dark:text-blue-400 font-bold bg-slate-200/50 dark:bg-slate-800/50 rounded-r-lg translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="api">api</span>
+                    API Reference
+                </a>
+<a class="flex items-center gap-3 px-6 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="rocket_launch">rocket_launch</span>
+                    Deployment
+                </a>
+</nav>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 md:ml-64 p-8 md:p-16 max-w-6xl">
+<!-- Header Section -->
+<header class="mb-16">
+<div class="flex items-center gap-2 text-primary font-mono text-[10px] uppercase tracking-[0.2em] mb-4">
+<span class="w-8 h-[1px] bg-primary-fixed-dim"></span>
+                    Primitives Library
+                </div>
+<h1 class="headline-font text-5xl font-bold text-on-surface tracking-tight mb-6">API Reference</h1>
+<p class="text-on-surface-variant text-lg max-w-2xl leading-relaxed">
+                    A technical breakdown of Golit core primitives. Our architecture prioritizes directed flow and declarative state management through four foundational nodes.
+                </p>
+</header>
+<!-- Primitives Sections -->
+<div class="space-y-32">
+<!-- gl.slider -->
+<section class="relative" id="gl-slider">
+<div class="flex flex-col md:flex-row gap-12">
+<div class="flex-1">
+<div class="flex items-baseline gap-3 mb-4">
+<span class="mono-font text-2xl font-bold text-primary">gl.slider</span>
+<span class="bg-primary-container text-on-primary-container text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Input Node</span>
+</div>
+<p class="text-on-surface-variant mb-8 leading-relaxed">
+                                Defines a reactive numerical input within the DAG. It serves as an entry point for user interaction, broadcasting value updates to connected derived nodes.
+                            </p>
+<div class="bg-surface-container-low rounded-xl overflow-hidden mb-8">
+<div class="bg-surface-container-high px-4 py-2 border-none flex justify-between items-center">
+<span class="text-[10px] font-mono text-outline uppercase tracking-widest">Parameters</span>
+</div>
+<table class="w-full text-left text-sm border-collapse">
+<thead class="bg-surface-container-low text-on-surface-variant">
+<tr>
+<th class="px-6 py-4 font-semibold text-xs border-none">Name</th>
+<th class="px-6 py-4 font-semibold text-xs border-none">Type</th>
+<th class="px-6 py-4 font-semibold text-xs border-none">Description</th>
+<th class="px-6 py-4 font-semibold text-xs border-none">Default</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">label</td>
+<td class="px-6 py-4 text-xs font-mono">string</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">The UI text display for the slider.</td>
+<td class="px-6 py-4 text-xs font-mono">""</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">min</td>
+<td class="px-6 py-4 text-xs font-mono">number</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">Minimum range value.</td>
+<td class="px-6 py-4 text-xs font-mono">0</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">max</td>
+<td class="px-6 py-4 text-xs font-mono">number</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">Maximum range value.</td>
+<td class="px-6 py-4 text-xs font-mono">100</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Code Example -->
+<div class="w-full md:w-96">
+<div class="bg-surface-container-highest rounded-xl p-6 relative group border-none shadow-sm">
+<div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="bg-primary-fixed text-on-primary-fixed text-[10px] px-3 py-1 rounded-md font-bold uppercase tracking-wider">Copy</button>
+</div>
+<div class="mono-font text-[12px] leading-6">
+<p class="text-outline">// Initialize input</p>
+<p><span class="text-primary-container font-bold">const</span> intensity = <span class="text-primary">gl.slider</span>({</p>
+<p class="pl-4">label: <span class="text-tertiary">"Node Intensity"</span>,</p>
+<p class="pl-4">min: <span class="text-primary-container">10</span>,</p>
+<p class="pl-4">max: <span class="text-primary-container">500</span>,</p>
+<p class="pl-4">initial: <span class="text-primary-container">100</span></p>
+<p>});</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- gl.derived -->
+<section class="relative" id="gl-derived">
+<div class="flex flex-col md:flex-row-reverse gap-12">
+<div class="flex-1">
+<div class="flex items-baseline gap-3 mb-4">
+<span class="mono-font text-2xl font-bold text-primary">gl.derived</span>
+<span class="bg-secondary-container text-on-secondary-container text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Transform Node</span>
+</div>
+<p class="text-on-surface-variant mb-8 leading-relaxed">
+                                Computes a value based on upstream dependencies. It automatically recalculates only when its dependent inputs or other derived nodes change.
+                            </p>
+<div class="bg-surface-container-low rounded-xl overflow-hidden mb-8">
+<table class="w-full text-left text-sm">
+<thead class="bg-surface-container-low text-on-surface-variant">
+<tr>
+<th class="px-6 py-4 font-semibold text-xs">Name</th>
+<th class="px-6 py-4 font-semibold text-xs">Type</th>
+<th class="px-6 py-4 font-semibold text-xs">Description</th>
+<th class="px-6 py-4 font-semibold text-xs">Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">deps</td>
+<td class="px-6 py-4 text-xs font-mono">Node[]</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">Array of upstream dependencies.</td>
+<td class="px-6 py-4 text-xs font-mono">[]</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">fn</td>
+<td class="px-6 py-4 text-xs font-mono">Function</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">Transformation logic.</td>
+<td class="px-6 py-4 text-xs font-mono">null</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="w-full md:w-96">
+<div class="bg-surface-container-highest rounded-xl p-6 relative group border-none">
+<div class="mono-font text-[12px] leading-6">
+<p class="text-outline">// Computed state</p>
+<p><span class="text-primary-container font-bold">const</span> scaled = <span class="text-primary">gl.derived</span>({</p>
+<p class="pl-4">deps: [intensity],</p>
+<p class="pl-4">fn: (v) =&gt; v * <span class="text-primary-container">Math.PI</span></p>
+<p>});</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- gl.layout -->
+<section class="relative" id="gl-layout">
+<div class="flex flex-col md:flex-row gap-12">
+<div class="flex-1">
+<div class="flex items-baseline gap-3 mb-4">
+<span class="mono-font text-2xl font-bold text-primary">gl.layout</span>
+<span class="bg-surface-container-highest text-on-surface-variant text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Shell Node</span>
+</div>
+<p class="text-on-surface-variant mb-8 leading-relaxed">
+                                Defines the structural grid for rendering. It uses a 12-column asymmetric system by default, allowing for complex dashboard-to-document transformations.
+                            </p>
+<div class="bg-surface-container-low rounded-xl overflow-hidden mb-8">
+<table class="w-full text-left text-sm">
+<thead class="bg-surface-container-low text-on-surface-variant">
+<tr>
+<th class="px-6 py-4 font-semibold text-xs">Name</th>
+<th class="px-6 py-4 font-semibold text-xs">Type</th>
+<th class="px-6 py-4 font-semibold text-xs">Description</th>
+<th class="px-6 py-4 font-semibold text-xs">Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">columns</td>
+<td class="px-6 py-4 text-xs font-mono">number</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">Grid column count.</td>
+<td class="px-6 py-4 text-xs font-mono">12</td>
+</tr>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">gap</td>
+<td class="px-6 py-4 text-xs font-mono">spacing</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">Spacing between elements.</td>
+<td class="px-6 py-4 text-xs font-mono">24px</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="w-full md:w-96">
+<div class="bg-surface-container-highest rounded-xl p-6 relative group border-none">
+<div class="mono-font text-[12px] leading-6">
+<p class="text-outline">// Structure</p>
+<p><span class="text-primary-container font-bold">const</span> shell = <span class="text-primary">gl.layout</span>({</p>
+<p class="pl-4">type: <span class="text-tertiary">"bento"</span>,</p>
+<p class="pl-4">gap: <span class="text-primary-container">16</span></p>
+<p>});</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- gl.run -->
+<section class="relative" id="gl-run">
+<div class="flex flex-col md:flex-row-reverse gap-12">
+<div class="flex-1">
+<div class="flex items-baseline gap-3 mb-4">
+<span class="mono-font text-2xl font-bold text-primary">gl.run</span>
+<span class="bg-error-container text-on-error-container text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Execution Node</span>
+</div>
+<p class="text-on-surface-variant mb-8 leading-relaxed">
+                                The catalyst that mounts the architectural graph to the DOM. It initializes all listeners and triggers the first paint.
+                            </p>
+<div class="bg-surface-container-low rounded-xl overflow-hidden mb-8">
+<table class="w-full text-left text-sm">
+<thead class="bg-surface-container-low text-on-surface-variant">
+<tr>
+<th class="px-6 py-4 font-semibold text-xs">Name</th>
+<th class="px-6 py-4 font-semibold text-xs">Type</th>
+<th class="px-6 py-4 font-semibold text-xs">Description</th>
+<th class="px-6 py-4 font-semibold text-xs">Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="hover:bg-surface-container transition-colors">
+<td class="px-6 py-4 font-mono text-primary font-medium">target</td>
+<td class="px-6 py-4 text-xs font-mono">string</td>
+<td class="px-6 py-4 text-xs text-on-surface-variant">CSS selector for mount.</td>
+<td class="px-6 py-4 text-xs font-mono">"#app"</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="w-full md:w-96">
+<div class="bg-surface-container-highest rounded-xl p-6 relative group border-none">
+<div class="mono-font text-[12px] leading-6">
+<p class="text-outline">// Execution</p>
+<p><span class="text-primary">gl.run</span>({</p>
+<p class="pl-4">target: <span class="text-tertiary">"main"</span>,</p>
+<p class="pl-4">nodes: [shell]</p>
+<p>});</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Graphic Element: Flow Connector (DAG Motif) -->
+<div class="mt-24 h-48 w-full relative overflow-hidden flex items-center justify-center">
+<svg fill="none" height="100" viewbox="0 0 400 100" width="400" xmlns="http://www.w3.org/2000/svg">
+<path d="M40 50C100 50 100 20 160 20C220 20 220 80 280 80C340 80 340 50 400 50" stroke="#a9c7ff" stroke-dasharray="8 8" stroke-width="2"></path>
+<circle cx="40" cy="50" fill="#004d99" r="4"></circle>
+<circle cx="160" cy="20" fill="#004d99" r="4"></circle>
+<circle cx="280" cy="80" fill="#004d99" r="4"></circle>
+<circle cx="400" cy="50" fill="#004d99" r="4"></circle>
+</svg>
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-slate-50 dark:bg-slate-950 font-inter text-xs tracking-wide uppercase full-width py-12 border-t border-slate-200/10 dark:border-slate-800/50 flat no shadows mt-20">
+<div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex flex-col gap-2 mb-6 md:mb-0">
+<span class="font-manrope font-extrabold text-slate-900 dark:text-white text-lg lowercase">golit.io</span>
+<p class="normal-case text-slate-500 tracking-normal">© 2024 Golit Framework. Architectural Precision.</p>
+</div>
+<nav class="flex gap-8">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline" href="#">Privacy Policy</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline" href="#">Terms of Service</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline" href="#">Security</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline" href="#">GitHub</a>
+</nav>
+</div>
+</footer>
+</body></html>

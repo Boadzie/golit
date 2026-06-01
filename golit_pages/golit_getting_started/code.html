@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit - Framework Guide</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffdbc9",
+                    "on-tertiary-fixed": "#321200",
+                    "on-secondary-fixed-variant": "#32476a",
+                    "tertiary-container": "#a64c00",
+                    "surface-variant": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "surface": "#f7f9fb",
+                    "primary-fixed": "#d6e3ff",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-primary-fixed": "#001b3d",
+                    "on-primary-container": "#dae5ff",
+                    "secondary": "#4a5f83",
+                    "tertiary": "#813900",
+                    "primary": "#004d99",
+                    "error-container": "#ffdad6",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#c0d5ff",
+                    "surface-dim": "#d8dadc",
+                    "primary-container": "#1565c0",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "on-error-container": "#93000a",
+                    "on-surface": "#191c1e",
+                    "surface-container-highest": "#e0e3e5",
+                    "outline-variant": "#c2c6d4",
+                    "inverse-primary": "#a9c7ff",
+                    "error": "#ba1a1a",
+                    "surface-container-low": "#f2f4f6",
+                    "surface-container-high": "#e6e8ea",
+                    "primary-fixed-dim": "#a9c7ff",
+                    "on-primary-fixed-variant": "#00468c",
+                    "on-secondary-fixed": "#021b3c",
+                    "outline": "#727783",
+                    "on-secondary-container": "#475c80",
+                    "inverse-surface": "#2d3133",
+                    "on-surface-variant": "#424752",
+                    "surface-tint": "#005db7",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f7f9fb",
+                    "on-background": "#191c1e",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#f7f9fb",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-tertiary-container": "#ffdece",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#b2c7f1",
+                    "on-primary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"],
+                    "mono": ["JetBrains Mono"]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .blueprint-grid {
+            background-image: radial-gradient(circle, #c2c6d4 1px, transparent 1px);
+            background-size: 32px 32px;
+            opacity: 0.05;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<header class="bg-slate-50 dark:bg-slate-900 font-manrope text-sm font-semibold tracking-tight full-width top-0 sticky z-50 transition-colors">
+<nav class="flex justify-between items-center px-8 h-16 w-full max-w-full">
+<div class="flex items-center gap-8">
+<span class="font-manrope text-xl font-bold text-blue-800 dark:text-blue-500">Golit</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 pb-1 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Documentation</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Components</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors" href="#">Roadmap</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-sm">search</span>
+<input class="bg-surface-container-low border-none rounded-lg pl-10 pr-4 py-1.5 text-xs w-64 focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="Search documentation..." type="text"/>
+</div>
+<button class="bg-primary text-on-primary px-4 py-1.5 rounded-lg text-xs font-bold scale-95 active:opacity-80 transition-transform">Sign In</button>
+</div>
+</nav>
+</header>
+<div class="flex min-h-screen relative">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col py-6 pr-4 space-y-2 bg-slate-50 dark:bg-slate-950 font-inter text-sm font-medium h-screen w-64 fixed left-0 border-r-0">
+<div class="px-6 mb-8">
+<h2 class="font-manrope font-bold text-blue-700">Framework Guide</h2>
+<p class="text-[10px] text-slate-500 font-mono tracking-widest uppercase">v1.0.4-stable</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-6 py-2 text-blue-700 dark:text-blue-400 font-bold bg-slate-200/50 dark:bg-slate-800/50 rounded-r-lg translate-x-1 duration-200 group" href="#">
+<span class="material-symbols-outlined text-[18px]">info</span>
+<span>Introduction</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2 text-blue-700 dark:text-blue-400 font-bold bg-slate-200/50 dark:bg-slate-800/50 rounded-r-lg translate-x-1 duration-200 group" href="#">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Installation</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">account_tree</span>
+<span>Core Concepts</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">api</span>
+<span>API Reference</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+<span>Deployment</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-64 relative bg-surface-container-low min-h-screen">
+<div class="absolute inset-0 blueprint-grid pointer-events-none"></div>
+<div class="max-w-4xl mx-auto px-8 md:px-16 py-12 relative">
+<!-- Page Header -->
+<header class="mb-16">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-container text-on-primary-container text-[10px] font-bold uppercase tracking-widest mb-6">
+                        Step-by-Step Guide
+                    </div>
+<h1 class="text-display-lg text-5xl font-extrabold text-on-surface tracking-tight mb-4">
+                        Getting Started with Golit
+                    </h1>
+<p class="text-body-md text-on-surface-variant max-w-2xl leading-relaxed">
+                        Architect high-performance data workflows with editorial precision. Follow this guide to initialize your environment and build your first reactive directed acyclic graph (DAG).
+                    </p>
+</header>
+<!-- Section: Prerequisites -->
+<section class="mb-20">
+<div class="flex gap-6">
+<div class="w-1 bg-primary rounded-full hidden md:block"></div>
+<div>
+<h2 class="text-headline-sm text-2xl font-semibold mb-6 flex items-center gap-2">
+<span class="text-primary-container font-mono text-sm">01</span>
+                                Prerequisites
+                            </h2>
+<div class="grid md:grid-cols-2 gap-4">
+<div class="bg-surface-container rounded-xl p-6 transition-all hover:bg-surface-container-high group">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<h3 class="font-bold text-sm">Python Environment</h3>
+</div>
+<p class="text-xs text-on-surface-variant mb-4">Requires Python 3.11 or higher for optimal async performance and structural pattern matching.</p>
+<div class="bg-surface-container-highest rounded p-3 font-mono text-[11px] text-primary">
+                                        python --version # 3.11.0+
+                                    </div>
+</div>
+<div class="bg-surface-container rounded-xl p-6 transition-all hover:bg-surface-container-high group">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">database</span>
+</div>
+<h3 class="font-bold text-sm">Redis Store</h3>
+</div>
+<p class="text-xs text-on-surface-variant mb-4">State persistence and message brokering are handled via Redis. Ensure a local instance is running.</p>
+<div class="bg-surface-container-highest rounded p-3 font-mono text-[11px] text-tertiary">
+                                        redis-cli ping # PONG
+                                    </div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Installation -->
+<section class="mb-20">
+<div class="flex gap-6">
+<div class="w-1 bg-primary/20 rounded-full hidden md:block"></div>
+<div class="w-full">
+<h2 class="text-headline-sm text-2xl font-semibold mb-6 flex items-center gap-2">
+<span class="text-primary-container font-mono text-sm">02</span>
+                                Installation
+                            </h2>
+<div class="bg-surface-container-highest rounded-xl p-1 relative overflow-hidden group">
+<div class="flex justify-between items-center px-4 py-2 bg-surface-container-high/50">
+<div class="flex gap-1.5">
+<div class="w-2.5 h-2.5 rounded-full bg-outline-variant/30"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-outline-variant/30"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-outline-variant/30"></div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] font-bold text-primary px-2 py-1 rounded bg-surface hover:bg-primary-container hover:text-on-primary-container">
+<span class="material-symbols-outlined text-xs">content_copy</span>
+                                        COPY
+                                    </button>
+</div>
+<pre class="p-6 text-sm overflow-x-auto"><code class="text-on-surface-variant"><span class="text-primary">pip</span> install <span class="font-bold">golit</span> --upgrade</code></pre>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Minimal Example -->
+<section class="mb-20">
+<div class="flex gap-6">
+<div class="w-1 bg-primary/20 rounded-full hidden md:block"></div>
+<div class="w-full">
+<h2 class="text-headline-sm text-2xl font-semibold mb-6 flex items-center gap-2">
+<span class="text-primary-container font-mono text-sm">03</span>
+                                Minimal Example
+                            </h2>
+<p class="text-sm text-on-surface-variant mb-6 leading-relaxed">
+                                Create a reactive dashboard using Golit's core primitives. This script demonstrates state management with <code class="bg-surface-container px-1.5 rounded text-primary">gl.slider</code> and reactive dependencies with <code class="bg-surface-container px-1.5 rounded text-primary">gl.derived</code>.
+                            </p>
+<div class="bg-surface-container-highest rounded-xl p-1 relative overflow-hidden group mb-8">
+<div class="flex justify-between items-center px-4 py-2 bg-surface-container-high/50 border-b border-outline-variant/5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary">description</span>
+<span class="text-[10px] font-mono font-bold tracking-tight text-on-surface-variant uppercase">app.py</span>
+</div>
+<button class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] font-bold text-primary px-2 py-1 rounded bg-surface">
+<span class="material-symbols-outlined text-xs">content_copy</span>
+                                        COPY
+                                    </button>
+</div>
+<pre class="p-6 text-xs leading-relaxed overflow-x-auto"><code class="text-on-surface-variant"><span class="text-outline">import</span> golit <span class="text-outline">as</span> gl
+
+<span class="text-primary"># 1. Define atomic state</span>
+slider = gl.<span class="text-primary">slider</span>(label=<span class="text-tertiary">"Input Value"</span>, min=<span class="text-primary-container">0</span>, max=<span class="text-primary-container">100</span>, default=<span class="text-primary-container">42</span>)
+
+<span class="text-primary"># 2. Derive state (Reactive Node)</span>
+@gl.<span class="text-primary">derived</span>(depends_on=[slider])
+<span class="text-outline">def</span> <span class="text-primary-container">compute_square</span>(val):
+    <span class="text-outline">return</span> val ** <span class="text-primary-container">2</span>
+
+<span class="text-primary"># 3. Architect the Layout</span>
+layout = gl.<span class="text-primary">layout</span>(
+    title=<span class="text-tertiary">"Technical Overview"</span>,
+    children=[slider, compute_square]
+)
+
+<span class="text-outline">if</span> __name__ == <span class="text-tertiary">"__main__"</span>:
+    gl.<span class="text-primary">run</span>(layout)</code></pre>
+</div>
+<!-- Decorative DAG Node visualization -->
+<div class="relative bg-surface p-8 rounded-2xl border border-outline-variant/15 flex flex-col md:flex-row items-center justify-center gap-12 overflow-hidden shadow-sm">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent"></div>
+<div class="relative z-10 w-32 h-20 bg-surface-container-high rounded-lg flex flex-col items-center justify-center border border-primary/20">
+<span class="text-[10px] font-mono font-bold text-primary">SLIDER</span>
+<span class="font-mono text-sm font-bold">42.0</span>
+</div>
+<svg class="hidden md:block" fill="none" height="2" viewbox="0 0 60 2" width="60">
+<path d="M0 1H60" stroke="#004d99" stroke-dasharray="4 4" stroke-width="2"></path>
+</svg>
+<div class="relative z-10 w-32 h-20 bg-primary-container rounded-lg flex flex-col items-center justify-center text-on-primary-container">
+<span class="text-[10px] font-mono font-bold opacity-70">DERIVED</span>
+<span class="font-mono text-sm font-bold">1764.0</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-slate-50 dark:bg-slate-950 border-t border-slate-200/10 dark:border-slate-800/50 full-width py-12 relative z-10">
+<div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center">
+<div class="mb-6 md:mb-0">
+<span class="font-manrope font-extrabold text-slate-900 dark:text-white text-xl">Golit</span>
+<p class="font-inter text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400 mt-2">© 2024 Golit Framework. Architectural Precision.</p>
+</div>
+<div class="flex gap-8">
+<a class="font-inter text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-all" href="#">Privacy Policy</a>
+<a class="font-inter text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-all" href="#">Terms of Service</a>
+<a class="font-inter text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-all" href="#">Security</a>
+<a class="font-inter text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-300 underline-offset-4 hover:underline opacity-80 hover:opacity-100 transition-all" href="#">GitHub</a>
+</div>
+</div>
+</footer>
+</body></html>

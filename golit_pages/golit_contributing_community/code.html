@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit | Contributing &amp; Community</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#c2c6d4",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-fixed-variant": "#32476a",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface-container": "#eceef0",
+                    "tertiary-fixed": "#ffdbc9",
+                    "on-tertiary": "#ffffff",
+                    "inverse-on-surface": "#eff1f3",
+                    "on-primary-fixed": "#001b3d",
+                    "surface-bright": "#f7f9fb",
+                    "primary-container": "#1565c0",
+                    "error": "#ba1a1a",
+                    "on-surface": "#191c1e",
+                    "on-primary-container": "#dae5ff",
+                    "secondary-fixed-dim": "#b2c7f1",
+                    "secondary-fixed": "#d6e3ff",
+                    "primary-fixed-dim": "#a9c7ff",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#005db7",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "surface-container-high": "#e6e8ea",
+                    "tertiary-fixed-dim": "#ffb68c",
+                    "primary": "#004d99",
+                    "tertiary": "#813900",
+                    "primary-fixed": "#d6e3ff",
+                    "on-tertiary-fixed": "#321200",
+                    "surface-container-low": "#f2f4f6",
+                    "outline": "#727783",
+                    "secondary": "#4a5f83",
+                    "on-secondary-container": "#475c80",
+                    "on-primary-fixed-variant": "#00468c",
+                    "on-error-container": "#93000a",
+                    "inverse-primary": "#a9c7ff",
+                    "on-background": "#191c1e",
+                    "background": "#f7f9fb",
+                    "surface-dim": "#d8dadc",
+                    "surface": "#f7f9fb",
+                    "secondary-container": "#c0d5ff",
+                    "on-tertiary-container": "#ffdece",
+                    "surface-variant": "#e0e3e5",
+                    "on-secondary-fixed": "#021b3c",
+                    "tertiary-container": "#a64c00",
+                    "on-surface-variant": "#424752"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"],
+                    "mono": ["JetBrains Mono"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .dag-connector {
+            background-image: radial-gradient(circle, #a9c7ff 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (Authority: JSON & Contextual "Community" Active) -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-[#f2f4f6] dark:bg-[#121416] flex flex-col py-6 z-50">
+<div class="px-6 mb-8">
+<h2 class="font-headline text-lg font-semibold text-[#191c1e] dark:text-[#ffffff]">Golit Framework</h2>
+<p class="text-xs text-on-surface-variant opacity-70">System Management</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1 pr-4">
+<!-- Deployment -->
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 hover:bg-[#e6e8ea] dark:hover:bg-[#232628] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span>
+<span class="font-label text-sm font-medium">Deployment</span>
+</a>
+<!-- Error Logs -->
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 hover:bg-[#e6e8ea] dark:hover:bg-[#232628] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="bug_report">bug_report</span>
+<span class="font-label text-sm font-medium">Error Logs</span>
+</a>
+<!-- Community (ACTIVE) -->
+<a class="text-[#004d99] dark:text-[#a9c7ff] font-semibold flex items-center gap-3 py-3 px-4 bg-[#eceef0] dark:bg-[#1c1f21] rounded-r-full" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label text-sm">Community</span>
+</a>
+<!-- Security -->
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 hover:bg-[#e6e8ea] dark:hover:bg-[#232628] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span class="font-label text-sm font-medium">Security</span>
+</a>
+</nav>
+<div class="mt-auto px-4 flex flex-col gap-1 border-t border-outline-variant/10 pt-4">
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 text-xs font-label" href="#">
+<span class="material-symbols-outlined text-base" data-icon="menu_book">menu_book</span>
+                Documentation
+            </a>
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 text-xs font-label" href="#">
+<span class="material-symbols-outlined text-base" data-icon="contact_support">contact_support</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar (Authority: JSON) -->
+<header class="sticky top-0 bg-[#f7f9fb] dark:bg-[#0a0c0d] flex justify-between items-center w-full px-12 h-16 z-40">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold font-headline text-[#004d99] dark:text-[#a9c7ff]">Golit</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-[#191c1e] dark:text-[#e0e3e5] opacity-70 hover:opacity-100 transition-colors font-label text-sm" href="#">Docs</a>
+<a class="text-[#191c1e] dark:text-[#e0e3e5] opacity-70 hover:opacity-100 transition-colors font-label text-sm" href="#">Architecture</a>
+<a class="text-[#191c1e] dark:text-[#e0e3e5] opacity-70 hover:opacity-100 transition-colors font-label text-sm" href="#">Status</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low rounded-xl text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="search">search</span>
+<span class="text-xs font-label">Search contributors...</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer" data-icon="settings">settings</span>
+<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant/20" data-alt="professional portrait of a software engineer in a minimalist office setting with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjkTene3VNYVinaO1SXmXmsG1TWk4TnfJ6ZsZs4hZuQfw6D3gwq0SbNezvaEfc5RuuJvOf955d0uuyQX4wA1MrIPkvXEsP_65__n8c7POZwNedYtQsUhNADd2YYlblaKtOipuPA1LR2LfDAVqcwcbSNoaR-a3WVXch3bPjkX_bOt6KMJrbKehdb_AxL6n9qMkKIM-3VQEuSWfi6gBBtwZ0yUmYF5Uubiv76h4zIfZmAOIDIOUqBfjGo09t0pNHeJeyimIJQTb3txQ"/>
+</div>
+</header>
+<!-- Content Area: The Blueprint Editorial -->
+<div class="max-w-6xl mx-auto px-12 py-12">
+<!-- Hero Header Section (Asymmetric) -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-8 mb-16 items-start">
+<div class="md:col-span-8">
+<h1 class="text-display-lg font-headline text-on-surface tracking-tight leading-none mb-4" style="font-size: 3.5rem;">Contributing &amp; <br/><span class="text-primary">Community.</span></h1>
+<p class="text-lg text-on-surface-variant max-w-xl font-body leading-relaxed">
+                        Golit is an architectural framework built on the principles of directed acyclic graphs. Join the movement to build more resilient distributed systems.
+                    </p>
+</div>
+<div class="md:col-span-4 flex flex-col gap-4 pt-4">
+<div class="p-6 bg-surface-container-low rounded-xl relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-10">
+<span class="material-symbols-outlined text-8xl" data-icon="hub">hub</span>
+</div>
+<h4 class="font-headline font-semibold text-primary mb-1">GitHub Stats</h4>
+<div class="flex items-end gap-2">
+<span class="font-mono text-3xl font-bold">12.4k</span>
+<span class="text-xs text-on-surface-variant mb-1">Stars</span>
+</div>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary py-3 px-6 rounded-md font-label font-semibold flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="star">star</span>
+                        Star on GitHub
+                    </button>
+</div>
+</section>
+<!-- Grid Layout (Bento-style Nodes) -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- CONTRIBUTING.md SECTION (Large Card) -->
+<section class="md:col-span-8 bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/5 overflow-hidden">
+<div class="bg-surface-container-high px-8 py-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="description">description</span>
+<span class="font-mono text-xs font-bold uppercase tracking-widest text-on-surface-variant">contributing.md</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-2.5 h-2.5 rounded-full bg-error/20"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-tertiary/20"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-primary/20"></div>
+</div>
+</div>
+<div class="p-10 font-body text-on-surface leading-loose">
+<h2 class="text-headline-sm font-headline mb-6 border-b border-surface-container-high pb-4">Getting Started</h2>
+<p class="mb-6">We welcome contributions from everyone. Whether you're fixing a typo in the docs or designing a new scheduling engine, your help is valued.</p>
+<h3 class="font-headline font-semibold text-primary-container mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="check_circle">check_circle</span>
+                            Development Workflow
+                        </h3>
+<ol class="list-none space-y-4 mb-8">
+<li class="flex gap-4">
+<span class="font-mono text-primary font-bold">01.</span>
+<span>Fork the repository and create your feature branch from <code class="bg-surface-container font-mono px-1.5 rounded">main</code>.</span>
+</li>
+<li class="flex gap-4">
+<span class="font-mono text-primary font-bold">02.</span>
+<span>Ensure all new code is accompanied by comprehensive unit tests.</span>
+</li>
+<li class="flex gap-4">
+<span class="font-mono text-primary font-bold">03.</span>
+<span>Submit a Pull Request targeting the <code class="bg-surface-container font-mono px-1.5 rounded">staging</code> branch.</span>
+</li>
+</ol>
+<div class="bg-surface-container-high/50 p-6 rounded-xl mb-6 relative border-l-4 border-primary">
+<p class="text-sm font-label italic text-on-surface-variant">
+                                "Code is secondary; architecture is primary. Ensure your PR aligns with the DAG orchestration principles defined in the core specs."
+                            </p>
+</div>
+<h3 class="font-headline font-semibold text-primary-container mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-base" data-icon="terminal">terminal</span>
+                            Local Setup
+                        </h3>
+<div class="bg-surface-container-highest p-5 rounded-md font-mono text-sm relative group mb-4">
+<div class="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity bg-primary-fixed text-primary px-2 py-1 rounded text-[10px] cursor-pointer">COPY</div>
+<span class="text-primary-container">$</span> git clone https://github.com/golit/core.git<br/>
+<span class="text-primary-container">$</span> make install<br/>
+<span class="text-primary-container">$</span> golit-dev init --node=local
+                        </div>
+</div>
+</section>
+<!-- SIDEBAR MODULES -->
+<div class="md:col-span-4 flex flex-col gap-6">
+<!-- COMMUNITY NODES (Forum/Discord) -->
+<section class="bg-surface-container-low rounded-xl p-8 border border-primary/5">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary-container" data-icon="sensors">sensors</span>
+<h3 class="font-headline font-semibold text-lg">Community Nodes</h3>
+</div>
+<div class="space-y-4">
+<a class="group block p-4 bg-surface-container-lowest rounded-xl hover:bg-primary transition-colors" href="#">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary" data-icon="forum">forum</span>
+<span class="material-symbols-outlined text-xs opacity-40 group-hover:text-on-primary" data-icon="open_in_new">open_in_new</span>
+</div>
+<h4 class="font-headline font-bold text-sm group-hover:text-on-primary">Developer Forum</h4>
+<p class="text-xs text-on-surface-variant group-hover:text-on-primary/80 mt-1">Deep architectural discussions and RFCs.</p>
+</a>
+<a class="group block p-4 bg-surface-container-lowest rounded-xl hover:bg-primary transition-colors" href="#">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary" data-icon="chat">chat</span>
+<span class="material-symbols-outlined text-xs opacity-40 group-hover:text-on-primary" data-icon="open_in_new">open_in_new</span>
+</div>
+<h4 class="font-headline font-bold text-sm group-hover:text-on-primary">Discord Server</h4>
+<p class="text-xs text-on-surface-variant group-hover:text-on-primary/80 mt-1">Real-time support and casual dev talk.</p>
+</a>
+<a class="group block p-4 bg-surface-container-lowest rounded-xl hover:bg-primary transition-colors" href="#">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary" data-icon="newspaper">newspaper</span>
+<span class="material-symbols-outlined text-xs opacity-40 group-hover:text-on-primary" data-icon="open_in_new">open_in_new</span>
+</div>
+<h4 class="font-headline font-bold text-sm group-hover:text-on-primary">Monthly Node-Update</h4>
+<p class="text-xs text-on-surface-variant group-hover:text-on-primary/80 mt-1">Substack newsletter for major releases.</p>
+</a>
+</div>
+</section>
+<!-- MIT LICENSE DISPLAY -->
+<section class="bg-surface-container-highest rounded-xl p-8 overflow-hidden relative">
+<div class="absolute bottom-0 right-0 p-4 opacity-5 pointer-events-none">
+<span class="material-symbols-outlined text-9xl" data-icon="gavel">gavel</span>
+</div>
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary-container" data-icon="verified_user">verified_user</span>
+<h3 class="font-headline font-semibold text-lg">MIT License</h3>
+</div>
+<div class="font-mono text-[10px] leading-relaxed text-on-surface-variant max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            Copyright (c) 2024 Golit Framework<br/><br/>
+                            Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software...
+                            <br/><br/>
+                            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT...
+                        </div>
+</section>
+<!-- Contributors Visual -->
+<div class="mt-4 p-6 bg-surface-container rounded-xl flex flex-col items-center">
+<div class="flex -space-x-3 mb-4">
+<img alt="Contributor 1" class="w-10 h-10 rounded-full border-2 border-surface shadow-sm" data-alt="close-up portrait of a male developer with glasses smiling, soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADjs6Y5eMzxtWTLkmLGeuzYwhEcfKqmtLPNyUX6FMzoIk0WkSCcXHZn8RAL3UQJXCmdJu0SPZoc-pszw-glHMHhykIbiFPpM0nIr2Ji5xBjMYLlruIqCAduQ8AhYnsACJcbc4odw0YuPOohpAAZccfjrQSJROUK0O5ENOsRNzCyTbTyZMSg9J2xRlSPR0A2du6GQ1LuZ7hQ0uLjAqcXzbGyrJef0YUdWeAX9GALyEUjPhhHGNfY6gFozESw0_vJ1qJKwMHtCHekl0"/>
+<img alt="Contributor 2" class="w-10 h-10 rounded-full border-2 border-surface shadow-sm" data-alt="headshot of a female software architect in a professional studio setting, warm tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWqAWj1UrQ8ZQ202xTdiF1vwMvbOBeUxV49vO8977zPELKRg4lmfLxN3PAWxr8xKZ1uVPTk8k_lmYE7yXY6mWbc1m6m_RVPp1vLI3_eDl3rn8Hz81nu_UrV2fytC8iYRbnKdpw0nIEfJl9nsZ6KsZJkwVF_GMRrvQZX3kx2BJQxn9C8jY69Yk6OfWvURZZAnSd9zcsxlWNOykWxH6pKGM6pDR-1d1yAAc2IJFzjzqhkhGtiR5t8kCVn1AgsG9xnsKm7zX3Y8CZ3iQ"/>
+<img alt="Contributor 3" class="w-10 h-10 rounded-full border-2 border-surface shadow-sm" data-alt="profile photo of a young man against a blurred office background, professional attire" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlq2_Mk_0yHCYpSdYLlRoSCSXJrm9pjSTDt42loCvci6RsPzTOhWl7EPtkE1fyilJnR6kyLi1pbRUluDRu2kuN3lO9YGd-4cuE70meYhMrb0hUrru2DAClz6HI5EZqzITaFb4wABRUe-TxIOcxRkSe_Q2cS7iq9fOlapvtMKFTb8pg9BsPaNxmi8ZOQfaGD7U1hHLxt3DeXnFKUPdBid_UroJKPJP3aG4i_kL6sdbO3-aiIK1ApT8rLSI9qq01dcMKPjRCIxaLldg"/>
+<div class="w-10 h-10 rounded-full border-2 border-surface bg-primary-container text-on-primary-container text-[10px] flex items-center justify-center font-bold">+82</div>
+</div>
+<p class="text-[11px] font-label font-medium uppercase tracking-widest text-on-surface-variant">Active Peer Reviewers</p>
+</div>
+</div>
+</div>
+<!-- Bottom Asymmetric Callout -->
+<section class="mt-20 relative px-10 py-16 bg-surface-container-low rounded-3xl overflow-hidden">
+<div class="absolute inset-0 dag-connector opacity-20"></div>
+<div class="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="text-center md:text-left">
+<h2 class="text-3xl font-headline font-bold mb-2">Build the Core.</h2>
+<p class="text-on-surface-variant max-w-md">Join our weekly architecture sync every Wednesday at 16:00 UTC. Open to all tier-1 contributors.</p>
+</div>
+<div class="flex gap-4">
+<button class="bg-surface-container-high text-primary px-8 py-3 rounded-md font-label font-semibold hover:bg-surface-container-highest transition-colors">
+                            Calendar Invite
+                        </button>
+<button class="bg-primary text-on-primary px-8 py-3 rounded-md font-label font-semibold shadow-lg shadow-primary/20">
+                            Join Node Sync
+                        </button>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Editorial -->
+<footer class="border-t border-outline-variant/10 mt-20 py-12 px-12 bg-surface-container-lowest">
+<div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start gap-8">
+<div>
+<span class="text-2xl font-bold font-headline text-primary mb-4 block">Golit.</span>
+<p class="text-xs text-on-surface-variant max-w-xs leading-relaxed">
+                        A project maintained by the Golit Core Team and a global network of independent system architects.
+                    </p>
+</div>
+<div class="grid grid-cols-2 gap-12">
+<div>
+<h5 class="text-[10px] font-bold uppercase tracking-widest text-primary mb-4">Resources</h5>
+<ul class="text-sm font-label text-on-surface-variant space-y-2">
+<li><a class="hover:text-primary" href="#">Style Guide</a></li>
+<li><a class="hover:text-primary" href="#">CI/CD Docs</a></li>
+<li><a class="hover:text-primary" href="#">Benchmarks</a></li>
+</ul>
+</div>
+<div>
+<h5 class="text-[10px] font-bold uppercase tracking-widest text-primary mb-4">Ecosystem</h5>
+<ul class="text-sm font-label text-on-surface-variant space-y-2">
+<li><a class="hover:text-primary" href="#">Golit Cloud</a></li>
+<li><a class="hover:text-primary" href="#">Edge Nodes</a></li>
+<li><a class="hover:text-primary" href="#">Sponsors</a></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="max-w-6xl mx-auto mt-12 pt-8 border-t border-outline-variant/5 flex justify-between items-center text-[10px] font-mono text-on-surface-variant uppercase tracking-tighter">
+<span>© 2024 Golit Project</span>
+<span>v2.4.0-stable "Onyx"</span>
+</div>
+</footer>
+</main>
+</body></html>

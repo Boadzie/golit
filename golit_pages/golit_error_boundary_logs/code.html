@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit | Error Boundary &amp; Logs</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#c2c6d4",
+                        "on-secondary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#32476a",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface-container": "#eceef0",
+                        "tertiary-fixed": "#ffdbc9",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-primary-fixed": "#001b3d",
+                        "surface-bright": "#f7f9fb",
+                        "primary-container": "#1565c0",
+                        "error": "#ba1a1a",
+                        "on-surface": "#191c1e",
+                        "on-primary-container": "#dae5ff",
+                        "secondary-fixed-dim": "#b2c7f1",
+                        "secondary-fixed": "#d6e3ff",
+                        "primary-fixed-dim": "#a9c7ff",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#005db7",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "surface-container-high": "#e6e8ea",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "primary": "#004d99",
+                        "tertiary": "#813900",
+                        "primary-fixed": "#d6e3ff",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container-low": "#f2f4f6",
+                        "outline": "#727783",
+                        "secondary": "#4a5f83",
+                        "on-secondary-container": "#475c80",
+                        "on-primary-fixed-variant": "#00468c",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#a9c7ff",
+                        "on-background": "#191c1e",
+                        "background": "#f7f9fb",
+                        "surface-dim": "#d8dadc",
+                        "surface": "#f7f9fb",
+                        "secondary-container": "#c0d5ff",
+                        "on-tertiary-container": "#ffdece",
+                        "surface-variant": "#e0e3e5",
+                        "on-secondary-fixed": "#021b3c",
+                        "tertiary-container": "#a64c00",
+                        "on-surface-variant": "#424752"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .headline-font { font-family: 'Manrope', sans-serif; }
+        .mono-font { font-family: 'JetBrains Mono', monospace; }
+        .glass-panel {
+            background: rgba(236, 238, 240, 0.8);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- SideNavBar Anchor -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-6 bg-[#f2f4f6] dark:bg-[#121416] w-64 z-50">
+<div class="px-6 mb-10">
+<h1 class="font-manrope text-lg font-semibold text-[#191c1e] dark:text-[#ffffff]">Golit Framework</h1>
+<p class="text-xs opacity-60 font-inter">System Management</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 hover:bg-[#e6e8ea] dark:hover:bg-[#232628] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="rocket_launch">rocket_launch</span>
+<span class="font-inter font-medium text-sm">Deployment</span>
+</a>
+<!-- ACTIVE TAB: Error Logs -->
+<a class="text-[#004d99] dark:text-[#a9c7ff] font-semibold flex items-center gap-3 py-3 px-4 bg-[#eceef0] dark:bg-[#1c1f21] rounded-r-full" href="#">
+<span class="material-symbols-outlined" data-icon="bug_report" style="font-variation-settings: 'FILL' 1;">bug_report</span>
+<span class="font-inter font-medium text-sm">Error Logs</span>
+</a>
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 hover:bg-[#e6e8ea] dark:hover:bg-[#232628] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-inter font-medium text-sm">Community</span>
+</a>
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-3 px-4 hover:bg-[#e6e8ea] dark:hover:bg-[#232628] transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span class="font-inter font-medium text-sm">Security</span>
+</a>
+</nav>
+<div class="mt-auto px-4 flex flex-col gap-1">
+<button class="mb-6 mx-2 bg-[#004d99] text-white py-2 px-4 rounded-md flex items-center justify-center gap-2 text-sm font-medium hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                New Node
+            </button>
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-2 px-4 text-xs hover:bg-[#e6e8ea] transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="menu_book">menu_book</span>
+                Documentation
+            </a>
+<a class="text-[#44474e] dark:text-[#c2c6d4] flex items-center gap-3 py-2 px-4 text-xs hover:bg-[#e6e8ea] transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="contact_support">contact_support</span>
+                Support
+            </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar Anchor -->
+<header class="flex justify-between items-center w-full px-8 h-16 bg-[#f7f9fb] dark:bg-[#0a0c0d]">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold font-manrope text-[#004d99] dark:text-[#a9c7ff]">Golit</span>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="text-[#191c1e] dark:text-[#e0e3e5] opacity-70 hover:opacity-100 font-inter text-sm transition-colors" href="#">Docs</a>
+<a class="text-[#191c1e] dark:text-[#e0e3e5] opacity-70 hover:opacity-100 font-inter text-sm transition-colors" href="#">Architecture</a>
+<a class="text-[#004d99] dark:text-[#a9c7ff] border-b-2 border-[#004d99] dark:border-[#a9c7ff] pb-1 font-inter text-sm font-medium" href="#">Status</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="pl-9 pr-4 py-1.5 bg-surface-container rounded-full text-xs border-none focus:ring-1 focus:ring-primary w-64" placeholder="Search architecture..." type="text"/>
+</div>
+<button class="p-2 rounded-full hover:bg-[#eceef0] transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-[#eceef0] transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="settings">settings</span>
+</button>
+<img alt="User" class="w-8 h-8 rounded-full ml-2" data-alt="close-up portrait of a professional software engineer with a confident expression in a clean studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDM2g0eE4psNR64cQ2ePjPdLyOUZomQfnkY7LexdiiHVOZLDGdAQCxwMdcQf-N08UpoSVVuUAT5PCc7J-T0bvStS9sCLJuXu648R8ZVZIbgqm04xjgZDES_B69fwNrGX3YGRqRxmjuvJPlbd6FGh42YRIb8pBJv0HEtyEwJX2_NNrq0Hk3k96F9uTClaxmZGOLMi_UuZcr2lQuZNl03Y8X7H8XeIfllj0cHrbSuYIJnBNViyoJ6__vLKSXwaDNioo-uedAfiTvKHEE"/>
+</div>
+</header>
+<!-- Content Body -->
+<div class="p-8">
+<!-- Header Summary Area (Asymmetric Layout) -->
+<div class="grid grid-cols-12 gap-8 mb-12">
+<div class="col-span-8">
+<h2 class="text-display-lg headline-font font-bold text-4xl mb-2 tracking-tight">Error Boundary</h2>
+<p class="text-on-surface-variant max-w-2xl font-body leading-relaxed">
+                        Real-time visualization of cluster integrity. Golit isolation protocols ensure that runtime exceptions are confined to the originating node, preventing cascading failures across the DAG topology.
+                    </p>
+</div>
+<div class="col-span-4 flex flex-col justify-end items-end">
+<div class="bg-surface-container-high p-4 rounded-xl flex items-center gap-4 w-full">
+<div class="flex-1">
+<span class="text-xs uppercase font-bold tracking-widest text-on-surface-variant mb-1 block">Cluster Health</span>
+<span class="mono-font text-2xl font-bold text-error">92.4%</span>
+</div>
+<div class="h-12 w-px bg-outline-variant opacity-30"></div>
+<div class="flex-1">
+<span class="text-xs uppercase font-bold tracking-widest text-on-surface-variant mb-1 block">Isolation Status</span>
+<span class="text-xs mono-font text-primary-container bg-secondary-container px-2 py-0.5 rounded-full">ACTIVE</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Isolation Status Visualization (The Blueprint Aesthetic) -->
+<section class="mb-12">
+<div class="bg-surface-container-low rounded-2xl p-8 overflow-hidden relative border border-outline-variant/10">
+<h3 class="headline-font text-lg font-semibold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="account_tree">account_tree</span>
+                        DAG Isolation Map
+                    </h3>
+<!-- DAG Visualizer -->
+<div class="flex justify-around items-center py-12 relative">
+<!-- Connecting SVG lines (Node-Link Motif) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveaspectratio="none">
+<path d="M 20% 50% Q 35% 50% 50% 50%" fill="none" stroke="#004d99" stroke-width="2"></path>
+<path d="M 50% 50% Q 65% 30% 80% 30%" fill="none" stroke="#004d99" stroke-width="2"></path>
+<path d="M 50% 50% Q 65% 70% 80% 70%" fill="none" stroke="#004d99" stroke-width="2"></path>
+</svg>
+<!-- Node 1: Entry -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-full bg-surface-container-highest border-2 border-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary-container" data-icon="input">input</span>
+</div>
+<span class="mono-font text-[10px] font-medium text-on-surface-variant">ENTRY_01</span>
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+</div>
+<!-- Node 2: Failing Node -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-20 h-20 rounded-full bg-error-container/20 border-2 border-error flex items-center justify-center relative">
+<div class="absolute -top-1 -right-1 bg-error text-white rounded-full p-1 shadow-lg">
+<span class="material-symbols-outlined text-sm" data-icon="warning">warning</span>
+</div>
+<span class="material-symbols-outlined text-error text-3xl" data-icon="storage">storage</span>
+</div>
+<span class="mono-font text-[10px] font-bold text-error">NODE_X_FAIL</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container text-error text-[9px] font-bold">FAULTED</span>
+</div>
+<!-- Nodes 3 & 4: Isolated/Healthy -->
+<div class="flex flex-col gap-12">
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-full bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="settings_ethernet">settings_ethernet</span>
+</div>
+<span class="mono-font text-[10px] font-medium text-on-surface-variant">WORKER_A</span>
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+</div>
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-full bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="database">database</span>
+</div>
+<span class="mono-font text-[10px] font-medium text-on-surface-variant">WORKER_B</span>
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+</div>
+</div>
+</div>
+<div class="mt-4 p-4 border-t border-outline-variant/10 flex justify-between items-center text-xs text-on-surface-variant">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            Healthy (Isolated)
+                        </div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 bg-error rounded-full"></span>
+                            Failing (Contained)
+                        </div>
+<span class="italic">Protocol: "Golit-Fence-V3" is active. No leak detected.</span>
+</div>
+</div>
+</section>
+<!-- Error Log Table & Stack Trace Inspector (Bento Grid) -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Error Log Table -->
+<div class="col-span-12 lg:col-span-7 bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden flex flex-col">
+<div class="p-6 flex justify-between items-center bg-surface-container-low">
+<h4 class="headline-font font-semibold">Error Logs</h4>
+<div class="flex gap-2">
+<button class="text-xs bg-surface-container px-3 py-1.5 rounded-full hover:bg-surface-container-high transition-colors">Export CSV</button>
+<button class="text-xs bg-error text-white px-3 py-1.5 rounded-full hover:opacity-90 transition-opacity">Clear All</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Timestamp</th>
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Node ID</th>
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Exception Type</th>
+<th class="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Severity</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<tr class="group hover:bg-surface-container-low transition-colors cursor-pointer border-l-4 border-error">
+<td class="px-6 py-4 mono-font text-xs">2023-10-27 14:02:11</td>
+<td class="px-6 py-4 mono-font text-xs text-primary">NODE_X_FAIL</td>
+<td class="px-6 py-4 mono-font text-xs font-semibold">NullPointerException</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-error-container text-error text-[10px] font-bold uppercase">Critical</span></td>
+</tr>
+<tr class="group hover:bg-surface-container-low transition-colors cursor-pointer border-l-4 border-tertiary">
+<td class="px-6 py-4 mono-font text-xs">2023-10-27 14:01:55</td>
+<td class="px-6 py-4 mono-font text-xs text-primary">NODE_X_FAIL</td>
+<td class="px-6 py-4 mono-font text-xs font-semibold">SocketTimeout</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-tertiary text-[10px] font-bold uppercase">Warning</span></td>
+</tr>
+<tr class="group hover:bg-surface-container-low transition-colors cursor-pointer border-l-4 border-error">
+<td class="px-6 py-4 mono-font text-xs">2023-10-27 14:01:32</td>
+<td class="px-6 py-4 mono-font text-xs text-primary">NODE_X_FAIL</td>
+<td class="px-6 py-4 mono-font text-xs font-semibold">MemoryLimitExceeded</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-error-container text-error text-[10px] font-bold uppercase">Critical</span></td>
+</tr>
+<tr class="group bg-surface-container transition-colors cursor-pointer border-l-4 border-error">
+<td class="px-6 py-4 mono-font text-xs">2023-10-27 13:59:44</td>
+<td class="px-6 py-4 mono-font text-xs text-primary">NODE_X_FAIL</td>
+<td class="px-6 py-4 mono-font text-xs font-semibold">AccessDeniedException</td>
+<td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-error-container text-error text-[10px] font-bold uppercase">Critical</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Stack Trace Inspector -->
+<div class="col-span-12 lg:col-span-5 bg-surface-container-highest rounded-2xl shadow-sm flex flex-col border border-outline-variant/20">
+<div class="p-6 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="terminal">terminal</span>
+<h4 class="headline-font font-semibold">Stack Trace Inspector</h4>
+</div>
+<button class="p-1.5 hover:bg-surface-container-high rounded transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-lg" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+<div class="flex-1 p-6 pt-0">
+<div class="bg-inverse-surface text-inverse-on-surface p-6 rounded-xl mono-font text-[11px] leading-relaxed overflow-y-auto max-h-[400px]">
+<p class="text-error mb-2 font-bold">java.lang.NullPointerException: parameter 'payload' cannot be null</p>
+<p class="opacity-50">    at io.golit.core.NodeManager.process(NodeManager.java:142)</p>
+<p class="opacity-50">    at io.golit.runtime.ExecutionEngine.run(ExecutionEngine.java:89)</p>
+<p class="text-primary-fixed">    at io.golit.dag.DAGProcessor.orchestrate(DAGProcessor.java:44) [golit-core-3.1.2.jar]</p>
+<p class="opacity-50">    at java.base/java.lang.Thread.run(Thread.java:833)</p>
+<p class="mt-4 opacity-30">// Caused by async event bus delay</p>
+<p class="opacity-50">    at io.golit.events.EventBus.dispatch(EventBus.java:12)</p>
+<div class="mt-8 pt-4 border-t border-white/10">
+<span class="text-primary-fixed-dim block mb-2">Variables in Context:</span>
+<div class="grid grid-cols-2 gap-2 opacity-80">
+<span>node_id: "NODE_X_FAIL"</span>
+<span>retries: 3</span>
+<span>timeout: 3000ms</span>
+<span>isolation: true</span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-6 bg-surface-container-high mt-auto rounded-b-2xl border-t border-outline-variant/20 flex gap-3">
+<button class="flex-1 py-2 bg-primary-container text-on-primary-container rounded-lg text-xs font-bold hover:brightness-110 transition-all">RESTART NODE</button>
+<button class="flex-1 py-2 bg-surface-container-lowest text-primary rounded-lg text-xs font-bold hover:bg-white transition-all">DEBUG SESSION</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB Anchor (Contextual for Home/Dashboard, typically hidden on Logs) -->
+<!-- Suppression logic applied: HIDDEN on Logs View as per instructions -->
+</body></html>

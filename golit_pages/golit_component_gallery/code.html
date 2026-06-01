@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Golit Component Gallery | Engineering Precision</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#d6e3ff",
+                        "on-secondary": "#ffffff",
+                        "primary": "#004d99",
+                        "on-primary-container": "#dae5ff",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#001b3d",
+                        "on-surface-variant": "#424752",
+                        "surface": "#f7f9fb",
+                        "secondary-fixed-dim": "#b2c7f1",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "primary-fixed-dim": "#a9c7ff",
+                        "surface-dim": "#d8dadc",
+                        "on-primary-fixed-variant": "#00468c",
+                        "surface-container-high": "#e6e8ea",
+                        "inverse-primary": "#a9c7ff",
+                        "on-tertiary-fixed": "#321200",
+                        "on-background": "#191c1e",
+                        "on-surface": "#191c1e",
+                        "surface-container-highest": "#e0e3e5",
+                        "outline-variant": "#c2c6d4",
+                        "primary-fixed": "#d6e3ff",
+                        "surface-bright": "#f7f9fb",
+                        "secondary": "#4a5f83",
+                        "on-secondary-container": "#475c80",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#005db7",
+                        "tertiary-container": "#a64c00",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-secondary-fixed-variant": "#32476a",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "surface-container": "#eceef0",
+                        "outline": "#727783",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#c0d5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffdece",
+                        "on-error": "#ffffff",
+                        "background": "#f7f9fb",
+                        "on-secondary-fixed": "#021b3c",
+                        "primary-container": "#1565c0",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#813900",
+                        "surface-variant": "#e0e3e5",
+                        "surface-container-low": "#f2f4f6",
+                        "tertiary-fixed": "#ffdbc9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    }
+                },
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(236, 238, 240, 0.8);
+            backdrop-filter: blur(24px);
+        }
+        .code-syntax-keyword { color: #004d99; }
+        .code-syntax-attr { color: #813900; }
+        .code-syntax-string { color: #4a5f83; }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body selection:bg-primary-fixed">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-sm dark:shadow-none h-16 border-b border-slate-200/50">
+<div class="flex justify-between items-center max-w-[1440px] mx-auto px-6 h-full">
+<div class="text-xl font-bold tracking-tighter text-blue-900 dark:text-blue-100 font-headline">Golit</div>
+<div class="hidden md:flex items-center space-x-8">
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors font-headline font-bold text-sm tracking-tight" href="#">Documentation</a>
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 dark:border-blue-400 pb-1 font-headline font-bold text-sm tracking-tight" href="#">Components</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors font-headline font-bold text-sm tracking-tight" href="#">Roadmap</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-md transition-all">
+<span class="material-symbols-outlined text-blue-700 dark:text-blue-400">code</span>
+</button>
+</div>
+</div>
+</nav>
+<div class="flex pt-16 min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden lg:flex h-[calc(100vh-64px)] w-64 border-r border-slate-200/50 dark:border-slate-800/50 sticky top-16 bg-slate-50 dark:bg-slate-950 flex-col py-8 px-4 gap-y-2">
+<div class="mb-6 px-2">
+<div class="text-lg font-black text-blue-900 dark:text-blue-50 font-headline">Documentation</div>
+<div class="text-[10px] uppercase tracking-widest text-slate-400 font-medium">v1.2.0-stable</div>
+</div>
+<nav class="space-y-1 flex-1">
+<a class="flex items-center gap-3 px-3 py-2 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 rounded-lg font-semibold font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined text-lg">info</span> Introduction
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-lg font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined text-lg">download</span> Installation
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-lg font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined text-lg">hub</span> Core Concepts
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-lg font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined text-lg">api</span> API Reference
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-all rounded-lg font-['Inter'] text-sm" href="#">
+<span class="material-symbols-outlined text-lg">rocket_launch</span> Deployment
+                </a>
+</nav>
+<div class="mt-auto border-t border-slate-200/50 pt-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-slate-900 text-sm font-['Inter']" href="#">
+<span class="material-symbols-outlined text-lg">settings</span> Settings
+                </a>
+<button class="w-full mt-4 bg-primary text-on-primary py-2 px-4 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+                    View on GitHub
+                </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 bg-surface-container-low p-8 md:p-12">
+<header class="max-w-6xl mx-auto mb-16">
+<h1 class="text-5xl md:text-7xl font-bold font-headline text-on-surface tracking-tight mb-4">
+                    Component <span class="text-primary italic">Gallery</span>
+</h1>
+<p class="text-on-surface-variant max-w-2xl text-lg leading-relaxed font-body">
+                    A curated collection of Golit's reactive primitives. Built with the reverence of a premium architectural journal, these components leverage Alpine.js and HTMX for seamless engineering.
+                </p>
+</header>
+<!-- Bento Grid Showcase -->
+<div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8">
+<!-- Reactive Slider Card -->
+<div class="md:col-span-7 bg-surface-container-lowest rounded-xl p-8 shadow-sm group">
+<div class="flex justify-between items-start mb-12">
+<div>
+<h3 class="font-headline text-xl font-bold mb-1">Reactive Slider</h3>
+<p class="text-on-surface-variant text-sm font-mono">gl-slider.v1</p>
+</div>
+<span class="material-symbols-outlined text-primary-fixed-dim group-hover:text-primary transition-colors">linear_scale</span>
+</div>
+<!-- Preview -->
+<div class="mb-12 py-10 px-6 bg-surface-container rounded-lg">
+<div class="flex justify-between items-center mb-4">
+<span class="text-xs font-mono font-bold text-primary">SCALE_VALUE</span>
+<span class="font-mono text-xl text-primary font-bold">74%</span>
+</div>
+<div class="relative h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="absolute top-0 left-0 h-full w-[74%] bg-gradient-to-r from-primary to-primary-container"></div>
+</div>
+<div class="mt-4 flex justify-between">
+<span class="text-[10px] text-outline uppercase font-bold tracking-widest">0.00</span>
+<span class="text-[10px] text-outline uppercase font-bold tracking-widest">1.00</span>
+</div>
+</div>
+<!-- Attributes -->
+<div class="bg-surface-container-highest rounded-lg p-4 relative overflow-hidden group/code">
+<div class="flex gap-2 mb-2">
+<span class="w-2 h-2 rounded-full bg-outline-variant/30"></span>
+<span class="w-2 h-2 rounded-full bg-outline-variant/30"></span>
+</div>
+<code class="text-xs font-mono block leading-relaxed">
+<span class="code-syntax-keyword">&lt;input</span> <span class="code-syntax-attr">type=</span><span class="code-syntax-string">"range"</span><br/>
+                              <span class="code-syntax-attr">gl-input</span><span class="code-syntax-attr">="scale"</span><br/>
+                              <span class="code-syntax-attr">x-model</span><span class="code-syntax-attr">="value"</span><br/>
+                              <span class="code-syntax-attr">class=</span><span class="code-syntax-string">"gl-slider-thumb"</span> <span class="code-syntax-keyword">/&gt;</span>
+</code>
+<button class="absolute top-3 right-3 opacity-0 group-hover/code:opacity-100 transition-opacity bg-primary-fixed px-2 py-1 rounded text-[10px] font-bold text-primary">COPY</button>
+</div>
+</div>
+<!-- Error Boundary Card (Featured) -->
+<div class="md:col-span-5 bg-error-container/20 border-2 border-error/10 rounded-xl p-8 shadow-sm flex flex-col">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="font-headline text-xl font-bold mb-1 text-error">Error Boundary</h3>
+<p class="text-error/70 text-sm font-mono">gl-error-guard</p>
+</div>
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">report</span>
+</div>
+<div class="flex-1 flex flex-col justify-center items-center text-center p-6 bg-white/50 backdrop-blur rounded-lg mb-8">
+<div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-error text-2xl">sync_problem</span>
+</div>
+<p class="text-sm font-bold text-on-surface mb-1">State Decoupling Error</p>
+<p class="text-[11px] text-on-surface-variant font-mono">Error trace captured at node: 0x4F2A</p>
+<button class="mt-6 px-4 py-2 bg-error text-white text-xs font-bold rounded shadow-sm hover:opacity-90">RECOVER STATE</button>
+</div>
+<div class="bg-surface-container-highest rounded-lg p-4">
+<code class="text-xs font-mono block leading-relaxed">
+<span class="code-syntax-keyword">&lt;div</span> <span class="code-syntax-attr">gl-error-boundary</span><span class="code-syntax-keyword">&gt;</span><br/>
+                              <span class="code-syntax-keyword">&lt;template</span> <span class="code-syntax-attr">#fallback</span><span class="code-syntax-keyword">&gt;</span><br/>
+                                <span class="text-slate-400">...Recovery UI</span><br/>
+                              <span class="code-syntax-keyword">&lt;/template&gt;</span><br/>
+<span class="code-syntax-keyword">&lt;/div&gt;</span>
+</code>
+</div>
+</div>
+<!-- Data Table Card -->
+<div class="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+<div>
+<h3 class="font-headline text-xl font-bold mb-1">Data Table</h3>
+<p class="text-on-surface-variant text-sm font-mono">hx-target="#table-body"</p>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 bg-surface-container text-primary font-mono text-[11px] rounded-full border border-primary/10">hx-post</span>
+<span class="px-3 py-1 bg-surface-container text-primary font-mono text-[11px] rounded-full border border-primary/10">gl-pagination</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="border-b border-outline-variant/20">
+<tr>
+<th class="py-4 px-4 text-[10px] uppercase tracking-widest text-outline font-bold">Node ID</th>
+<th class="py-4 px-4 text-[10px] uppercase tracking-widest text-outline font-bold">Status</th>
+<th class="py-4 px-4 text-[10px] uppercase tracking-widest text-outline font-bold">Latency</th>
+<th class="py-4 px-4 text-[10px] uppercase tracking-widest text-outline font-bold text-right">Throughput</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-4 font-mono text-sm">worker_node_01</td>
+<td class="py-4 px-4">
+<span class="flex items-center gap-2 text-xs font-bold">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Healthy
+                                        </span>
+</td>
+<td class="py-4 px-4 font-mono text-xs text-on-surface-variant">24ms</td>
+<td class="py-4 px-4 font-mono text-xs text-right font-bold text-primary">12.4 GB/s</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-4 font-mono text-sm">worker_node_02</td>
+<td class="py-4 px-4">
+<span class="flex items-center gap-2 text-xs font-bold">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Healthy
+                                        </span>
+</td>
+<td class="py-4 px-4 font-mono text-xs text-on-surface-variant">31ms</td>
+<td class="py-4 px-4 font-mono text-xs text-right font-bold text-primary">8.2 GB/s</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-4 font-mono text-sm text-tertiary">worker_node_03</td>
+<td class="py-4 px-4">
+<span class="flex items-center gap-2 text-xs font-bold text-tertiary">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> Throttled
+                                        </span>
+</td>
+<td class="py-4 px-4 font-mono text-xs text-on-surface-variant">142ms</td>
+<td class="py-4 px-4 font-mono text-xs text-right font-bold text-primary">1.1 GB/s</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-8 flex justify-between items-center bg-surface-container-low p-3 rounded-lg">
+<div class="text-[10px] text-on-surface-variant font-mono">Showing 1-3 of 42 nodes</div>
+<div class="flex gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded bg-surface-container-lowest text-primary shadow-sm hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white shadow-sm font-mono text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded bg-surface-container-lowest text-on-surface-variant font-mono text-xs hover:bg-primary hover:text-white transition-all">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded bg-surface-container-lowest text-primary shadow-sm hover:bg-primary hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- ECharts snippet -->
+<div class="md:col-span-6 bg-surface-container-lowest rounded-xl p-8 shadow-sm flex flex-col">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="font-headline text-xl font-bold mb-1">ECharts Snippet</h3>
+<p class="text-on-surface-variant text-sm font-mono">gl-chart="echarts"</p>
+</div>
+<span class="material-symbols-outlined text-primary-fixed-dim">insights</span>
+</div>
+<div class="flex-1 bg-surface-container rounded-lg p-6 flex flex-col justify-end relative overflow-hidden group">
+<!-- Abstract Chart Visualization -->
+<div class="absolute inset-0 p-8 flex items-end gap-3">
+<div class="w-full bg-primary/20 rounded-t h-[40%] group-hover:h-[60%] transition-all duration-500"></div>
+<div class="w-full bg-primary/40 rounded-t h-[70%] group-hover:h-[40%] transition-all duration-500"></div>
+<div class="w-full bg-primary/20 rounded-t h-[55%] group-hover:h-[80%] transition-all duration-500"></div>
+<div class="w-full bg-primary-container rounded-t h-[90%] group-hover:h-[65%] transition-all duration-500"></div>
+<div class="w-full bg-primary/30 rounded-t h-[35%] group-hover:h-[50%] transition-all duration-500"></div>
+</div>
+<div class="relative z-10 text-[10px] font-mono text-primary font-bold bg-white/80 backdrop-blur px-2 py-1 self-start rounded">LIVE_TELEMETRY</div>
+</div>
+<div class="mt-8 bg-surface-container-highest rounded-lg p-4">
+<code class="text-xs font-mono block leading-relaxed">
+<span class="code-syntax-keyword">&lt;div</span> <span class="code-syntax-attr">gl-chart</span><span class="code-syntax-keyword">&gt;</span><br/>
+                              <span class="code-syntax-keyword">&lt;script</span> <span class="code-syntax-attr">type=</span><span class="code-syntax-string">"application/json"</span><span class="code-syntax-keyword">&gt;</span><br/>
+                                { "series": [{ "type": "bar" }] }<br/>
+                              <span class="code-syntax-keyword">&lt;/script&gt;</span><br/>
+<span class="code-syntax-keyword">&lt;/div&gt;</span>
+</code>
+</div>
+</div>
+<!-- Text Input Card -->
+<div class="md:col-span-6 bg-surface-container-lowest rounded-xl p-8 shadow-sm flex flex-col">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="font-headline text-xl font-bold mb-1">Text Input</h3>
+<p class="text-on-surface-variant text-sm font-mono">gl-output="query"</p>
+</div>
+<span class="material-symbols-outlined text-primary-fixed-dim">edit_note</span>
+</div>
+<div class="flex-1 space-y-6">
+<div class="space-y-2">
+<label class="text-[10px] uppercase tracking-widest text-outline font-bold">Node Search</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+<input class="w-full bg-surface-container border-none focus:ring-2 focus:ring-primary/20 rounded-lg pl-10 py-3 text-sm font-mono" placeholder="Search cluster logs..." type="text"/>
+</div>
+</div>
+<div class="p-4 bg-primary-fixed/30 rounded-lg border-l-4 border-primary">
+<p class="text-[10px] text-primary-fixed-variant font-bold uppercase mb-1">Reactive Output</p>
+<p class="text-sm font-mono text-primary font-bold">Query: <span class="italic text-on-surface-variant font-normal">"Fetching worker_01..."</span></p>
+</div>
+</div>
+<div class="mt-8 bg-surface-container-highest rounded-lg p-4">
+<code class="text-xs font-mono block leading-relaxed">
+<span class="code-syntax-keyword">&lt;input</span> <span class="code-syntax-attr">gl-input</span><span class="code-syntax-attr">="query"</span> <span class="code-syntax-keyword">/&gt;</span><br/>
+<span class="code-syntax-keyword">&lt;p</span> <span class="code-syntax-attr">gl-output</span><span class="code-syntax-attr">="query"</span><span class="code-syntax-keyword">&gt;</span><br/>
+                              Live content here...<br/>
+<span class="code-syntax-keyword">&lt;/p&gt;</span>
+</code>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Footer -->
+<footer class="bg-slate-50 dark:bg-slate-950 w-full py-12 border-t border-slate-200/50 dark:border-slate-800/50">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center px-8">
+<div class="font-['Inter'] text-xs uppercase tracking-widest text-slate-400 mb-4 md:mb-0">
+                © 2024 Golit Framework. Built for engineering precision.
+            </div>
+<div class="flex gap-8">
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 transition-all underline underline-offset-4" href="#">Privacy</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 transition-all underline underline-offset-4" href="#">Terms</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 transition-all underline underline-offset-4" href="#">Changelog</a>
+<a class="font-['Inter'] text-xs uppercase tracking-widest text-slate-500 hover:text-blue-500 transition-all underline underline-offset-4" href="#">Security</a>
+</div>
+</div>
+</footer>
+</body></html>
