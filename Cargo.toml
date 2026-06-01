@@ -1,0 +1,20 @@
+[package]
+name = "golit"
+version = "0.1.0"
+edition = "2021"
+description = "Reactive DAG kernel for Golit (dirty tracking, topological scheduling, propagation)."
+license = "Apache-2.0"
+
+[lib]
+name = "_golit"
+crate-type = ["cdylib", "rlib"]
+
+# NOTE: `extension-module` is intentionally NOT enabled here. maturin enables it
+# for wheel builds via [tool.maturin] features. Leaving it off lets `cargo test`
+# link libpython and run the kernel's unit tests without a wheel build.
+[dependencies]
+pyo3 = { version = "0.23", features = ["abi3-py311"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
