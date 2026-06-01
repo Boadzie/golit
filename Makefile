@@ -16,7 +16,7 @@ build:
 test: test-rust test-py
 
 test-rust:
-	cargo test
+	PYO3_PYTHON="$(CURDIR)/.venv/bin/python" cargo test
 
 test-py:
 	uv run maturin develop --uv
