@@ -48,6 +48,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# Widgets are used as parameter defaults (slider(...), upload(...)) — the core
+# Golit programming model, à la FastAPI's Depends(); B008 doesn't apply.
+ignore = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"
