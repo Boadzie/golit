@@ -20,6 +20,7 @@ dependencies = [
     "litestar>=2.12",
     "polars>=1.0",
     "lets-plot>=4.5",
+    "numpy>=1.26",     # Lets-Plot ↔ Polars interop converts series via numpy
     "uvicorn>=0.30",
 ]
 

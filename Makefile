@@ -18,18 +18,19 @@ test: test-rust test-py
 test-rust:
 	PYO3_PYTHON="$(CURDIR)/.venv/bin/python" cargo test
 
+# --no-sync keeps uv from reinstalling golit over the maturin editable build.
 test-py:
-	uv run maturin develop --uv
-	uv run pytest
+	uv run --no-sync maturin develop --uv
+	uv run --no-sync pytest
 
 ## Lint and type-check.
 lint:
-	uv run ruff check python tests examples
-	uv run mypy
+	uv run --no-sync ruff check python tests examples
+	uv run --no-sync mypy
 
 ## Run the example app.
 run:
-	uv run python -m golit run examples/sales_explorer/app.py
+	uv run --no-sync python -m golit run examples/sales_explorer/app.py
 
 clean:
 	rm -rf target .venv dist build *.egg-info
