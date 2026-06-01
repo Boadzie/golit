@@ -37,5 +37,8 @@ class SessionManager:
         self._sessions[sid] = session
         return sid, session, True
 
+    def get(self, sid: str | None) -> Session | None:
+        return self._sessions.get(sid) if sid else None
+
     def __len__(self) -> int:
         return len(self._sessions)

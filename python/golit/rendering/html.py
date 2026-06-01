@@ -111,7 +111,7 @@ def page(title: str, body: str) -> str:
 <script src="{HTMX_SSE_SRC}" defer></script>
 <script src="{ALPINE_SRC}" defer></script>
 </head>
-<body class="bg-surface text-on-surface font-body antialiased" hx-ext="sse">
+<body class="bg-surface text-on-surface font-body antialiased" hx-ext="sse" sse-connect="/events">
 <div class="max-w-6xl mx-auto px-6 py-10">
 <header class="mb-8 flex items-baseline justify-between">
 <div>

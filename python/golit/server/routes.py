@@ -13,12 +13,13 @@ from litestar.datastructures import Cookie
 from litestar.enums import MediaType
 from litestar.exceptions import NotFoundException
 from litestar.params import FromPath
-from litestar.response import Response
+from litestar.response import Response, ServerSentEvent
 
 from ..engine import Session
 from ..nodes import NodeKind
 from ..rendering import controls_panel, oob_fragment, page, view_slot
 from .session import COOKIE, SessionManager
+from .sse import SSEManager
 
 
 def _manager(request: Request) -> SessionManager:
@@ -70,3 +71,17 @@ async def update_node(input_id: FromPath[str], request: Request) -> Response:
 
     body = "".join(oob_fragment(node_id, content) for node_id, content in fragments.items())
     return _html(body, sid, created)
+
+
+@get("/events")
+async def events(request: Request) -> ServerSentEvent:
+    """The server→client push channel: one long-lived SSE stream per session,
+    emitting a named ``node:<id>`` event per dirty view fragment."""
+    manager = _manager(request)
+    sid = request.cookies.get(COOKIE)
+    if manager.get(sid) is None:
+        sid, session, _ = manager.get_or_create(sid)
+        session.initial_render()
+    assert sid is not None
+    sse: SSEManager = request.app.state.sse
+    return ServerSentEvent(sse.stream(sid))

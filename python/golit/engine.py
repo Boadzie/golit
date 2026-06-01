@@ -47,6 +47,12 @@ class Session:
         self.registry.set(input_id, widget.coerce(raw_value))
         return self._run(self.graph.dirty_subgraph([input_id]))
 
+    def refresh(self, node_id: str) -> dict[str, str]:
+        """Force-recompute a node (e.g. a streaming source or a shared node) and
+        everything downstream; return the view fragments that changed. This is the
+        server-initiated path that feeds the SSE push channel."""
+        return self._run(self.graph.dirty_subgraph([node_id]), force_ids={node_id})
+
     def control_html(self, input_id: str) -> str:
         """Render an input's HTML control at its current value."""
         widget = self.app.widget_for(input_id)
@@ -57,7 +63,10 @@ class Session:
         return self.registry.fragment(node_id)
 
     # -- internals ---------------------------------------------------------
-    def _run(self, schedule: list[str], *, force: bool = False) -> dict[str, str]:
+    def _run(
+        self, schedule: list[str], *, force: bool = False, force_ids: set[str] | None = None
+    ) -> dict[str, str]:
+        force_ids = force_ids or set()
         changed: dict[str, str] = {}
         for node_id in schedule:
             kind = self.graph.kind_of(node_id)
@@ -68,7 +77,7 @@ class Session:
                 continue
 
             sig = self._input_signature(node_id)
-            if force or self.graph.needs_recompute(node_id, sig):
+            if force or node_id in force_ids or self.graph.needs_recompute(node_id, sig):
                 self.graph.set_computing(node_id)
                 value = self._execute(node_id)
                 self.registry.set(node_id, value)
