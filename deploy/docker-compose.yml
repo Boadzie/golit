@@ -1,0 +1,52 @@
+# A complete scaled Golit stack: Redis + three single-worker replicas + an
+# nginx sticky load balancer. Run from the repo root with podman or docker:
+#
+#   podman compose -f deploy/docker-compose.yml up --build
+#   # then open http://localhost:8000
+#
+# Each replica is identical and stateless apart from its in-memory sessions;
+# Redis carries server-side invalidations between them. nginx pins each client
+# to one replica by the golit_session cookie (see nginx.conf).
+
+x-app: &app
+  image: golit:latest
+  environment:
+    GOLIT_REDIS_URL: redis://redis:6379
+  depends_on:
+    redis:
+      condition: service_healthy
+  expose:
+    - "8000"
+
+services:
+  redis:
+    image: docker.io/library/redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # app1 builds the shared image (tagged golit:latest); app2/app3 reuse it.
+  app1:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+
+  app2:
+    <<: *app
+
+  app3:
+    <<: *app
+
+  nginx:
+    image: docker.io/library/nginx:1.27-alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app1
+      - app2
+      - app3

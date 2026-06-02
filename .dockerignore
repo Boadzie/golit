@@ -1,0 +1,15 @@
+# Keep the build context lean — the Dockerfile only needs pyproject/Cargo,
+# src/, python/, examples/, and README. Everything below is build output,
+# caches, or design assets the image doesn't use.
+.git
+target
+.venv
+golit_pages
+tests
+**/__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+*.whl
+.DS_Store
