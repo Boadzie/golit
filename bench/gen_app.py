@@ -70,8 +70,39 @@ def _node(
     return fn
 
 
-def make_app(*, rows: int, depth: int, unaffected: int) -> App:
-    """Build a synthetic app with the given shape (see module docstring)."""
+def _chart_body(kind: str, prev: str) -> Callable[[dict[str, Any]], Any]:
+    """The terminal view's body. ``text`` is the wire-minimal synthetic fragment used
+    by B1/B2 (isolates the engine); ``svg``/``plotly`` render a *real* chart of the
+    affected frame's per-group sums — the same 16-bar chart the Dash twin draws — so a
+    real-transport comparison renders like-for-like. ``svg`` returns a Lets-Plot chart
+    (Golit renders it to a static SVG, no client runtime); ``plotly`` returns a Plotly
+    figure (Golit ships it as a spec mount, like Dash)."""
+    if kind == "text":
+        return lambda kw, _p=prev: f'<div id="chart">rows={kw[_p].height}</div>'
+    if kind == "svg":
+        def svg_body(kw: dict[str, Any], _p: str = prev) -> Any:
+            from golit.charts import aes, geom_bar, ggplot
+
+            agg = kw[_p].group_by("g").agg(pl.col("v").sum()).sort("g")
+            data = {"g": agg["g"].to_list(), "v": agg["v"].to_list()}
+            return ggplot(data, aes("g", "v")) + geom_bar(stat="identity")
+        return svg_body
+    if kind == "plotly":
+        def plotly_body(kw: dict[str, Any], _p: str = prev) -> Any:
+            import plotly.graph_objects as go
+
+            agg = kw[_p].group_by("g").agg(pl.col("v").sum()).sort("g")
+            return go.Figure(go.Bar(x=agg["g"].to_list(), y=agg["v"].to_list()))
+        return plotly_body
+    raise ValueError(f"unknown chart kind: {kind!r}")
+
+
+def make_app(*, rows: int, depth: int, unaffected: int, chart: str = "text") -> App:
+    """Build a synthetic app with the given shape (see module docstring).
+
+    ``chart`` selects the terminal view: ``text`` (default, wire-minimal — the B1/B2
+    engine isolation), ``svg`` (a real Lets-Plot chart Golit renders server-side), or
+    ``plotly`` (a real Plotly figure Golit ships as a spec, matching Dash)."""
     if depth < 1:
         raise ValueError("depth must be >= 1")
     frame = _make_frame(rows)
@@ -101,14 +132,8 @@ def make_app(*, rows: int, depth: int, unaffected: int) -> App:
         )
         prev = f"r{i}"
 
-    # Terminal view — the fragment an update returns.
-    app.view(
-        _node(
-            "chart",
-            [(prev, _EMPTY)],
-            lambda kw, _p=prev: f'<div id="chart">rows={kw[_p].height}</div>',
-        )
-    )
+    # Terminal view — the fragment an update returns (text / svg / plotly).
+    app.view(_node("chart", [(prev, _EMPTY)], _chart_body(chart, prev)))
 
     # Unaffected nodes: depend on `data` only, so the slider never schedules them.
     # Each does a bounded aggregation, so a *full* recompute climbs with `unaffected`.

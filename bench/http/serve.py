@@ -24,5 +24,8 @@ from ..gen_app import make_app
 _ROWS = int(os.environ.get("GOLIT_BENCH_ROWS", "100000"))
 _DEPTH = int(os.environ.get("GOLIT_BENCH_DEPTH", "3"))
 _UNAFFECTED = int(os.environ.get("GOLIT_BENCH_UNAFFECTED", "0"))
+_CHART = os.environ.get("GOLIT_BENCH_CHART", "text")  # text | svg | plotly
 
-application = create_app(make_app(rows=_ROWS, depth=_DEPTH, unaffected=_UNAFFECTED))
+application = create_app(
+    make_app(rows=_ROWS, depth=_DEPTH, unaffected=_UNAFFECTED, chart=_CHART)
+)

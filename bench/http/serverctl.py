@@ -24,12 +24,13 @@ def free_port() -> int:
 
 
 def boot(rows: int, depth: int, unaffected: int, port: int, log_path: str,
-         *, workers: int = 1) -> tuple[subprocess.Popen, IO]:
+         *, workers: int = 1, chart: str = "text") -> tuple[subprocess.Popen, IO]:
     """Start one uvicorn instance; return the process and its open log file."""
     env = os.environ.copy()
     env["GOLIT_BENCH_ROWS"] = str(rows)
     env["GOLIT_BENCH_DEPTH"] = str(depth)
     env["GOLIT_BENCH_UNAFFECTED"] = str(unaffected)
+    env["GOLIT_BENCH_CHART"] = chart
     log = open(log_path, "w")
     cmd = [sys.executable, "-m", "uvicorn", SERVE_TARGET, "--host", "127.0.0.1",
            "--port", str(port), "--log-level", "warning", "--no-access-log"]
