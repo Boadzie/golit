@@ -162,6 +162,11 @@ CHART_BOOTSTRAP = """
 GOLIT_CSS = """
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 .golit-chart svg { max-width: 100%; height: auto; display: block; }
+[x-cloak] { display: none !important; }
+.golit-expander summary::-webkit-details-marker { display: none; }
+.golit-expander summary { list-style: none; }
+.golit-chev { transition: transform .2s ease; }
+.golit-expander[open] .golit-chev { transform: rotate(180deg); }
 .golit-view.htmx-settling { animation: golit-flash .7s ease-out; }
 @keyframes golit-flash {
   from { box-shadow: 0 0 0 2px #004d99 inset; }

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from golit._golit import kernel_version
 
+from . import ui
 from .app import App
 from .engine import Session
 from .nodes import NodeKind
@@ -44,6 +45,7 @@ __version__ = "0.1.0"
 __all__ = [
     "__version__",
     "kernel_version",
+    "ui",
     "App",
     "Session",
     "create_app",
