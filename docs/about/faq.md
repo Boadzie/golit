@@ -28,6 +28,10 @@ No React, no client diffing framework. The wire format is pre-rendered HTML/SVG 
 
 Publish an `Invalidation` to the pub/sub channel; it's recomputed and pushed over SSE. Streaming sources, background jobs, and shared nodes use this. See [Server-push updates](../advanced/server-push.md).
 
+### Does Golit support WebSockets? Can I build a chat?
+
+Yes. SSE handles reactive push (server→client); for *bidirectional* features Golit has a WebSocket channel and a `ui.chat` component — room broadcast by default, plus an `@app.on_message` hook for bots/assistants/moderation. It still speaks server-rendered fragments (HTMX `ws` extension), no client framework. See [WebSocket chat](../advanced/websockets.md).
+
 ### Why Litestar instead of FastAPI?
 
 For first-class dependency injection (per-session registry scoping) and lifecycle hooks (SSE + Redis bind to startup/shutdown), with low base overhead. The reactive engine is framework-agnostic — Litestar is the host, not the moat. [More here](../concepts/architecture.md#tier-1-orchestrator-litestar).

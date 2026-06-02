@@ -60,6 +60,14 @@ That uniformity is the point: a `card` doesn't care whether you hand it a string
 | `heading(text, *, level=2)` | A section heading (levels 1–6). |
 | `caption(text)` | Small, muted helper text. |
 
+## Realtime
+
+| Component | Purpose |
+| --- | --- |
+| `chat(channel, *, author="You", title=None, …)` | A live, WebSocket-backed chat panel. |
+
+`chat` is different from the others: it opens a bidirectional WebSocket and updates itself as messages arrive, rather than rendering once. It's covered in full under [WebSocket chat](../advanced/websockets.md).
+
 ## A worked example
 
 ```python

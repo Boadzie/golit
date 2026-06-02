@@ -10,6 +10,11 @@ Push fragments to the client without a user interaction — streaming sources, b
 </div>
 
 <div markdown>
+### [WebSocket chat](websockets.md)
+The bidirectional channel: a live chat component, room broadcast, and an `@app.on_message` handler hook for bots and moderation.
+</div>
+
+<div markdown>
 ### [Custom rendering](custom-rendering.md)
 Make your own objects renderable with the `__golit_render__` protocol, and control exactly what markup a view emits.
 </div>

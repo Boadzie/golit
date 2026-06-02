@@ -26,6 +26,16 @@ The SSE fan-out channel. `Invalidation` is the unit published when a node goes d
 
 ::: golit.server.sse.SSEManager
 
+## Chat
+
+The WebSocket chat channel. See [WebSocket chat](../advanced/websockets.md).
+
+::: golit.server.chat.ChatMessage
+
+::: golit.server.chat.MessageContext
+
+::: golit.server.chat.ChatHub
+
 ## Kernel version
 
 `golit.kernel_version()` returns the version string of the compiled Rust kernel (`golit._golit`). It's a plain function with no arguments:

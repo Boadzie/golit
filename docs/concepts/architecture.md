@@ -43,6 +43,8 @@ The full trace is in [How a change flows](data-flow.md).
 ??? question "Why SSE over WebSocket?"
     The push channel only ever flows server → client (input has its own POST channel), so WebSocket's bidirectionality would be paid for and unused. SSE rides plain HTTP, so any worker can serve any stream; it auto-reconnects and passes through proxies cleanly; and fragments are text, so SSE's text-only limit costs nothing. (Serve over HTTP/2 in production to dodge the browser's ~6-connections-per-host cap on HTTP/1.1.)
 
+    The exception is *genuinely bidirectional* features — Golit uses a real WebSocket for [chat](../advanced/websockets.md), the case this trade-off explicitly reserves it for. SSE remains the channel for reactive invalidations.
+
 ## Tier 3 — Local shield (Alpine.js)
 
 [Alpine.js](https://alpinejs.dev/) handles interactions that must feel instantaneous and never need the server: slider-drag feedback, input debouncing, tab state. The shield absorbs high-frequency events and only escalates to the server when a **committed** value actually changes — protecting Tier 1 from chatter.
