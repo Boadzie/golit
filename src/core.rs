@@ -6,10 +6,38 @@
 //! state*, never the data. Node values (Polars frames, scalars, rendered
 //! fragments) live on the Python side; only node ids and `u64` content hashes
 //! cross this boundary.
+//!
+//! ## Performance-critical methods
+//!
+//! The scheduling loop that runs on every interaction is driven from Python, but
+//! the per-node bookkeeping — signature computation, memo checks, epoch
+//! management — now lives entirely in Rust via [`Graph::check_node`],
+//! [`Graph::commit_node`], [`Graph::skip_node`], and [`Graph::commit_input`].
+//! This collapses 4–6 FFI round-trips per node down to 1–2, keeping the
+//! per-interaction overhead proportional to the dirty subgraph, not the total
+//! graph size.
 
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fmt;
+
+// ── FNV-1a constants (matches Python's hashing.py) ──────────────────────────
+const FNV_OFFSET: u64 = 1469598103934665603;
+const FNV_PRIME: u64 = 1099511628211;
+
+/// FNV-1a fold: combine an ordered slice of `u64` parts into one signature.
+///
+/// Used for input-signature computation (mixing content hashes of input deps
+/// with epochs of upstream deps) and for `signature_hash` (hashing a single
+/// input value). Matches the Python `hashing.combine()` exactly — wrapping u64
+/// arithmetic in Rust is equivalent to Python's `(… * FNV_PRIME) & ((1<<64)-1)`.
+pub fn combine_hashes(parts: &[u64]) -> u64 {
+    let mut h = FNV_OFFSET;
+    for &part in parts {
+        h = (h ^ part).wrapping_mul(FNV_PRIME);
+    }
+    h
+}
 
 /// The role a node plays in the graph. Drives execution/render semantics on the
 /// Python side; here it is metadata used for scheduling and introspection.
@@ -108,14 +136,21 @@ struct Node {
     dependents: Vec<usize>,
     state: NodeState,
     hash: Option<u64>,
+    /// Monotonic version stamp: bumped by `commit_node` / `commit_input` when
+    /// the node's value is (re)computed. Downstream nodes use this via
+    /// `check_node` to detect upstream changes in O(1) instead of O(rows).
+    epoch: u64,
+    /// Content hash of an Input-kind node's current value (set from Python via
+    /// `set_input_hash`). Used by `check_node` for downstream signature
+    /// computation — downstream nodes mix this hash into their input signature.
+    input_hash: Option<u64>,
 }
 
 /// A reactive directed acyclic graph.
 ///
 /// Lifecycle: `add_node` / `set_deps` to declare the graph, `build()` to
 /// validate it is acyclic and cache a topological order, then the hot-path query
-/// methods (`dirty_subgraph`, `needs_recompute`, `set_clean`, …) on every
-/// interaction.
+/// methods (`check_node`, `commit_node`, `skip_node`, …) on every interaction.
 pub struct Graph {
     nodes: Vec<Node>,
     index: HashMap<String, usize>,
@@ -124,6 +159,9 @@ pub struct Graph {
     /// `topo_pos[node_idx]` = position of that node within `topo`.
     topo_pos: Vec<usize>,
     built: bool,
+    /// Process-monotonic clock shared across all nodes; every `commit_*` call
+    /// increments it and stamps the node. Epochs are never reused.
+    clock: u64,
 }
 
 impl Default for Graph {
@@ -140,6 +178,7 @@ impl Graph {
             topo: Vec::new(),
             topo_pos: Vec::new(),
             built: false,
+            clock: 0,
         }
     }
 
@@ -178,6 +217,8 @@ impl Graph {
             dependents: Vec::new(),
             state: NodeState::Dirty,
             hash: None,
+            epoch: 0,
+            input_hash: None,
         });
         self.index.insert(id.to_string(), i);
         self.built = false;
@@ -360,6 +401,82 @@ impl Graph {
     pub fn set_dirty(&mut self, id: &str) -> Result<(), GraphError> {
         let i = self.idx(id)?;
         self.nodes[i].state = NodeState::Dirty;
+        Ok(())
+    }
+
+    // ── Consolidated hot path ───────────────────────────────────────────────
+    //
+    // The scheduler driver in `engine.py` walks the dirty subgraph once per
+    // interaction. These four methods fold the per-node bookkeeping that used to
+    // round-trip through Python — dep iteration, signature folding, the memo
+    // check, epoch stamping — into Rust, so the driver crosses the FFI boundary
+    // about twice per node (`check_node` then `commit_node`/`skip_node`/`commit_input`)
+    // instead of four-to-six times. The signature semantics match the old Python
+    // `_input_signature` exactly: an Input dep contributes its content hash
+    // (`input_hash`, so reverting a control to a prior value is a memo hit), a
+    // computed dep contributes its `epoch` (O(1); a recomputed upstream bumped it).
+
+    /// Fold a node's dependency signature the way the old Python path did:
+    /// Input deps by content hash, computed deps by epoch.
+    fn signature_of(&self, i: usize) -> u64 {
+        let parts: Vec<u64> = self.nodes[i]
+            .deps
+            .iter()
+            .map(|&d| {
+                let dep = &self.nodes[d];
+                if dep.kind == NodeKind::Input {
+                    dep.input_hash.unwrap_or(0)
+                } else {
+                    dep.epoch
+                }
+            })
+            .collect();
+        combine_hashes(&parts)
+    }
+
+    /// Per-node decision for the scheduler: returns `(kind, needs_recompute,
+    /// signature)`. `needs_recompute` is true when the freshly folded signature
+    /// differs from the one stored at the node's last clean commit. Pure — the
+    /// driver commits the outcome with `commit_node`/`skip_node`.
+    pub fn check_node(&self, id: &str) -> Result<(&'static str, bool, u64), GraphError> {
+        let i = self.idx(id)?;
+        let sig = self.signature_of(i);
+        let needs = self.nodes[i].hash != Some(sig);
+        Ok((self.nodes[i].kind.as_str(), needs, sig))
+    }
+
+    /// Commit a computed node (source/reactive/view) as clean with the signature
+    /// it was computed from, and bump its epoch so downstream nodes recompute.
+    pub fn commit_node(&mut self, id: &str, signature: u64) -> Result<(), GraphError> {
+        let i = self.idx(id)?;
+        self.clock += 1;
+        let clock = self.clock;
+        let node = &mut self.nodes[i];
+        node.state = NodeState::Clean;
+        node.hash = Some(signature);
+        node.epoch = clock;
+        Ok(())
+    }
+
+    /// Commit a memo hit: the node's inputs are unchanged, so leave its stored
+    /// value and epoch untouched — downstream must *not* see a change.
+    pub fn skip_node(&mut self, id: &str, signature: u64) -> Result<(), GraphError> {
+        let i = self.idx(id)?;
+        let node = &mut self.nodes[i];
+        node.state = NodeState::Clean;
+        node.hash = Some(signature);
+        Ok(())
+    }
+
+    /// Record an Input node's current value hash (pushed from Python when the
+    /// control changes). Downstream signatures mix this in, so an input reverting
+    /// to a previous value yields an identical signature — a genuine memo hit.
+    pub fn commit_input(&mut self, id: &str, content_hash: u64) -> Result<(), GraphError> {
+        let i = self.idx(id)?;
+        let node = &mut self.nodes[i];
+        node.input_hash = Some(content_hash);
+        node.hash = Some(content_hash);
+        node.state = NodeState::Clean;
         Ok(())
     }
 
@@ -568,5 +685,79 @@ mod tests {
         );
         assert_eq!(ids(g.deps_of("c").unwrap()), vec!["a", "b"]);
         assert_eq!(g.kind_of("c").unwrap(), "view");
+    }
+
+    #[test]
+    fn combine_matches_fnv1a_reference() {
+        // FNV-1a of the empty sequence is the offset basis.
+        assert_eq!(combine_hashes(&[]), FNV_OFFSET);
+        // One round of the fold, computed by hand with wrapping arithmetic.
+        let expect = (FNV_OFFSET ^ 7u64).wrapping_mul(FNV_PRIME);
+        assert_eq!(combine_hashes(&[7]), expect);
+    }
+
+    #[test]
+    fn check_commit_cycle_drives_memoization() {
+        // input a -> reactive b -> view c
+        let mut g = graph(
+            &[("a", "input"), ("b", "reactive"), ("c", "view")],
+            &[("b", &["a"]), ("c", &["b"])],
+        );
+
+        // Initial render: stamp the input, then commit each computed node.
+        g.commit_input("a", 100).unwrap();
+        let (kb, needs_b, sig_b) = g.check_node("b").unwrap();
+        assert_eq!(kb, "reactive");
+        assert!(needs_b); // never committed -> recompute
+        g.commit_node("b", sig_b).unwrap();
+        let (_, needs_c, sig_c) = g.check_node("c").unwrap();
+        assert!(needs_c);
+        g.commit_node("c", sig_c).unwrap();
+
+        // Re-checking with no input change is a memo hit at every node.
+        assert!(!g.check_node("b").unwrap().1);
+        assert!(!g.check_node("c").unwrap().1);
+
+        // Input changes -> b's signature changes -> b and (via epoch) c recompute.
+        g.commit_input("a", 200).unwrap();
+        let (_, needs_b2, sig_b2) = g.check_node("b").unwrap();
+        assert!(needs_b2);
+        assert_ne!(sig_b2, sig_b);
+        g.commit_node("b", sig_b2).unwrap(); // bumps b's epoch
+        assert!(g.check_node("c").unwrap().1); // c sees the new epoch
+    }
+
+    #[test]
+    fn input_revert_is_a_memo_hit_via_content_hash() {
+        // c depends on input a; a computed dep would use epoch, but an Input dep
+        // uses its content hash, so reverting a to a prior value memo-hits.
+        let mut g = graph(&[("a", "input"), ("c", "view")], &[("c", &["a"])]);
+        g.commit_input("a", 30).unwrap();
+        let (_, _, sig0) = g.check_node("c").unwrap();
+        g.commit_node("c", sig0).unwrap();
+
+        // Re-commit the *same* content hash: signature is unchanged -> memo hit.
+        g.commit_input("a", 30).unwrap();
+        assert!(!g.check_node("c").unwrap().1);
+        assert_eq!(g.check_node("c").unwrap().2, sig0);
+    }
+
+    #[test]
+    fn skip_node_does_not_bump_epoch() {
+        // a -> b -> c; a memo hit on b must leave c undisturbed.
+        let mut g = graph(
+            &[("a", "input"), ("b", "reactive"), ("c", "view")],
+            &[("b", &["a"]), ("c", &["b"])],
+        );
+        g.commit_input("a", 1).unwrap();
+        let sig_b = g.check_node("b").unwrap().2;
+        g.commit_node("b", sig_b).unwrap();
+        let sig_c = g.check_node("c").unwrap().2;
+        g.commit_node("c", sig_c).unwrap();
+
+        // b is re-checked and skipped (no input change): c's signature is stable.
+        g.skip_node("b", sig_b).unwrap();
+        assert_eq!(g.check_node("c").unwrap().2, sig_c);
+        assert!(!g.check_node("c").unwrap().1);
     }
 }

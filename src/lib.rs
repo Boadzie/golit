@@ -85,6 +85,28 @@ impl Graph {
         self.inner.needs_recompute(id, input_hash).map_err(to_py_err)
     }
 
+    /// Hot-path per-node decision: `(kind, needs_recompute, signature)` in one
+    /// call. The signature folds the node's dependency state (Input deps by
+    /// content hash, computed deps by epoch) entirely in Rust.
+    fn check_node(&self, id: &str) -> PyResult<(&'static str, bool, u64)> {
+        self.inner.check_node(id).map_err(to_py_err)
+    }
+
+    /// Commit a computed node clean with the signature it ran on; bumps its epoch.
+    fn commit_node(&mut self, id: &str, signature: u64) -> PyResult<()> {
+        self.inner.commit_node(id, signature).map_err(to_py_err)
+    }
+
+    /// Commit a memo hit: mark clean without bumping the epoch.
+    fn skip_node(&mut self, id: &str, signature: u64) -> PyResult<()> {
+        self.inner.skip_node(id, signature).map_err(to_py_err)
+    }
+
+    /// Record an Input node's current value hash for downstream signatures.
+    fn commit_input(&mut self, id: &str, content_hash: u64) -> PyResult<()> {
+        self.inner.commit_input(id, content_hash).map_err(to_py_err)
+    }
+
     /// Commit `id` clean with the content hash it was computed from.
     fn set_clean(&mut self, id: &str, hash: u64) -> PyResult<()> {
         self.inner.set_clean(id, hash).map_err(to_py_err)
