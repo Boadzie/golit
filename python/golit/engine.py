@@ -4,7 +4,14 @@ On each interaction the engine asks the kernel for the recompute schedule
 (``dirty_subgraph``), executes only the nodes whose input signature changed
 (memo via ``needs_recompute``), stores fresh values, and returns the view
 fragments that actually changed. Nodes left out of the dirty subgraph — or whose
-inputs hashed identically — are never executed.
+inputs are unchanged — are never executed.
+
+A node's input signature mixes the *content hash* of its scalar input values with
+the *epochs* of its upstream nodes (see :meth:`Session._input_signature` and
+:class:`golit.registry.Registry`): an upstream that recomputed bumped its epoch, so
+the signature changes, so this node recomputes — all in O(deps), with no O(rows)
+frame hashing. The wire stays minimal independently: a recomputed *view* only goes
+out if its rendered fragment string actually differs from the last one sent.
 """
 
 from __future__ import annotations
@@ -13,7 +20,7 @@ from collections.abc import Callable
 from typing import Any
 
 from .app import App
-from .hashing import signature_hash
+from .hashing import combine, hash_value, signature_hash
 from .nodes import NodeKind
 from .registry import Registry
 
@@ -84,15 +91,27 @@ class Session:
                 self.graph.set_clean(node_id, sig)
                 if kind == NodeKind.VIEW.value:
                     fragment = self._render(node_id, value)
-                    self.registry.set_fragment(node_id, fragment)
-                    changed[node_id] = fragment
+                    # The body re-ran, but only push it if the bytes on the wire
+                    # actually changed — an O(fragment) string compare, never O(rows).
+                    if fragment != self.registry.fragment(node_id):
+                        self.registry.set_fragment(node_id, fragment)
+                        changed[node_id] = fragment
             else:
-                # Memo hit: inputs hashed identically, reuse the stored value.
+                # Memo hit: every input's signature is unchanged, reuse stored value.
                 self.graph.set_clean(node_id, sig)
         return changed
 
     def _input_signature(self, node_id: str) -> int:
-        return signature_hash([self.registry.get(dep) for dep in self.graph.deps_of(node_id)])
+        """Signature over a node's dependencies: scalar inputs by content hash
+        (catches a control reverting to a prior value), upstream nodes by epoch
+        (O(1); an upstream that recomputed bumped its epoch)."""
+        parts: list[int] = []
+        for dep in self.graph.deps_of(node_id):
+            if self.graph.kind_of(dep) == NodeKind.INPUT.value:
+                parts.append(hash_value(self.registry.get(dep)))
+            else:
+                parts.append(self.registry.epoch(dep))
+        return combine(parts)
 
     def _execute(self, node_id: str) -> Any:
         ndef = self.app.node_def(node_id)
