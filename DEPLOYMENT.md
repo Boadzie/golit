@@ -11,20 +11,26 @@ cookie. That locality is deliberate: it's what makes recompute cost track the
 *change*, not the program. Serializing DataFrames to a shared store on every
 interaction would throw that away.
 
-The consequence: **every request from one client must reach the worker that holds
-its session** — the initial `GET /`, each `POST /node/...`, and the long-lived
-`GET /events` SSE stream. That's *session affinity* ("sticky sessions").
+The consequence: a client's requests are cheapest when they reach the worker that
+already holds its session — the initial `GET /`, each `POST /node/...`, and the
+long-lived `GET /events` SSE stream. That's *session affinity* ("sticky sessions").
+It is the recommended default, but with Redis turned on it is no longer load-bearing
+for correctness: the **session store** persists each session's *input* state, so a
+request that lands on a worker without the live session **reconstructs** it from
+those inputs (replay + local recompute) instead of starting from defaults. Affinity
+then just keeps the in-memory session warm and avoids the same session diverging
+across two workers under round-robin.
 
 The second consequence: a server-side invalidation (a streaming source, a
 background job, a shared node) originates on one worker but must reach the worker
 holding each *affected* client's SSE connection. That's what **Redis pub/sub**
 provides — one `publish`, delivered to every worker.
 
-So horizontal scale is two pieces, and you need both:
+So horizontal scale is two pieces:
 
 | Piece | Mechanism | Without it |
 | --- | --- | --- |
-| Stick a client to one worker | Load balancer, hashing the `golit_session` cookie | Returning client hits a worker with no session → re-rendered from defaults |
+| Keep a client on one worker (recommended) | Load balancer, hashing the `golit_session` cookie | A re-routed client reconstructs from Redis-stored inputs (a cold recompute) — or, with no session store, re-renders from defaults |
 | Reach every worker on invalidation | `GOLIT_REDIS_URL` → `RedisPubSub` | SSE pushes only reach clients on the publishing worker |
 
 ## Single node (default)
@@ -37,8 +43,10 @@ One process, in-memory fan-out (`InMemoryPubSub`). Nothing else to configure.
 
 ## Turning on Redis
 
-Set one environment variable; `create_app` selects `RedisPubSub` automatically
-(it's an optional dependency — install with the `redis` extra):
+Set one environment variable; `create_app` selects **both** Redis backends
+automatically — `RedisPubSub` for invalidation fan-out and `RedisSessionStore` for
+durable input state (Redis is an optional dependency — install with the `redis`
+extra):
 
 ```bash
 pip install "golit[redis]"
@@ -50,9 +58,13 @@ Programmatic override, if you'd rather not use the environment:
 
 ```python
 from golit import create_app
-from golit.server import RedisPubSub
+from golit.server import RedisPubSub, RedisSessionStore
 
-application = create_app(app, pubsub=RedisPubSub("redis://redis:6379"))
+application = create_app(
+    app,
+    pubsub=RedisPubSub("redis://redis:6379"),
+    session_store=RedisSessionStore("redis://redis:6379"),
+)
 ```
 
 ## Horizontal scale: N instances behind a sticky load balancer
@@ -109,11 +121,14 @@ invalidation and watch it arrive over `/events` on the *other* replicas' clients
 
 ## Operational notes
 
-- **Worker restart drops that worker's sessions.** Clients reconnect and
-  re-render on the next `GET /` — there's no persistence of in-flight session
-  state by design. Keep source `@app.source` functions cheap/idempotent.
-- **Redis is for invalidation fan-out only**, not session storage. It carries
-  small JSON messages (`node_id`, `session`); it never holds DataFrames.
+- **Worker restart loses that worker's warm caches, not the session.** Without a
+  session store, clients re-render from defaults on the next `GET /`. With
+  `RedisSessionStore` the input state is durable, so the session reconstructs (from
+  inputs + a local recompute) on the next request to *any* worker. Either way, keep
+  `@app.source` functions cheap/idempotent — the initial render can run again.
+- **Redis never holds DataFrames.** Pub/sub carries small JSON (`node_id`,
+  `session`); the session store holds only each session's *input* map
+  (`{input_id: value}`). The derived frames stay worker-local — that's the thesis.
 - **Scaling Redis:** a single instance handles a large fan-out fine. Redis
   pub/sub is at-most-once and not persisted — acceptable here because an
   invalidation just asks a worker to recompute current state, which it can always
