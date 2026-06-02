@@ -4,6 +4,7 @@
 
 - **Rust reactive kernel** (PyO3) — dirty tracking, topological scheduling, propagation
 - **Polars** data, held Python-side; only node ids/hashes cross the FFI boundary
+- **SQL** — reactive nodes written as in-process **DuckDB** SQL over Polars frames (`golit.sql`)
 - **Litestar** orchestration; **HTMX** server-rendered fragment transport (no client framework)
 - **Charts** — Lets-Plot static SVG, plus interactive **Plotly / Altair / Bokeh / AnyChart**
 - **Components** — reactive input widgets + a shadcn-styled **`golit.ui`** library
@@ -18,6 +19,7 @@ See [`project_scope.md`](project_scope.md) for the architecture and
 ```bash
 pip install golit                 # core
 pip install "golit[charts]"       # interactive Plotly / Altair / Bokeh
+pip install "golit[sql]"          # DuckDB SQL nodes over Polars frames
 pip install "golit[redis]"        # Redis fan-out for multi-worker
 ```
 
@@ -73,6 +75,29 @@ that selective recompute is the whole point. See
    shared nodes) are pushed over `/events` as named `node:<id>` events.
 3. **Memoization** — a node re-executes only when its inputs hash differently; an
    unchanged output cascades into memo hits downstream (nothing on the wire).
+
+## SQL nodes
+
+A reactive node can be written as SQL instead of Polars. `golit.sql(query, **frames)`
+runs **DuckDB** in-process over the named upstream frames and returns Polars, so the
+node memoizes and renders like any other — inputs feed straight into the query.
+
+```python
+from golit import sql
+
+@app.reactive
+def by_region(data: pl.DataFrame, threshold: int = slider(0, 200, default=40)):
+    return sql(
+        "SELECT region, sum(revenue)::BIGINT AS revenue "
+        f"FROM d WHERE revenue > {int(threshold)} GROUP BY region ORDER BY region",
+        d=data,
+    )
+```
+
+DuckDB exchanges data with Polars zero-copy. A raw `duckdb.sql(...)` relation returned
+from a node is auto-detected and materialized too. Optional dependency: `pip install
+"golit[sql]"`; it is imported only inside `sql()`, never at framework import time. See
+[`examples/duckdb_sql/app.py`](examples/duckdb_sql/app.py).
 
 ## Charts
 
@@ -163,10 +188,10 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**13** cargo + **69** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**13** cargo + **73** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts), the
-`golit.ui` component library, page layout, Litestar server (POST + SSE), Redis
-pub/sub fan-out, multi-worker deployment, and the examples. **Deferred:** the
+`golit.ui` component library, page layout, DuckDB SQL nodes, Litestar server (POST +
+SSE), Redis pub/sub fan-out, multi-worker deployment, and the examples. **Deferred:** the
 benchmark harness and rival apps, and the wider design suite in `golit_pages/`.
 
 ## Development
