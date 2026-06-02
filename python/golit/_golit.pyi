@@ -44,6 +44,20 @@ class Graph:
     def set_clean(self, id: str, hash: int) -> None:
         """Commit ``id`` clean with the content hash it was computed from."""
 
+    def check_node(self, id: str) -> tuple[str, bool, int]:
+        """Hot-path per-node decision: ``(kind, needs_recompute, signature)`` in one
+        call. Folds the node's dependency signature (Input deps by content hash,
+        computed deps by epoch) and the memo check entirely in Rust."""
+
+    def commit_node(self, id: str, signature: int) -> None:
+        """Commit a computed node clean with the signature it ran on; bumps its epoch."""
+
+    def skip_node(self, id: str, signature: int) -> None:
+        """Commit a memo hit clean without bumping the epoch."""
+
+    def commit_input(self, id: str, content_hash: int) -> None:
+        """Record an Input node's current value hash for downstream signatures."""
+
     def set_computing(self, id: str) -> None: ...
     def set_dirty(self, id: str) -> None: ...
     def state_of(self, id: str) -> str: ...
