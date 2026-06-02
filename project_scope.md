@@ -209,3 +209,5 @@ Sessions are stateless at the HTTP edge; node state and memoization caches are b
 | Charting         | Plotly/Altair (JS) | Plotly (JS) | **Lets-Plot → static SVG** |
 | Reactive core    | Python rerun       | Python      | **Rust (PyO3)**            |
 | Horizontal scale | Hard               | Manual      | **Redis-backed, native**   |
+
+> Use this for the component gallery: https://ui.shadcn.com/docs/js
