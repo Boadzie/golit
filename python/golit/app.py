@@ -26,6 +26,9 @@ class App:
         self._order: list[str] = []
         self._widgets: dict[str, Widget] = {}
         self._built = False
+        #: Optional page layout tree (see :mod:`golit.layout`); ``None`` stacks
+        #: every view under one controls panel.
+        self.layout: Any = None
 
     # -- registration ------------------------------------------------------
     def _register(self, fn: NodeFn, kind: NodeKind) -> NodeFn:
@@ -72,6 +75,10 @@ class App:
             ndef.deps = deps
             if ndef.kind is NodeKind.VIEW:
                 ndef.target = node_id
+        if self.layout is not None:
+            from .layout import validate_layout
+
+            validate_layout(self.layout, self)
         self._built = True
 
     def new_graph(self) -> Graph:

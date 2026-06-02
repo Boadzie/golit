@@ -36,10 +36,15 @@ def _html(body: str, sid: str, created: bool) -> Response:
 
 
 def _layout(session: Session) -> str:
-    controls = [session.control_html(input_id) for input_id in session.app.widgets]
+    app = session.app
+    if app.layout is not None:
+        from ..layout import render_layout
+
+        return render_layout(app.layout, session)
+    controls = [session.control_html(input_id) for input_id in app.widgets]
     views = [
         view_slot(node_id, session.fragment(node_id) or "")
-        for node_id, ndef in session.app.node_defs.items()
+        for node_id, ndef in app.node_defs.items()
         if ndef.kind is NodeKind.VIEW
     ]
     return controls_panel(controls) + '<div class="space-y-8">' + "".join(views) + "</div>"
