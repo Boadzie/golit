@@ -57,6 +57,15 @@ docs = [
     "mkdocstrings[python]>=0.26",
     "pymdown-extensions>=10.0",
 ]
+# Rival frameworks for the cross-framework B1 benchmark (bench/). Streamlit is
+# driven via its AppTest harness (server-side script-rerun, the fair axis vs
+# Golit's in-process Session.update). Marimo is driven through its reactive
+# runtime kernel (set-UI-value -> reschedule only descendant cells, the fair
+# reactive-vs-reactive axis). Not needed to run or use Golit itself.
+bench = [
+    "streamlit>=1.40",
+    "marimo>=0.9",
+]
 
 [tool.maturin]
 python-source = "python"

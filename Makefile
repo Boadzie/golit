@@ -1,6 +1,6 @@
 PYTHON_VERSION := 3.11
 
-.PHONY: dev build test test-rust test-py lint run docs docs-serve clean
+.PHONY: dev build test test-rust test-py lint run bench bench-quick bench-http bench-streamlit bench-marimo docs docs-serve clean
 
 ## Create the uv venv, install deps, and build the Rust extension (editable).
 dev:
@@ -25,12 +25,40 @@ test-py:
 
 ## Lint and type-check.
 lint:
-	uv run --no-sync ruff check python tests examples
+	uv run --no-sync ruff check python tests examples bench
 	uv run --no-sync mypy
 
 ## Run the example app.
 run:
 	uv run --no-sync python -m golit run examples/sales_explorer/app.py
+
+## Run the full B1 benchmark (in-process + HTTP + Streamlit + Marimo rivals) and charts.
+bench:
+	uv run --no-sync python -m bench.run_b1
+	uv run --no-sync python -m bench.http.run_b1_http
+	uv run --no-sync python -m bench.run_b1_streamlit
+	uv run --no-sync python -m bench.run_b1_marimo
+	uv run --no-sync python -m bench.plot
+
+## Cross-framework B1 only: Streamlit (AppTest) rival vs Golit. Needs the bench group.
+bench-streamlit:
+	uv run --no-sync python -m bench.run_b1_streamlit
+	uv run --no-sync python -m bench.plot
+
+## Cross-framework B1 only: Marimo (reactive) rival vs Golit. Needs the bench group.
+bench-marimo:
+	uv run --no-sync python -m bench.run_b1_marimo
+	uv run --no-sync python -m bench.plot
+
+## Fast in-process B1 sweep (fewer points/iterations) for a quick signal.
+bench-quick:
+	uv run --no-sync python -m bench.run_b1 --quick
+	uv run --no-sync python -m bench.plot
+
+## End-to-end HTTP B1 only (boots uvicorn per config; drives the real POST path).
+bench-http:
+	uv run --no-sync python -m bench.http.run_b1_http
+	uv run --no-sync python -m bench.plot
 
 ## Build the documentation site (MkDocs Material) into site/.
 docs:

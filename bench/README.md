@@ -1,0 +1,217 @@
+# Golit benchmarks
+
+The performance claim is the whole pitch: **update cost is proportional to the
+change, not the program.** This harness proves it. See
+[`../golit_benchmark.md`](../golit_benchmark.md) for the full methodology.
+
+## B1 — incremental update latency (the core claim)
+
+> If B1 doesn't show a clear flat-vs-climbing separation, stop and rethink the
+> claim before publishing anything. — `golit_benchmark.md`
+
+This is the **internal** B1: Golit measured against itself, before the
+cross-framework bake-off (Streamlit / Marimo / Dash) of the published version.
+It answers the only question that gates everything else — *is Golit's own update
+curve flat as the graph grows?* If it isn't, no comparison matters.
+
+### What it measures
+
+A [synthetic app](gen_app.py) with three independent knobs:
+
+| Knob | Meaning | Swept over |
+| --- | --- | --- |
+| `rows` | dataset size (per-node compute cost) | 10K, 100K |
+| `depth` | length of the **affected chain** the slider feeds | 1, 3, 10 |
+| `unaffected` | nodes depending only on `data`, never in the dirty subgraph | 0 … 256 |
+
+```
+data ─┬─> r0(threshold) ─> r1 ─> … ─> r{depth-1} ─> chart   ← the slider dirties this
+      ├─> u0  ┐
+      ├─> u1  │  unaffected: recomputed on a full render,
+      └─> …   ┘  but a slider move never touches them
+```
+
+For each shape we record three latencies ([instrument.py](instrument.py)):
+
+- **update** — `Session.update` wall time: input change → fragments ready. The
+  real server-side metric, reported p50/p95/p99 over many warm iterations (two
+  slider values are cycled so every update is a genuine recompute, never a memo
+  hit).
+- **schedule** — the pure Rust `dirty_subgraph` call in isolation, so we can see
+  the kernel's scheduling cost as the *total* graph grows.
+- **full** — a full graph recompute (`initial_render` forces every node): the
+  naive "rerun everything" baseline a non-reactive framework pays.
+
+The harness also reads `exec_count` straight off the ledger — the number of node
+functions the dirty subgraph actually ran. On a slider move it equals
+`depth + 1` regardless of how many unaffected nodes exist. That integer *is* the
+thesis, before any timer.
+
+### Run it
+
+```bash
+make bench           # in-process + HTTP sweeps + both charts  (≈1 min)
+make bench-quick     # fast in-process signal                  (≈4 s)
+make bench-http      # end-to-end HTTP only
+
+# or directly:
+uv run --no-sync python -m bench.run_b1            # in-process -> results/b1.csv
+uv run --no-sync python -m bench.http.run_b1_http  # end-to-end -> results/b1_http.csv
+uv run --no-sync python -m bench.plot              # both -> results/*_hero.svg
+```
+
+Outputs land in [`results/`](results/): `b1.csv` / `b1_http.csv` (every percentile
+for every configuration) and `b1_hero.svg` / `b1_http_hero.svg` (the charts,
+rendered through Golit's own Lets-Plot → static-SVG path — the same way the
+framework draws charts).
+
+## B1 over HTTP — end-to-end (`bench/http/`)
+
+The in-process sweep isolates the *engine*. This one drives Golit's **real POST
+transport** to prove the flat curve survives the wire. For each shape it boots an
+isolated uvicorn server ([`serve.py`](http/serve.py), graph shape from env), waits
+for the port, then a single sequential client ([`drive.py`](http/drive.py)) hammers
+`POST /node/threshold` over loopback — timing each input → fragment round-trip
+(HTTP framing + ASGI + dirty subgraph + render + the HTMX out-of-band swap body).
+
+It also records **bytes-per-update** — that's **B3** (payload/bandwidth), almost
+for free, since every response *is* the fragment on the wire.
+
+What it confirms (100K-row dataset, dev laptop, loopback):
+
+- End-to-end p99 is **flat in unaffected-node count** at every depth — the engine
+  result holds through real transport (depth-10 e2e p99 ≈ 0.84 ms). Transport adds a
+  roughly *constant* ~0.5 ms over the in-process number; it does not scale with graph
+  size. (Since the in-process floor is now ~0.25 ms after the epoch-memo fix below,
+  HTTP framing + ASGI is the larger share end-to-end — still flat, still constant.)
+- **177 bytes per update, constant** regardless of graph size — only the changed
+  chart fragment crosses the wire, and no client charting runtime boots. That's
+  the B3 story in one number.
+
+This is still single-client sequential latency (B1), over **loopback**, on a
+laptop. Real network RTT, **B2** (concurrency / many simultaneous sessions), and a
+cloud instance are the remaining publishable pieces.
+
+### Reading the hero chart
+
+`x` = unaffected nodes, `y` = update p99 (log scale). Golit's three `update`
+lines (one per depth) run **flat** near the floor; the `full recompute` line
+**climbs** linearly with the graph. Flat-vs-climbing in one picture is the
+argument.
+
+The `update` lines are separated by *depth*, not by *unaffected count* — cost
+tracks the affected chain that re-executes, exactly as claimed.
+
+In-process wall-clock here is `Session.update` — it excludes HTTP, the HTMX swap,
+and SVG rendering. That's intentional: it isolates the reactive engine, the claim
+under test. The end-to-end figures (above) add the transport back in.
+
+## Golit vs Streamlit — the head-to-head
+
+The first rival. [`apps/streamlit_app.py`](apps/streamlit_app.py) is the
+**behavioral twin** of the synthetic Golit app, written the way a competent
+Streamlit dev would — `@st.cache_data` on the data load and the independent
+aggregations (the *fair fight*; comparing against an uncached Streamlit would be
+rigged). The one thing left uncached is the slider-driven chain, because it
+genuinely must recompute each interaction in both frameworks.
+
+[`run_b1_streamlit.py`](run_b1_streamlit.py) drives it via Streamlit's official
+`AppTest` harness, which runs the script in-process and excludes the browser
+websocket — so it measures Streamlit's **server-side script-rerun**, the same axis
+as Golit's in-process `Session.update`. (`AppTest` adds a fixed per-call overhead
+that is *constant* in unaffected-node count, so the **slope** — climb vs flat — is
+the load-bearing comparison, not the absolute ms.)
+
+Needs the `bench` dependency group: `uv pip install 'streamlit>=1.40'`. Then
+`make bench-streamlit` → `results/b1_streamlit.csv` + `results/b1_compare_hero.svg`.
+
+The result (100K rows, depth 3, dev laptop):
+
+| unaffected nodes | Golit update p50 | Streamlit rerun p50 |
+| ---: | ---: | ---: |
+| 0   | ~0.79 ms | 1.52 ms |
+| 64  | ~0.79 ms | 2.55 ms |
+| 256 | ~0.80 ms | 5.96 ms |
+
+Golit is **flat**; Streamlit **climbs ~3.9×** across the sweep and the gap widens
+without bound — because even cache *hits* cost Streamlit ~17 µs per node it cannot
+skip (it reruns the whole script), while Golit never schedules those nodes at all.
+That divergence — flat vs climbing — is the pitch, and it survives the fairest
+Streamlit we can write.
+
+## Golit vs Marimo — the reactive-vs-reactive test (the honest one)
+
+Marimo is the rival that **shares Golit's thesis**: it's a reactive notebook, so a
+slider move re-runs only the cells that transitively depend on it — not the whole
+script. Including it isn't optional; it's the comparison that tests Golit's *floor*
+rather than just "reactive beats rerun-everything."
+
+[`run_b1_marimo.py`](run_b1_marimo.py) drives marimo's **own** reactive machinery
+headless — no `app.run()` (that reruns everything, which would be the Streamlit
+story by mistake). On each slider move it calls marimo's real
+`dataflow.transitive_closure` (the descendants of the slider's cell — marimo's dirty
+subgraph, the analog of Golit's Rust `dirty_subgraph`) and runs exactly that set
+through marimo's real `executor.execute_cell`. The notebook itself
+([`apps/marimo_gen.py`](apps/marimo_gen.py)) is the behavioral twin — same
+`data → r0(threshold) → … → chart` chain plus `unaffected` cells on `data` only.
+
+It measures `slider._update(v)` + scheduling + execution — *decide what to run, then
+run it* — the same server-side axis as Golit's `Session.update` and the Streamlit
+`AppTest` number. It excludes the browser websocket **and** marimo's kernel
+messaging/hook overhead (bare executor, `NoopStream`), so this is marimo's *best
+case* — the steelman, just like caching Streamlit.
+
+**Both are flat** — and that's the first thing that matters. Marimo's `exec` count
+stays `depth + 1` across `unaffected` 0 → 256, exactly like Golit's. The core thesis
+(*cost ∝ change*) is confirmed by a **second, independent** reactive engine; only the
+rerun-everything frameworks (Streamlit, Dash) climb. `b1_compare_hero.svg` shows it
+in one picture: two flat lines (Golit, Marimo) and one climbing (Streamlit),
+log-scaled.
+
+The *floor* is the second thing — and this is where the comparison earned its keep.
+
+| depth | raw Polars | Marimo (reactive) | Golit **before** | Golit **after** |
+| ---: | ---: | ---: | ---: | ---: |
+| 1  | 0.07 ms | 0.09 ms | 0.42 ms | **0.09 ms** |
+| 3  | 0.11 ms | 0.13 ms | 0.72 ms | **0.12 ms** |
+| 10 | 0.23 ms | 0.28 ms | 1.86 ms | **0.27 ms** |
+
+When the rival first ran, Golit sat **~5–6× above** Marimo and the raw-Polars floor.
+Profiling `Session.update` (cProfile + an isolated micro-bench + an ablation) put the
+entire gap on one line: `DataFrame.hash_rows()` — the memo path was **content-hashing
+every intermediate frame** (O(rows), ~74% of update time, and on a 62K-row frame a
+single hash cost 92 µs vs 35 µs to just *recompute* the node). For cheap-to-recompute
+nodes, content-hash memoization costs more than the work it guards.
+
+So the memo was rebuilt to be O(1) (see `python/golit/engine.py` +
+`registry.py`): a node's input signature now mixes the **content hash of its scalar
+inputs** (cheap, and still catches a control reverting to a prior value) with the
+**epochs of its upstream nodes** — an upstream that recomputed bumped its epoch, so a
+downstream sees the change without anyone hashing a frame. The wire stays minimal
+independently: a re-rendered view is diffed as a *string* before it's pushed, so
+nothing redundant crosses the transport. That change is the **after** column: Golit
+drops onto the Polars floor, level with Marimo (a hair faster at depth 3), with the
+flat curve and `exec == depth + 1` both intact (85 tests green).
+
+The honest read, then: **reactivity buys the flat curve — the thesis, which both
+engines have — and Golit's floor now matches the other reactive engine's.** The
+reactive-vs-reactive bake-off did exactly what a good benchmark should: it found a
+real 5–6× cost in the engine and drove the fix. Where Golit's case against Marimo
+goes *next* is production — a different axis this in-process micro-bench doesn't
+touch: HTTP fragment transport (177 B/update, no client runtime), multi-worker +
+Redis fan-out, and concurrency (B2) — versus a single-user notebook kernel. Caveat
+kept for fairness: the marimo number is a best case (bare executor, no
+kernel/transport), so "level floor" is the honest claim, not "Golit wins the floor."
+
+## Still to do (the publishable version)
+
+- **Dash** as a behaviorally-identical app on the same rig (the other
+  rerun-everything rival; `run_b1_streamlit.py` is the template). Marimo ✅, the
+  reactive rival, is now in.
+- **B2** — concurrent-user scaling: many simultaneous sessions, p99 vs concurrency,
+  the production proof, and the axis where Golit's server model should pull ahead of
+  a notebook kernel. (This harness is single-client sequential latency.)
+- End-to-end numbers over each rival's *real* transport (Streamlit/Marimo websocket;
+  this comparison is server-compute only); real network RTT; a **standard cloud
+  instance** — everything here is loopback on a dev laptop, suggestive not
+  publishable.

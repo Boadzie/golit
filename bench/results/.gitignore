@@ -1,0 +1,3 @@
+# Transient harness logs (e.g. the uvicorn server log from the HTTP sweep).
+# The reference CSVs and hero SVGs in this directory are committed on purpose.
+*.log
