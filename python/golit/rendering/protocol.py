@@ -6,11 +6,12 @@ serialize to markup. Resolution order (first match wins):
 1. an object implementing ``__golit_render__() -> str`` (the :class:`Renderer` protocol);
 2. a ``str`` (treated as trusted, developer-authored markup) or ``bytes``;
 3. a Lets-Plot spec → static SVG;
-4. anything exposing ``to_svg()`` (other static-SVG sources);
-5. a Polars ``DataFrame`` → an HTML table;
-6. anything exposing ``_repr_html_()`` (pandas, Plotly static, …);
-7. a Matplotlib figure → SVG;
-8. fallback: escaped ``repr`` in a ``<pre>``.
+4. a Plotly/Altair/Bokeh figure → an interactive client-side chart mount;
+5. anything exposing ``to_svg()`` (other static-SVG sources);
+6. a Polars ``DataFrame`` → an HTML table;
+7. anything exposing ``_repr_html_()`` (pandas, …);
+8. a Matplotlib figure → SVG;
+9. fallback: escaped ``repr`` in a ``<pre>``.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from typing import Any, Protocol, runtime_checkable
 import polars as pl
 
 from .charts import is_plot, plot_to_svg
+from .interactive import try_interactive
 
 
 @runtime_checkable
@@ -92,6 +94,9 @@ def render_value(value: Any) -> str:
         return value.decode("utf-8", "replace")
     if is_plot(value):
         return _wrap_svg(plot_to_svg(value))
+    interactive = try_interactive(value)  # Plotly / Altair / Bokeh figures
+    if interactive is not None:
+        return interactive
     to_svg = getattr(value, "to_svg", None)
     if callable(to_svg):
         return _wrap_svg(_to_text(to_svg()))

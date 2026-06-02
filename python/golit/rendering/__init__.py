@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from .html import controls_panel, oob_fragment, page, view_slot
+from .interactive import anychart, try_interactive
 from .protocol import Renderer, render_value
 
 __all__ = [
     "render_value",
     "Renderer",
+    "anychart",
+    "try_interactive",
     "page",
     "view_slot",
     "oob_fragment",

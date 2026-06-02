@@ -27,6 +27,9 @@ dependencies = [
 [project.optional-dependencies]
 # Multi-worker fan-out backend; only needed when GOLIT_REDIS_URL is set.
 redis = ["redis>=5.0"]
+# Interactive JS charts. AnyChart is loaded from CDN (no Python package);
+# Plotly/Altair/Bokeh figures are auto-detected and rendered as client-side mounts.
+charts = ["plotly>=5.20", "altair>=5.0", "bokeh>=3.4"]
 
 [project.scripts]
 golit = "golit.cli:main"

@@ -1,12 +1,16 @@
-"""User-facing grammar of graphics.
+"""User-facing charting API.
 
-Re-exports Lets-Plot's API so apps can write::
+Re-exports Lets-Plot's grammar of graphics (static SVG), plus :func:`anychart` for
+an AnyChart mount, so apps can write::
 
-    from golit.charts import ggplot, aes, geom_bar, ggsize
+    from golit.charts import ggplot, aes, geom_bar, ggsize   # static SVG
+    from golit.charts import anychart                        # interactive JS
 
-Golit renders the returned spec to a static SVG fragment when its view node is dirty.
+Plotly, Altair, and Bokeh figures need no helper — return one from a view and
+Golit renders it to an interactive client-side chart (see rendering/interactive.py).
 """
 
 from __future__ import annotations
 
 from .rendering.charts import *  # noqa: F401, F403
+from .rendering.interactive import anychart  # noqa: F401
