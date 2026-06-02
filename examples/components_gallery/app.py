@@ -13,6 +13,7 @@ from __future__ import annotations
 import golit.ui as ui
 import polars as pl
 from golit import App, button, create_app, multiselect, slider, switch
+from golit import layout as L
 
 app = App(title="Components Gallery")
 
@@ -105,5 +106,17 @@ def _top_region(df: pl.DataFrame) -> str:
     agg = df.group_by("region").agg(pl.col("revenue").sum()).sort("revenue", descending=True)
     return str(agg["region"][0])
 
+
+# Page layout: controls in a sticky sidebar; KPIs on top, a status/usage row, and
+# the detail + activity cards in tabs. Each view keeps its own swap target.
+app.layout = L.Sidebar(
+    L.Controls(),
+    L.Stack(
+        L.View("kpis"),
+        L.Row(L.View("status"), L.View("usage")),
+        L.Tabs({"Detail": L.View("detail"), "Activity": L.View("activity")}, default="Detail"),
+    ),
+    width=4,
+)
 
 application = create_app(app)
