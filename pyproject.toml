@@ -61,10 +61,14 @@ docs = [
 # driven via its AppTest harness (server-side script-rerun, the fair axis vs
 # Golit's in-process Session.update). Marimo is driven through its reactive
 # runtime kernel (set-UI-value -> reschedule only descendant cells, the fair
-# reactive-vs-reactive axis). Not needed to run or use Golit itself.
+# reactive-vs-reactive axis). Dash is a manually-wired reactive DAG (callbacks
+# fire only for the changed Input) — driven by invoking the callback directly,
+# the same server-compute axis; its real cost vs Golit is bytes/update (it ships
+# the full Plotly figure as JSON). Not needed to run or use Golit itself.
 bench = [
     "streamlit>=1.40",
     "marimo>=0.9",
+    "dash>=2.14",
 ]
 
 [tool.maturin]
