@@ -291,17 +291,46 @@ crossover moves but stays in the hundreds.) This advantage is the SVG path's alo
 Golit app uses the interactive Plotly path it ships the same spec and needs the same
 plotly.js, so there's no crossover; you choose the trade per chart.
 
-The qualitative axis the numbers don't show: Golit infers the dependency DAG from
-function signatures; Dash makes you hand-wire every `Input`/`Output`. Same reactive
-result, wired by the framework vs wired by you.
+### Over real HTTP — the full-stack confirmation (`run_b1_dash_http.py`)
+
+The render comparison above is in-process; it excludes transport on both sides. The
+rigorous version keeps transport: each framework serves the **same chart** from its own
+production server on loopback, and one sequential client drives a slider move end-to-end —
+server framing + routing + dispatch + render + serialize + the socket round trip. Golit
+runs under uvicorn (the B1/HTTP harness, extended with a real-chart view); Dash runs under
+**waitress** (a production WSGI server, for parity — not the Werkzeug dev server) and the
+client POSTs the real `/_dash-update-component` callback request. Architecture-matched
+(Golit's Plotly view ships a spec like Dash), plus Golit's SVG path:
+
+| over real HTTP, same chart | e2e p50 | response bytes |
+| --- | ---: | ---: |
+| **Golit (Plotly)** — uvicorn, spec mount | **1.81 ms** | 12.1 KB |
+| **Dash** — waitress, figure JSON | **1.78 ms** | 6.9 KB |
+| **Golit (SVG)** — uvicorn, server SVG | 2.92 ms | 18.4 KB |
+
+This is the clean answer to "is Dash really faster?": **no — matched on architecture, over
+real HTTP, Golit ≈ Dash (1.81 vs 1.78 ms p50).** Folding the real per-update work back in
+(Flask routing + `callback_context` + figure JSON on Dash's side; Litestar + dirty subgraph
++ spec mount on Golit's) lands them together — the ~1.6 ms the direct-call floor omitted is
+what makes them equal, not what makes Dash quick. (p50 is the stable metric; single-client
+loopback p99 is noisy and swung run-to-run, so it isn't load-bearing.) Two honest footnotes:
+Golit's Plotly mount is *heavier on the wire* (12.1 vs 6.9 KB) because it HTML-escapes the
+spec into a data attribute; and Golit (SVG) is the slower-but-self-contained path (server
+render, no client runtime) as before.
+
+The qualitative axis no number shows: Golit infers the dependency DAG from function
+signatures; Dash makes you hand-wire every `Input`/`Output`. Same reactive result, wired by
+the framework vs wired by you.
 
 ```bash
-make bench-dash      # Dash floor + fair render time + bytes + charts (needs the bench group)
+make bench-dash       # Dash floor + fair render time + bytes + charts (needs the bench group)
+make bench-dash-http  # Golit vs Dash over real HTTP (boots uvicorn + waitress)
 # or directly:
-uv run --no-sync python -m bench.run_b1_dash   # -> b1_dash.csv + b1_dash_render.csv + b1_dash_bytes.csv
+uv run --no-sync python -m bench.run_b1_dash       # -> b1_dash.csv + b1_dash_render.csv + b1_dash_bytes.csv
+uv run --no-sync python -m bench.run_b1_dash_http  # -> b1_dash_http.csv (real-transport p50/bytes)
 ```
 
-Needs the `bench` group: `uv pip install 'dash>=2.14'`.
+Needs the `bench` group: `uv pip install 'dash>=2.14' 'waitress>=3.0'`.
 
 ## B2 — concurrency scaling (`bench/http/run_b2.py`)
 
