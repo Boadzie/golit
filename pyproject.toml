@@ -69,6 +69,7 @@ bench = [
     "streamlit>=1.40",
     "marimo>=0.9",
     "dash>=2.14",
+    "waitress>=3.0",
 ]
 
 [tool.maturin]
