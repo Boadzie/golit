@@ -7,11 +7,13 @@ fragments that actually changed. Nodes left out of the dirty subgraph — or who
 inputs are unchanged — are never executed.
 
 A node's input signature mixes the *content hash* of its scalar input values with
-the *epochs* of its upstream nodes (see :meth:`Session._input_signature` and
-:class:`golit.registry.Registry`): an upstream that recomputed bumped its epoch, so
+the *epochs* of its upstream nodes: an upstream that recomputed bumped its epoch, so
 the signature changes, so this node recomputes — all in O(deps), with no O(rows)
-frame hashing. The wire stays minimal independently: a recomputed *view* only goes
-out if its rendered fragment string actually differs from the last one sent.
+frame hashing. The kernel owns that bookkeeping now: :meth:`Session._run` asks
+``graph.check_node`` for each node's ``(kind, needs_recompute, signature)`` in a
+single FFI call, then commits the outcome with ``commit_node``/``skip_node``/
+``commit_input``. The wire stays minimal independently: a recomputed *view* only
+goes out if its rendered fragment string actually differs from the last one sent.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from collections.abc import Callable
 from typing import Any
 
 from .app import App
-from .hashing import combine, hash_value, signature_hash
+from .hashing import hash_value
 from .nodes import NodeKind
 from .registry import Registry
 
@@ -51,7 +53,11 @@ class Session:
         widget = self.app.widget_for(input_id)
         if widget is None:
             raise KeyError(f"unknown input {input_id!r}")
-        self.registry.set(input_id, widget.coerce(raw_value))
+        value = widget.coerce(raw_value)
+        self.registry.set(input_id, value)
+        # Push the new content hash to the kernel so downstream signatures shift
+        # (or, on a revert to a prior value, stay put for a clean memo hit).
+        self.graph.commit_input(input_id, hash_value(value))
         return self._run(self.graph.dirty_subgraph([input_id]))
 
     def refresh(self, node_id: str) -> dict[str, str]:
@@ -76,19 +82,23 @@ class Session:
         force_ids = force_ids or set()
         changed: dict[str, str] = {}
         for node_id in schedule:
-            kind = self.graph.kind_of(node_id)
+            # One FFI call returns the node's kind, whether its folded input
+            # signature changed, and that signature — the kernel did the dep walk.
+            kind, needs, sig = self.graph.check_node(node_id)
             if kind == NodeKind.INPUT.value:
+                # First sighting: seed the default value and its hash so downstream
+                # signatures have something to mix in. Later edits arrive via
+                # `update` → `commit_input`.
                 if not self.registry.has(node_id):
-                    self.registry.set(node_id, self.app.input_default(node_id))
-                self.graph.set_clean(node_id, signature_hash([self.registry.get(node_id)]))
+                    value = self.app.input_default(node_id)
+                    self.registry.set(node_id, value)
+                    self.graph.commit_input(node_id, hash_value(value))
                 continue
 
-            sig = self._input_signature(node_id)
-            if force or node_id in force_ids or self.graph.needs_recompute(node_id, sig):
-                self.graph.set_computing(node_id)
+            if force or node_id in force_ids or needs:
                 value = self._execute(node_id)
                 self.registry.set(node_id, value)
-                self.graph.set_clean(node_id, sig)
+                self.graph.commit_node(node_id, sig)  # marks clean, bumps epoch
                 if kind == NodeKind.VIEW.value:
                     fragment = self._render(node_id, value)
                     # The body re-ran, but only push it if the bytes on the wire
@@ -97,21 +107,10 @@ class Session:
                         self.registry.set_fragment(node_id, fragment)
                         changed[node_id] = fragment
             else:
-                # Memo hit: every input's signature is unchanged, reuse stored value.
-                self.graph.set_clean(node_id, sig)
+                # Memo hit: signature unchanged, reuse the stored value without
+                # bumping the epoch so nothing downstream sees a phantom change.
+                self.graph.skip_node(node_id, sig)
         return changed
-
-    def _input_signature(self, node_id: str) -> int:
-        """Signature over a node's dependencies: scalar inputs by content hash
-        (catches a control reverting to a prior value), upstream nodes by epoch
-        (O(1); an upstream that recomputed bumped its epoch)."""
-        parts: list[int] = []
-        for dep in self.graph.deps_of(node_id):
-            if self.graph.kind_of(dep) == NodeKind.INPUT.value:
-                parts.append(hash_value(self.registry.get(dep)))
-            else:
-                parts.append(self.registry.epoch(dep))
-        return combine(parts)
 
     def _execute(self, node_id: str) -> Any:
         ndef = self.app.node_def(node_id)
