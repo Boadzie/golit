@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import secrets
 
+from anyio import to_thread
 from litestar import Request, WebSocket, get, post, websocket
 from litestar.datastructures import Cookie
 from litestar.enums import MediaType
@@ -57,25 +58,33 @@ def _layout(session: Session) -> str:
 
 @get("/", media_type=MediaType.HTML)
 async def index(request: Request) -> Response:
-    sid, session, created = _manager(request).get_or_create(request.cookies.get(COOKIE))
-    if created:
-        session.initial_render()
+    manager = _manager(request)
+    cookie_sid = request.cookies.get(COOKIE)
+    # Resolve/build/render off the event loop so a cold render doesn't stall the
+    # worker; the per-session lock keeps concurrent same-session requests ordered.
+    async with manager.lock_for(cookie_sid):
+        sid, session, created = await to_thread.run_sync(manager.prepare, cookie_sid)
     return _html(page(session.app.title, _layout(session)), sid, created)
 
 
 @post("/node/{input_id:str}", media_type=MediaType.HTML, status_code=200)
 async def update_node(input_id: FromPath[str], request: Request) -> Response:
-    sid, session, created = _manager(request).get_or_create(request.cookies.get(COOKIE))
-    if created:
-        session.initial_render()
+    manager = _manager(request)
+    cookie_sid = request.cookies.get(COOKIE)
 
     form = await request.form()
     raw = form.get("value")
     if raw is not None and hasattr(raw, "read"):
         raw = await raw.read()  # multipart UploadFile -> bytes
 
+    # The reactive update is CPU-bound (Polars + render): run it in a thread so it
+    # doesn't block the event loop, under the session lock so the in-place kernel
+    # graph isn't mutated by two requests at once.
     try:
-        fragments = session.update(input_id, raw)
+        async with manager.lock_for(cookie_sid):
+            sid, _session, created, fragments = await to_thread.run_sync(
+                manager.prepare_and_update, cookie_sid, input_id, raw
+            )
     except KeyError as exc:
         raise NotFoundException(f"no such input: {input_id!r}") from exc
 
@@ -88,10 +97,12 @@ async def events(request: Request) -> ServerSentEvent:
     """The server→client push channel: one long-lived SSE stream per session,
     emitting a named ``node:<id>`` event per dirty view fragment."""
     manager = _manager(request)
-    sid = request.cookies.get(COOKIE)
-    if manager.get(sid) is None:
-        sid, session, _ = manager.get_or_create(sid)
-        session.initial_render()
+    cookie_sid = request.cookies.get(COOKIE)
+    sid = cookie_sid
+    if manager.get(cookie_sid) is None:
+        # Reconstruct the session on this worker so SSE dispatch can find it.
+        async with manager.lock_for(cookie_sid):
+            sid, _session, _ = await to_thread.run_sync(manager.prepare, cookie_sid)
     assert sid is not None
     sse: SSEManager = request.app.state.sse
     return ServerSentEvent(sse.stream(sid))
