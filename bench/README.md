@@ -231,19 +231,32 @@ is the same Polars work as everyone else's (100K rows):
 | 3  | 0.12 ms | 0.13 ms | 0.11 ms |
 | 10 | 0.27 ms | 0.28 ms | 0.24 ms |
 
-So the floor is a three-way tie dominated by the identical Polars chain — but read the
-micro-ordering carefully, because **Dash is not actually faster than Golit.** The Dash
-number is measured by calling the callback *function* directly, which bypasses every
-part of Dash's per-update work: it is **raw Polars, with no Dash engine in the loop.**
-Golit's number is `Session.update` with its whole reactive engine — the PyO3
-`dirty_subgraph` call, the epoch-memo signature, registry, and the fragment render +
-string-diff. So the ~7 µs gap (120 vs 113 µs at depth 3) is *Golit's entire engine
-overhead above bare Polars*, which is about as small as it gets. Measure the work Dash's
-`chain()` omits and the picture flips: building the `go.Figure` (~1.02 ms) and
-serializing it to the 6.8 KB JSON body (~0.32 ms) make a **real** Dash update ~**1.46 ms**,
-roughly **12× Golit's 0.12 ms** — before Flask routing, input deserialization, or
-`callback_context`. The floor table is a fair "same Polars work, all three reactive"
-read; it is not a claim that Dash is quicker.
+This table is a fair read of **one** thing only — the reactive *scheduling/compute* is a
+tie, dominated by the identical Polars chain — and **nothing more.** It is *not* a speed
+ranking. Each cell measures only the bare chain: for Dash that means calling the callback
+*function* directly (no figure, no JSON, no Flask), and for Golit it means `Session.update`
+rendering a **text** fragment (`rows=N`), not a chart. So neither side is doing real chart
+work here, and the few-µs ordering is noise, not a result.
+
+To actually compare update latency you have to make both render the **same real chart** —
+the fair test (`run_b1_dash.py` → `b1_dash_render.csv`, `b1_dash_render.svg`). Both pay the
+same shared Polars compute (~0.76 ms incl. the group-by); then each does its real render:
+
+| per-update server work (same 16-bar chart) | compute | render | serialize | **total** |
+| --- | ---: | ---: | ---: | ---: |
+| **Golit** (renders SVG server-side) | 0.76 ms | 1.64 ms | — | **~2.40 ms** |
+| **Dash** (builds figure spec, client draws) | 0.76 ms | 0.27 ms | 0.32 ms | **~1.36 ms** |
+
+Read honestly: **on the server, Dash is faster (~1.36 ms vs ~2.40 ms)** — because Golit
+*renders the chart itself* (Lets-Plot → SVG, ~1.64 ms) while Dash just builds a compact
+figure spec and serializes it, leaving the actual drawing to plotly.js on the client. This
+corrects an earlier overstatement in this repo that compared Dash's real figure work to
+Golit's *text-fragment* update and wrongly concluded "Golit ~12× faster"; with both
+rendering a real chart, the server-side latency goes the other way. Golit's heavier server
+render is not a bug — it is the **same trade** the wire numbers show below: Golit does more
+on the server so the client gets a finished, self-contained chart and downloads no charting
+runtime. (Dash's ~1.36 ms also still excludes Flask routing, input deserialization, and the
+client's own render + the one-time runtime download.)
 
 The **real** Golit-vs-Dash separation is the wire — and here the benchmark refuted the
 pitch I started with, so this is reported straight. Dash's callback returns a Plotly
@@ -273,9 +286,9 @@ function signatures; Dash makes you hand-wire every `Input`/`Output`. Same react
 result, wired by the framework vs wired by you.
 
 ```bash
-make bench-dash      # Dash floor + bytes + charts (needs the bench group)
+make bench-dash      # Dash floor + fair render time + bytes + charts (needs the bench group)
 # or directly:
-uv run --no-sync python -m bench.run_b1_dash   # -> results/b1_dash.csv + b1_dash_bytes.csv
+uv run --no-sync python -m bench.run_b1_dash   # -> b1_dash.csv + b1_dash_render.csv + b1_dash_bytes.csv
 ```
 
 Needs the `bench` group: `uv pip install 'dash>=2.14'`.
