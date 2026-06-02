@@ -1,0 +1,149 @@
+site_name: Golit
+site_description: A high-performance reactive DAG framework for Python — Streamlit, until it goes to production.
+site_author: Daniel Boadzie
+site_url: https://golit.dev/
+repo_url: https://github.com/boadzie/golit
+repo_name: boadzie/golit
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; Golit — Apache-2.0
+
+theme:
+  name: material
+  language: en
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/graph-outline
+  favicon: assets/favicon.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tilde
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [python]
+          options:
+            docstring_style: sphinx
+            show_root_heading: true
+            show_root_full_path: false
+            show_if_no_docstring: true
+            show_source: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            members_order: source
+            filters: ["!^_"]
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+
+nav:
+  - Golit: index.md
+  - Install: install.md
+  - Tutorial — User Guide:
+      - tutorial/index.md
+      - Your first app: tutorial/first-app.md
+      - The reactive graph: tutorial/the-graph.md
+      - Inputs & widgets: tutorial/inputs.md
+      - Views & rendering: tutorial/views.md
+      - Charts: tutorial/charts.md
+      - UI components: tutorial/ui-components.md
+      - Page layout: tutorial/layout.md
+      - SQL nodes: tutorial/sql.md
+      - Running your app: tutorial/running.md
+  - Concepts:
+      - concepts/index.md
+      - The reactive model: concepts/reactivity.md
+      - Architecture (the four tiers): concepts/architecture.md
+      - How a change flows: concepts/data-flow.md
+  - Advanced:
+      - advanced/index.md
+      - Server-push updates (SSE): advanced/server-push.md
+      - Custom rendering: advanced/custom-rendering.md
+      - Sessions & state: advanced/sessions.md
+      - Deployment & scaling: advanced/deployment.md
+  - Reference:
+      - reference/index.md
+      - App & nodes: reference/app.md
+      - Widgets: reference/widgets.md
+      - Charts: reference/charts.md
+      - UI components: reference/ui.md
+      - Layout: reference/layout.md
+      - SQL / data: reference/data.md
+      - Server: reference/server.md
+  - About:
+      - Golit vs Streamlit & Dash: about/comparison.md
+      - Benchmarks: about/benchmarks.md
+      - Contributing: about/contributing.md
+      - FAQ: about/faq.md
