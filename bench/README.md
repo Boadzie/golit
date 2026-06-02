@@ -231,8 +231,21 @@ is the same Polars work as everyone else's (100K rows):
 | 3  | 0.12 ms | 0.13 ms | 0.11 ms |
 | 10 | 0.27 ms | 0.28 ms | 0.24 ms |
 
-So the floor is a three-way tie, and the unaffected slope is flat for all three. The
-**real** Golit-vs-Dash separation is the wire — and here the benchmark refuted the
+So the floor is a three-way tie dominated by the identical Polars chain — but read the
+micro-ordering carefully, because **Dash is not actually faster than Golit.** The Dash
+number is measured by calling the callback *function* directly, which bypasses every
+part of Dash's per-update work: it is **raw Polars, with no Dash engine in the loop.**
+Golit's number is `Session.update` with its whole reactive engine — the PyO3
+`dirty_subgraph` call, the epoch-memo signature, registry, and the fragment render +
+string-diff. So the ~7 µs gap (120 vs 113 µs at depth 3) is *Golit's entire engine
+overhead above bare Polars*, which is about as small as it gets. Measure the work Dash's
+`chain()` omits and the picture flips: building the `go.Figure` (~1.02 ms) and
+serializing it to the 6.8 KB JSON body (~0.32 ms) make a **real** Dash update ~**1.46 ms**,
+roughly **12× Golit's 0.12 ms** — before Flask routing, input deserialization, or
+`callback_context`. The floor table is a fair "same Polars work, all three reactive"
+read; it is not a claim that Dash is quicker.
+
+The **real** Golit-vs-Dash separation is the wire — and here the benchmark refuted the
 pitch I started with, so this is reported straight. Dash's callback returns a Plotly
 *figure*, serialized to JSON each interaction and drawn client-side by plotly.js; Golit
 renders the *same* chart to a static SVG server-side and ships no charting runtime. For
