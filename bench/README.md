@@ -239,35 +239,43 @@ rendering a **text** fragment (`rows=N`), not a chart. So neither side is doing 
 work here, and the few-µs ordering is noise, not a result.
 
 To actually compare update latency you have to make both render the **same real chart** —
-the fair test (`run_b1_dash.py` → `b1_dash_render.csv`, `b1_dash_render.svg`). Both pay the
-same shared Polars compute (~0.76 ms incl. the group-by); then each does its real render:
+the fair test (`run_b1_dash.py` → `b1_dash_render.csv`, `b1_dash_render.svg`). And the
+comparison has to be **architecture-matched**, because Dash is a *Plotly* framework with one
+rendering path (ship a figure spec, the client draws it), while Golit has **two**: its
+*interactive* path ships a Plotly spec exactly like Dash (`try_interactive` → a plotly mount,
+the same `figure.to_json()`), and its *static* path renders the chart to an SVG server-side.
+All three pay the same shared Polars compute (~0.77 ms incl. the group-by); then:
 
 | per-update server work (same 16-bar chart) | compute | render | serialize | **total** |
 | --- | ---: | ---: | ---: | ---: |
-| **Golit** (renders SVG server-side) | 0.76 ms | 1.64 ms | — | **~2.40 ms** |
-| **Dash** (builds figure spec, client draws) | 0.76 ms | 0.27 ms | 0.32 ms | **~1.36 ms** |
+| **Golit (Plotly)** — ship figure spec | 0.77 ms | 0.24 ms | 0.34 ms | **~1.35 ms** |
+| **Dash** — ship figure spec | 0.77 ms | 0.24 ms | 0.31 ms | **~1.32 ms** |
+| **Golit (SVG)** — render server-side | 0.77 ms | 1.60 ms | — | **~2.37 ms** |
 
-Read honestly: **on the server, Dash is faster (~1.36 ms vs ~2.40 ms)** — because Golit
-*renders the chart itself* (Lets-Plot → SVG, ~1.64 ms) while Dash just builds a compact
-figure spec and serializes it, leaving the actual drawing to plotly.js on the client. This
-corrects an earlier overstatement in this repo that compared Dash's real figure work to
-Golit's *text-fragment* update and wrongly concluded "Golit ~12× faster"; with both
-rendering a real chart, the server-side latency goes the other way. Golit's heavier server
-render is not a bug — it is the **same trade** the wire numbers show below: Golit does more
-on the server so the client gets a finished, self-contained chart and downloads no charting
-runtime. (Dash's ~1.36 ms also still excludes Flask routing, input deserialization, and the
-client's own render + the one-time runtime download.)
+Read honestly: **matched on architecture, Golit (Plotly) ≈ Dash (~1.35 vs ~1.32 ms)** —
+within noise. The framework engine is *not* the cost; if you draw the same Plotly chart,
+the two are the same speed (and the same bytes — both ship the spec and need plotly.js).
+What made Golit look slower in the two-row version of this table was comparing Golit's
+*static SVG* path to Dash's Plotly path — two different architectures. Golit's SVG path *is*
+slower on the server (~2.37 ms), because it runs Lets-Plot to a finished SVG instead of
+shipping a spec — but that is a **different, optional** rendering choice, the one that buys a
+self-contained chart and **zero** client charting runtime (the trade the wire numbers below
+show in bytes). Dash has no equivalent; it must ship the spec. (This also retracts an even
+earlier overstatement here — "Golit ~12× faster" — which had compared Dash's real figure to
+Golit's *text-fragment* update; neither direction of "X is faster" survives a fair test, the
+engines are even.)
 
-The **real** Golit-vs-Dash separation is the wire — and here the benchmark refuted the
-pitch I started with, so this is reported straight. Dash's callback returns a Plotly
-*figure*, serialized to JSON each interaction and drawn client-side by plotly.js; Golit
-renders the *same* chart to a static SVG server-side and ships no charting runtime. For
-the same 16-bar chart (uncompressed):
+Where Golit and Dash genuinely diverge is the wire — but, per the architecture point
+above, **only on Golit's static-SVG path** (Golit-Plotly behaves like Dash here too). That
+path is also where the benchmark refuted the pitch I started with, so it's reported
+straight. Golit-SVG renders the chart server-side and ships no charting runtime; Dash
+serializes a Plotly figure to JSON and needs plotly.js to draw it. For the same 16-bar
+chart (uncompressed):
 
 | | per-update payload | one-time client JS |
 | --- | ---: | ---: |
-| **Golit** (server SVG) | 18.7 KB | ~50 KB (htmx only; **0** charting) |
-| **Dash** (figure JSON) | **6.8 KB** | ~5.9 MB (plotly.js 4.84 MB + React + dash-renderer) |
+| **Golit (SVG path)** | 18.7 KB | ~50 KB (htmx only; **0** charting) |
+| **Dash** / **Golit (Plotly)** | **6.8 KB** | ~5.9 MB (plotly.js 4.84 MB + React + dash-renderer) |
 
 Read that honestly: **per update, Dash is lighter** (6.8 KB < Golit's 18.7 KB SVG) —
 "Golit wins bytes/update" is *false*, and the often-quoted Golit "177 B/update" is a
@@ -279,7 +287,9 @@ interactions** (`b1_dash_crossover.svg`) — Golit ships less *in total* until a
 exceeds several hundred slider moves, and never any charting runtime (the SVG renders
 without JS). Dash's trade is the mirror image: a heavy one-time runtime, then light
 diffs. (Bytes are uncompressed; gzip shrinks all four numbers, plotly.js most — the
-crossover moves but stays in the hundreds.)
+crossover moves but stays in the hundreds.) This advantage is the SVG path's alone — if a
+Golit app uses the interactive Plotly path it ships the same spec and needs the same
+plotly.js, so there's no crossover; you choose the trade per chart.
 
 The qualitative axis the numbers don't show: Golit infers the dependency DAG from
 function signatures; Dash makes you hand-wire every `Input`/`Output`. Same reactive
