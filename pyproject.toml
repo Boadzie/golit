@@ -24,6 +24,10 @@ dependencies = [
     "uvicorn>=0.30",
 ]
 
+[project.optional-dependencies]
+# Multi-worker fan-out backend; only needed when GOLIT_REDIS_URL is set.
+redis = ["redis>=5.0"]
+
 [project.scripts]
 golit = "golit.cli:main"
 
