@@ -1,6 +1,6 @@
 PYTHON_VERSION := 3.11
 
-.PHONY: dev build test test-rust test-py lint run bench bench-quick bench-http bench-b2 bench-streamlit bench-marimo docs docs-serve clean
+.PHONY: dev build test test-rust test-py lint run bench bench-quick bench-http bench-b2 bench-streamlit bench-marimo bench-dash docs docs-serve clean
 
 ## Create the uv venv, install deps, and build the Rust extension (editable).
 dev:
@@ -32,12 +32,13 @@ lint:
 run:
 	uv run --no-sync python -m golit run examples/sales_explorer/app.py
 
-## Run the full B1 benchmark (in-process + HTTP + Streamlit + Marimo rivals) and charts.
+## Run the full B1 benchmark (in-process + HTTP + Streamlit/Marimo/Dash rivals) and charts.
 bench:
 	uv run --no-sync python -m bench.run_b1
 	uv run --no-sync python -m bench.http.run_b1_http
 	uv run --no-sync python -m bench.run_b1_streamlit
 	uv run --no-sync python -m bench.run_b1_marimo
+	uv run --no-sync python -m bench.run_b1_dash
 	uv run --no-sync python -m bench.plot
 
 ## Cross-framework B1 only: Streamlit (AppTest) rival vs Golit. Needs the bench group.
@@ -48,6 +49,11 @@ bench-streamlit:
 ## Cross-framework B1 only: Marimo (reactive) rival vs Golit. Needs the bench group.
 bench-marimo:
 	uv run --no-sync python -m bench.run_b1_marimo
+	uv run --no-sync python -m bench.plot
+
+## Cross-framework B1 only: Dash (manual reactive DAG) rival vs Golit. Needs the bench group.
+bench-dash:
+	uv run --no-sync python -m bench.run_b1_dash
 	uv run --no-sync python -m bench.plot
 
 ## Fast in-process B1 sweep (fewer points/iterations) for a quick signal.

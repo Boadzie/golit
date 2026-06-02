@@ -1,0 +1,3 @@
+framework,transport,per_update_bytes,client_runtime_bytes,note
+Golit,server-rendered SVG fragment,18731,50000,htmx only; zero charting runtime
+Dash,Plotly figure JSON,6831,5865556,plotly.js + React + dash-renderer (uncompressed)
