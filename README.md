@@ -1,10 +1,6 @@
 # Golit
 
-> **Streamlit, until it goes to production.**
-
-A high-performance **Reactive Directed Acyclic Graph (DAG)** framework for building reactive data apps in Python.
-Golit maps your data dependencies, then on every interaction recomputes only the
-nodes that changed — not your whole script.
+> A high-performance **Reactive Directed Acyclic Graph (DAG)** framework for building reactive data apps in Python. Golit maps your data dependencies, then on every interaction recomputes only the nodes that changed — not your whole script.
 
 - **Rust reactive kernel** (PyO3) — dirty tracking, topological scheduling, propagation
 - **Polars** data, held Python-side; only node ids/hashes cross the FFI boundary
@@ -118,6 +114,27 @@ Components compose through the renderer, so any argument can be a DataFrame, a
 chart figure, another component, or trusted HTML. See
 [`examples/components_gallery/app.py`](examples/components_gallery/app.py).
 
+## Page layout
+
+By default views stack under one controls panel. `golit.layout` arranges the
+reactive view fragments into a sidebar, rows, tabs, etc. — the layout is static
+scaffold, so each view keeps its `id` and still swaps in place on POST/SSE.
+
+```python
+from golit import layout as L
+
+app.layout = L.Sidebar(
+    L.Controls(),                                  # all inputs, in the sidebar
+    L.Stack(
+        L.Row(L.View("kpi"), L.View("status")),
+        L.Tabs({"Chart": L.View("chart"), "Data": L.View("table")}),
+    ),
+)
+```
+
+References are validated at build time: every `View`/`Control` must resolve to a
+real view/input and be placed at most once.
+
 ## Deploying & scaling
 
 A single process needs nothing extra. To scale horizontally, set `GOLIT_REDIS_URL`
@@ -146,11 +163,11 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**13** cargo + **59** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**13** cargo + **69** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts), the
-`golit.ui` component library, Litestar server (POST + SSE), Redis pub/sub fan-out,
-multi-worker deployment, and the examples. **Deferred:** the benchmark harness and
-rival apps, and the wider design suite in `golit_pages/`.
+`golit.ui` component library, page layout, Litestar server (POST + SSE), Redis
+pub/sub fan-out, multi-worker deployment, and the examples. **Deferred:** the
+benchmark harness and rival apps, and the wider design suite in `golit_pages/`.
 
 ## Development
 
