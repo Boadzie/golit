@@ -9,6 +9,7 @@ from golit._golit import kernel_version
 
 from . import layout, ui
 from .app import App
+from .data import sql
 from .engine import Session
 from .nodes import NodeKind
 from .server import create_app
@@ -50,6 +51,7 @@ __all__ = [
     "App",
     "Session",
     "create_app",
+    "sql",
     "NodeKind",
     "Widget",
     "Slider",

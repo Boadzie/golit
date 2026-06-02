@@ -22,6 +22,7 @@ from typing import Any, Protocol, runtime_checkable
 
 import polars as pl
 
+from ..data import is_duckdb_relation, relation_to_polars
 from .charts import is_plot, plot_to_svg
 from .interactive import try_interactive
 
@@ -102,6 +103,8 @@ def render_value(value: Any) -> str:
         return _wrap_svg(_to_text(to_svg()))
     if isinstance(value, pl.DataFrame):
         return _dataframe_table(value)
+    if is_duckdb_relation(value):
+        return _dataframe_table(relation_to_polars(value))
     repr_html = getattr(value, "_repr_html_", None)
     if callable(repr_html):
         return _to_text(repr_html())

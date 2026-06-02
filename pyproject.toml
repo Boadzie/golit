@@ -31,6 +31,9 @@ redis = ["redis>=5.0"]
 # Plotly/Altair/Bokeh figures are auto-detected and rendered as client-side mounts.
 # plotly>=5.24 ships narwhals support, so plotly.express takes Polars frames directly.
 charts = ["plotly>=5.24", "altair>=5.0", "bokeh>=3.4"]
+# In-process SQL over Polars frames via golit.sql(); only needed for SQL nodes.
+# pyarrow backs the DuckDB <-> Polars exchange.
+sql = ["duckdb>=1.0", "pyarrow>=14.0"]
 
 [project.scripts]
 golit = "golit.cli:main"

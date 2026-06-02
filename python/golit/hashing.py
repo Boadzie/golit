@@ -15,6 +15,8 @@ from typing import Any
 
 import polars as pl
 
+from .data import is_duckdb_relation, relation_to_polars
+
 _U64 = (1 << 64) - 1
 _FNV_OFFSET = 1469598103934665603
 _FNV_PRIME = 1099511628211
@@ -37,6 +39,8 @@ def hash_value(value: Any) -> int:
         return _hash_dataframe(value)
     if isinstance(value, pl.Series):
         return _hash_series(value)
+    if is_duckdb_relation(value):
+        return _hash_dataframe(relation_to_polars(value))
     if isinstance(value, (bytes, bytearray)):
         return hash(bytes(value)) & _U64
     if hasattr(value, "getvalue"):  # BytesIO and friends — hash the buffer
