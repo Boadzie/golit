@@ -267,6 +267,39 @@ def build_render_chart(render_rows: list[dict]) -> object:
     )
 
 
+def build_http_compare_chart(rows_csv: list[dict]) -> object:
+    """Golit vs Dash over **real HTTP** — end-to-end update p50 for the same chart.
+
+    The full-stack number: server framing + routing + dispatch + render + serialize +
+    the loopback round trip, one sequential client. Architecture-matched, **Golit
+    (Plotly) ≈ Dash** — folding Flask/JSON back in (the work the in-process floor
+    skipped) lands them together, so the framework/transport is not the differentiator.
+    **Golit (SVG)** renders server-side: a heavier per-update number, the price of a
+    self-contained chart with zero client runtime (the trade the crossover shows in
+    bytes). p50 is the stable metric here; single-client loopback p99 is noisy.
+    """
+    order = ["Golit (Plotly)", "Dash", "Golit (SVG)"]
+    rows_sorted = sorted(rows_csv, key=lambda r: order.index(r["framework"])
+                         if r["framework"] in order else len(order))
+    x = [r["framework"] for r in rows_sorted]
+    y = [float(r["p50_us"]) / 1000.0 for r in rows_sorted]
+    data = {"framework": x, "p50_ms": y, "fill": x}
+    return (
+        ggplot(data, aes("framework", "p50_ms", fill="fill"))
+        + geom_bar(stat="identity")
+        + labs(
+            title="Golit vs Dash over real HTTP — end-to-end update p50 (100K rows, depth 3)",
+            subtitle="Same chart, real loopback POST. Architecture-matched (both ship a "
+            "Plotly spec), Golit ≈ Dash — transport isn't the differentiator. Golit (SVG) "
+            "renders server-side: heavier, but zero client charting runtime.",
+            x="",
+            y="End-to-end update p50 (ms)",
+            fill="",
+        )
+        + ggsize(760, 470)
+    )
+
+
 def build_b2_saturation_chart(rows_csv: list[dict]) -> object:
     """B2 single-instance load curve: end-to-end p99 vs achieved throughput.
 
@@ -364,6 +397,8 @@ def main() -> None:
             "python -m bench.run_b1_dash")
     _render(build_render_chart, "b1_dash_render.csv", "b1_dash_render.svg",
             "python -m bench.run_b1_dash")
+    _render(build_http_compare_chart, "b1_dash_http.csv", "b1_dash_http.svg",
+            "python -m bench.run_b1_dash_http")
 
     golit_path = os.path.join(RESULTS_DIR, "b1.csv")
     st_path = os.path.join(RESULTS_DIR, "b1_streamlit.csv")
