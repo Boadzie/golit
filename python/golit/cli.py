@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,9 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("path", help="Path to the app module (e.g. examples/sales_explorer/app.py)")
     run.add_argument("--host", default="127.0.0.1")
     run.add_argument("--port", type=int, default=8000)
+    run.add_argument(
+        "--workers", type=int, default=1, help="Worker processes (needs sticky sessions + Redis)"
+    )
 
     args = parser.parse_args(argv)
     if args.command != "run":
@@ -54,8 +58,30 @@ def main(argv: list[str] | None = None) -> int:
 
     import uvicorn
 
-    application = _load_application(Path(args.path).resolve())
+    path = Path(args.path).resolve()
     print(f"golit: serving {args.path} at http://{args.host}:{args.port}")
+    if args.workers > 1:
+        # uvicorn workers share one socket with no session affinity, and session
+        # state is worker-local — so a returning client can land on a worker that
+        # lacks its state. Production HA wants N single-worker instances behind a
+        # sticky load balancer + Redis; see DEPLOYMENT.md.
+        print(
+            "golit: warning — --workers > 1 has no session affinity; a client can "
+            "hit a worker without its session. For production use a sticky load "
+            "balancer over single-worker instances + GOLIT_REDIS_URL. See DEPLOYMENT.md.",
+            file=sys.stderr,
+        )
+        # uvicorn multiprocess needs an import string; workers rebuild from this path.
+        os.environ["GOLIT_APP_PATH"] = str(path)
+        uvicorn.run(
+            "golit._loader:application",
+            host=args.host,
+            port=args.port,
+            workers=args.workers,
+        )
+        return 0
+
+    application = _load_application(path)
     uvicorn.run(application, host=args.host, port=args.port)
     return 0
 
