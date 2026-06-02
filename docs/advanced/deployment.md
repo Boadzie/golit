@@ -2,11 +2,11 @@
 
 Golit runs as a single process out of the box. This page covers going wider — multiple workers and hosts — with the SSE push channel intact.
 
-It all follows from one fact established in [Sessions & state](sessions.md): **session state is worker-local**. So horizontal scale is two pieces, and you need both.
+It all follows from one fact established in [Sessions & state](sessions.md): **session state is worker-local**. So horizontal scale is two pieces.
 
 | Piece | Mechanism | Without it |
 | --- | --- | --- |
-| Stick a client to one worker | Load balancer hashing the `golit_session` cookie | A returning client hits a worker with no session → re-rendered from defaults |
+| Keep a client on one worker (recommended) | Load balancer hashing the `golit_session` cookie | A re-routed client reconstructs from Redis-stored inputs (a cold recompute) — or, with no session store, re-renders from defaults |
 | Reach every worker on invalidation | `GOLIT_REDIS_URL` → `RedisPubSub` | SSE pushes only reach clients on the publishing worker |
 
 ## Single node (the default)
@@ -19,7 +19,7 @@ One process, in-memory fan-out (`InMemoryPubSub`). Nothing else to configure. Th
 
 ## Turning on Redis
 
-Set one environment variable; `create_app` selects `RedisPubSub` automatically (it's an optional dependency — install with the `redis` extra):
+Set one environment variable; `create_app` selects **both** Redis backends automatically — `RedisPubSub` for invalidation fan-out and `RedisSessionStore` for durable input state (it's an optional dependency — install with the `redis` extra):
 
 ```bash
 pip install "golit[redis]"
@@ -27,16 +27,20 @@ export GOLIT_REDIS_URL=redis://localhost:6379
 golit run examples/sales_explorer/app.py
 ```
 
-Prefer to be explicit in code? Pass it directly:
+Prefer to be explicit in code? Pass them directly:
 
 ```python
 from golit import create_app
-from golit.server import RedisPubSub
+from golit.server import RedisPubSub, RedisSessionStore
 
-application = create_app(app, pubsub=RedisPubSub("redis://redis:6379"))
+application = create_app(
+    app,
+    pubsub=RedisPubSub("redis://redis:6379"),
+    session_store=RedisSessionStore("redis://redis:6379"),
+)
 ```
 
-Redis here is **only** for invalidation fan-out — small JSON messages. It never holds session state or DataFrames.
+Redis never holds **DataFrames**: pub/sub carries small JSON, and the session store holds only each session's *input* map (`{input_id: value}`). The derived frames stay worker-local.
 
 ## Horizontal scale: N instances behind a sticky load balancer
 
@@ -82,8 +86,8 @@ SSE over HTTP/1.1 hits the browser's ~6-connections-per-host cap. In production,
 
 ## Operational notes
 
-- **Worker restart drops that worker's sessions.** Clients reconnect and re-render on the next `GET /` — there's no persistence of in-flight session state, by design. Keep `@app.source` functions cheap and idempotent.
-- **Redis is for fan-out only**, not session storage. It carries small JSON (`node_id`, `session`); it never holds DataFrames.
+- **Worker restart loses that worker's warm caches, not the session.** Without a session store, clients re-render from defaults on the next `GET /`. With `RedisSessionStore`, the input state is durable and the session reconstructs (inputs + a local recompute) on the next request to *any* worker. Keep `@app.source` functions cheap and idempotent — the initial render can run again.
+- **Redis never holds DataFrames.** Pub/sub carries small JSON (`node_id`, `session`); the session store holds only each session's input map. Derived frames stay worker-local.
 - **Scaling Redis:** a single instance handles a large fan-out fine. Pub/sub is at-most-once and not persisted — acceptable here, because an invalidation just asks a worker to recompute current state, which it can always redo on the next interaction.
 - **Sizing:** memory is dominated by live session values (Polars frames × active sessions). Scale replicas on memory, fronted by the sticky balancer.
 
