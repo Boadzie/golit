@@ -12,8 +12,9 @@ from litestar import Litestar
 from litestar.datastructures import State
 
 from ..app import App
+from .chat import ChatHub
 from .pubsub import InMemoryPubSub, PubSub
-from .routes import events, index, update_node
+from .routes import chat_ws, events, index, update_node
 from .session import SessionManager
 from .sse import SSEManager
 
@@ -67,9 +68,10 @@ def create_app(
     if pubsub is None:
         pubsub = pubsub_from_env()
     sse = SSEManager(sessions, pubsub)
+    chat = ChatHub(app)
     return Litestar(
-        route_handlers=[index, update_node, events],
-        state=State({"sessions": sessions, "pubsub": pubsub, "sse": sse}),
+        route_handlers=[index, update_node, events, chat_ws],
+        state=State({"sessions": sessions, "pubsub": pubsub, "sse": sse, "chat": chat}),
         on_startup=[_start_sse, *(on_startup or [])],
         on_shutdown=[_stop_sse, *(on_shutdown or [])],
     )

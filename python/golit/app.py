@@ -25,6 +25,7 @@ class App:
         self._defs: dict[str, NodeDef] = {}
         self._order: list[str] = []
         self._widgets: dict[str, Widget] = {}
+        self._chat_handlers: dict[str | None, NodeFn] = {}
         self._built = False
         #: Optional page layout tree (see :mod:`golit.layout`); ``None`` stacks
         #: every view under one controls panel.
@@ -60,6 +61,30 @@ class App:
         turns into a UI fragment. Re-renders only when an input changes. Returns
         ``fn`` unchanged."""
         return self._register(fn, NodeKind.VIEW)
+
+    def on_message(self, channel: Any = None) -> Any:
+        """Register a handler for incoming chat messages on ``channel`` (or all
+        channels when ``None``). Without a handler a channel simply relays every
+        message to the room; with one, the handler owns the message and responds
+        via the :class:`~golit.server.chat.MessageContext` it's given::
+
+            @app.on_message("room")
+            async def handle(msg, ctx):
+                await ctx.broadcast(msg.text, author=msg.author)   # relay
+                if msg.text.startswith("/bot"):
+                    await ctx.reply("beep boop", author="Bot")     # to sender only
+
+        Usable bare (``@app.on_message``) or with a channel (``@app.on_message("room")``).
+        The handler may be sync or async."""
+        if callable(channel):  # used bare: @app.on_message
+            self._chat_handlers[None] = channel
+            return channel
+
+        def deco(fn: NodeFn) -> NodeFn:
+            self._chat_handlers[channel] = fn
+            return fn
+
+        return deco
 
     # -- resolution --------------------------------------------------------
     def build(self) -> None:
@@ -116,6 +141,11 @@ class App:
     @property
     def widgets(self) -> dict[str, Widget]:
         return self._widgets
+
+    @property
+    def chat_handlers(self) -> dict[str | None, NodeFn]:
+        """Registered chat message handlers, keyed by channel (``None`` = all)."""
+        return self._chat_handlers
 
     def node_def(self, node_id: str) -> NodeDef:
         return self._defs[node_id]

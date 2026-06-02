@@ -1,23 +1,28 @@
-"""HTTP routes.
+"""HTTP + WebSocket routes.
 
 - ``GET /`` renders the full page (controls + every view) for a session.
 - ``POST /node/{input_id}`` commits an input change, runs the dirty subgraph, and
   returns *only* the changed view fragments as out-of-band HTMX swaps.
-- ``GET /events`` (the SSE push channel) is added in M5.
+- ``GET /events`` is the SSE push channel (one stream per session).
+- ``WS /ws/{channel}`` is the bidirectional chat channel (see :mod:`golit.server.chat`).
 """
 
 from __future__ import annotations
 
-from litestar import Request, get, post
+import asyncio
+import secrets
+
+from litestar import Request, WebSocket, get, post, websocket
 from litestar.datastructures import Cookie
 from litestar.enums import MediaType
-from litestar.exceptions import NotFoundException
+from litestar.exceptions import NotFoundException, WebSocketDisconnect
 from litestar.params import FromPath
 from litestar.response import Response, ServerSentEvent
 
 from ..engine import Session
 from ..nodes import NodeKind
 from ..rendering import controls_panel, oob_fragment, page, view_slot
+from .chat import ChatHub, message_oob
 from .session import COOKIE, SessionManager
 from .sse import SSEManager
 
@@ -90,3 +95,35 @@ async def events(request: Request) -> ServerSentEvent:
     assert sid is not None
     sse: SSEManager = request.app.state.sse
     return ServerSentEvent(sse.stream(sid))
+
+
+@websocket("/ws/{channel:str}")
+async def chat_ws(socket: WebSocket, channel: FromPath[str]) -> None:
+    """The bidirectional chat channel for ``channel``.
+
+    Registers the connection with the :class:`~golit.server.chat.ChatHub`, replays
+    recent history, then concurrently drains outbound broadcasts to the socket and
+    reads inbound messages until the client disconnects."""
+    await socket.accept()
+    hub: ChatHub = socket.app.state.chat
+    sid = socket.cookies.get(COOKIE) or secrets.token_urlsafe(8)
+    conn = hub.join(channel, sid)
+
+    # Replay history first, then start the live pump, so ordering is preserved.
+    for msg in hub.history(channel):
+        await socket.send_text(message_oob(msg))
+
+    async def drain() -> None:
+        while True:
+            await socket.send_text(await conn.queue.get())
+
+    pump = asyncio.create_task(drain())
+    try:
+        while True:
+            data = await socket.receive_json()
+            await hub.handle_incoming(channel, sid, data)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        pump.cancel()
+        hub.leave(conn)

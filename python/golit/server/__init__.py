@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .chat import ChatHub, ChatMessage, MessageContext
 from .factory import create_app, pubsub_from_env
 from .pubsub import InMemoryPubSub, Invalidation, PubSub
 from .redis_pubsub import RedisPubSub
@@ -18,4 +19,7 @@ __all__ = [
     "RedisPubSub",
     "PubSub",
     "SSEManager",
+    "ChatHub",
+    "ChatMessage",
+    "MessageContext",
 ]
