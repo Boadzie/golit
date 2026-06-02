@@ -12,6 +12,7 @@ for HTMX POST + an Alpine "local shield" for high-frequency feedback).
 
 from __future__ import annotations
 
+import datetime
 import html
 import io
 from typing import Any
@@ -232,6 +233,193 @@ class Upload(Widget):
         )
 
 
+class RadioGroup(Widget):
+    """A single choice from a set, shown as radio buttons. Each radio posts its own
+    value on ``change`` (no shared id), coerced back to the original option object."""
+
+    def __init__(
+        self, options: list[Any], *, default: Any = None, label: str | None = None
+    ) -> None:
+        super().__init__(default=options[0] if default is None else default, label=label)
+        self.options = options
+
+    def coerce(self, raw: str) -> Any:
+        for opt in self.options:
+            if str(opt) == raw:
+                return opt
+        raise ValueError(f"{raw!r} is not a valid option for {self.name!r}")
+
+    def render(self, value: Any) -> str:
+        post = (
+            f'hx-post="/node/{esc(self.name)}" hx-trigger="change" hx-swap="none"'
+        )
+        items = "".join(
+            '<label class="flex items-center gap-2 text-sm cursor-pointer">'
+            f'<input type="radio" name="value" value="{esc(o)}"'
+            f'{" checked" if o == value else ""} '
+            f'class="accent-primary-container w-4 h-4" {post}>'
+            f"<span>{esc(o)}</span></label>"
+            for o in self.options
+        )
+        return (
+            f'<div class="golit-widget flex flex-col gap-2">{self._label_html()}'
+            f'<div class="flex flex-col gap-1.5">{items}</div></div>'
+        )
+
+
+class MultiSelect(Widget):
+    """Zero or more choices, as a checkbox group. A request-time ``hx-vals`` script
+    reads the checked boxes and posts them comma-joined, so the single-``value``
+    POST contract is preserved; ``coerce`` splits and maps back to option objects."""
+
+    def __init__(
+        self,
+        options: list[Any],
+        *,
+        default: list[Any] | tuple[Any, ...] = (),
+        label: str | None = None,
+    ) -> None:
+        super().__init__(default=list(default), label=label)
+        self.options = options
+
+    def coerce(self, raw: str) -> list[Any]:
+        chosen = set(raw.split(",")) if raw else set()
+        return [opt for opt in self.options if str(opt) in chosen]
+
+    def render(self, value: Any) -> str:
+        selected = {str(v) for v in (value or [])}
+        boxes = "".join(
+            '<label class="flex items-center gap-2 text-sm cursor-pointer">'
+            f'<input type="checkbox" data-val="{esc(o)}"'
+            f'{" checked" if str(o) in selected else ""} '
+            'class="accent-primary-container w-4 h-4">'
+            f"<span>{esc(o)}</span></label>"
+            for o in self.options
+        )
+        vals = (
+            "js:{value: Array.from(this.querySelectorAll('input[type=checkbox]:checked'))"
+            ".map(function(e){return e.dataset.val;}).join(',')}"
+        )
+        return (
+            f'<div class="golit-widget flex flex-col gap-2" hx-post="/node/{esc(self.name)}" '
+            f"hx-trigger=\"change\" hx-swap=\"none\" hx-vals='{vals}' "
+            f'id="golit-{esc(self.name)}">{self._label_html()}'
+            f'<div class="flex flex-col gap-1.5">{boxes}</div></div>'
+        )
+
+
+class Switch(Widget):
+    """A boolean toggle (styled checkbox). Posts ``true``/``false`` via ``hx-vals``
+    so an off-state still commits."""
+
+    def __init__(self, label: str | None = None, *, default: bool = False) -> None:
+        super().__init__(default=default, label=label)
+
+    def coerce(self, raw: str) -> bool:
+        return str(raw).lower() in ("1", "true", "on", "yes")
+
+    def render(self, value: Any) -> str:
+        checked = " checked" if value else ""
+        return (
+            '<div class="golit-widget flex items-center justify-between gap-3 py-1">'
+            f"{self._label_html()}"
+            '<label class="relative inline-flex items-center cursor-pointer">'
+            f'<input type="checkbox"{checked} class="sr-only peer" '
+            f"hx-vals='js:{{value: event.target.checked}}' {self._post_attrs()}>"
+            '<div class="w-10 h-6 bg-surface-container-highest rounded-full '
+            'peer-checked:bg-primary-container transition-colors"></div>'
+            '<div class="absolute left-1 w-4 h-4 bg-white rounded-full shadow transition-transform '
+            'peer-checked:translate-x-4"></div></label></div>'
+        )
+
+
+class DateInput(Widget):
+    """A native date picker. Coerces the ISO string to ``datetime.date`` (or ``None``)."""
+
+    def __init__(
+        self, *, default: datetime.date | None = None, label: str | None = None
+    ) -> None:
+        super().__init__(default=default, label=label)
+
+    def coerce(self, raw: str) -> datetime.date | None:
+        return datetime.date.fromisoformat(raw) if raw else None
+
+    def render(self, value: Any) -> str:
+        if isinstance(value, datetime.date):
+            iso = value.isoformat()
+        else:
+            iso = str(value) if value else ""
+        return (
+            f'<div class="golit-widget flex flex-col gap-2">{self._label_html()}'
+            f'<input type="date" name="value" value="{esc(iso)}" '
+            'class="bg-surface-container-highest border-none rounded-lg px-3 py-2 text-sm '
+            'font-body text-on-surface focus:ring-2 focus:ring-primary" '
+            f"{self._post_attrs()}></div>"
+        )
+
+
+class TextArea(Widget):
+    """A multi-line text input. Commits on blur or after a short typing pause."""
+
+    def __init__(
+        self,
+        *,
+        default: str = "",
+        label: str | None = None,
+        placeholder: str = "",
+        rows: int = 4,
+    ) -> None:
+        super().__init__(default=default, label=label)
+        self.placeholder = placeholder
+        self.rows = rows
+
+    def coerce(self, raw: str) -> str:
+        return raw
+
+    def render(self, value: Any) -> str:
+        return (
+            f'<div class="golit-widget flex flex-col gap-2">{self._label_html()}'
+            f'<textarea name="value" rows="{esc(self.rows)}" '
+            f'placeholder="{esc(self.placeholder)}" '
+            'class="bg-surface-container-highest border-none rounded-lg px-3 py-2 text-sm '
+            'font-body text-on-surface focus:ring-2 focus:ring-primary resize-y" '
+            f'{self._post_attrs(trigger="change, keyup changed delay:400ms")}>'
+            f"{esc(value)}</textarea></div>"
+        )
+
+
+class Button(Widget):
+    """An action trigger. Each click posts a fresh nonce (``Date.now()``), so the
+    input's value changes and the dirty subgraph re-runs — the reactive equivalent
+    of "on click". The value itself is a monotonic counter a node can ignore."""
+
+    _STYLES = {
+        "primary": "bg-primary text-on-primary hover:opacity-90",
+        "secondary": "bg-surface-container-high text-on-surface hover:bg-surface-container-highest",
+        "ghost": "text-primary hover:bg-primary-fixed/40",
+    }
+
+    def __init__(self, label: str | None = None, *, kind: str = "primary") -> None:
+        super().__init__(default=0, label=label)
+        self.style = kind
+
+    def coerce(self, raw: str) -> int:
+        try:
+            return int(float(raw))
+        except (TypeError, ValueError):
+            return 0
+
+    def render(self, value: Any) -> str:
+        cls = self._STYLES.get(self.style, self._STYLES["primary"])
+        return (
+            '<div class="golit-widget flex flex-col gap-2 justify-end">'
+            f'<button type="button" class="{cls} rounded-lg px-4 py-2 text-sm font-semibold '
+            'transition-all w-full" '
+            f"hx-vals='js:{{value: Date.now()}}' {self._post_attrs(trigger='click')}>"
+            f"{esc(self.label)}</button></div>"
+        )
+
+
 # -- ergonomic factory functions (match the project_scope.md examples) --------
 
 def slider(
@@ -270,3 +458,38 @@ def checkbox(*, default: bool = False, label: str | None = None) -> Checkbox:
 
 def upload(label: str | None = None, *, accept: str | None = None) -> Upload:
     return Upload(label, accept=accept)
+
+
+def radio(options: list[Any], *, default: Any = None, label: str | None = None) -> RadioGroup:
+    return RadioGroup(options, default=default, label=label)
+
+
+def multiselect(
+    options: list[Any],
+    *,
+    default: list[Any] | tuple[Any, ...] = (),
+    label: str | None = None,
+) -> MultiSelect:
+    return MultiSelect(options, default=default, label=label)
+
+
+def switch(label: str | None = None, *, default: bool = False) -> Switch:
+    return Switch(label, default=default)
+
+
+def date(*, default: datetime.date | None = None, label: str | None = None) -> DateInput:
+    return DateInput(default=default, label=label)
+
+
+def textarea(
+    *,
+    default: str = "",
+    label: str | None = None,
+    placeholder: str = "",
+    rows: int = 4,
+) -> TextArea:
+    return TextArea(default=default, label=label, placeholder=placeholder, rows=rows)
+
+
+def button(label: str | None = None, *, kind: str = "primary") -> Button:
+    return Button(label, kind=kind)
