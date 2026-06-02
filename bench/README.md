@@ -203,6 +203,70 @@ Redis fan-out, and concurrency (B2) — versus a single-user notebook kernel. Ca
 kept for fairness: the marimo number is a best case (bare executor, no
 kernel/transport), so "level floor" is the honest claim, not "Golit wins the floor."
 
+## Golit vs Dash — the rival that isn't rerun-everything (the corrected one)
+
+Dash is the framework you'd *expect* to be the other rerun-everything rival. It
+isn't, and the benchmark says so plainly. Dash's docs are explicit: a callback fires
+only when one of its declared `Input` values changes, and only that callback runs —
+the layout and data are not re-evaluated. Dash is a **manually-wired reactive DAG**,
+much closer to Golit than to Streamlit.
+
+[`apps/dash_app.py`](apps/dash_app.py) is the faithful twin, and the faithfulness is
+the point: the slider drives one callback (the affected chain → chart), and the
+`unaffected` nodes — which depend only on the static data — are exactly that,
+**static layout**, computed once and never re-run. So a slider move fires **one**
+callback regardless of how many unaffected nodes exist. [`run_b1_dash.py`](run_b1_dash.py)
+drives the callback directly (the documented way to unit-test a Dash callback without
+a browser) over cycled slider values — the same *server compute, no transport* axis as
+the Marimo cell and Golit's `Session.update`.
+
+**Result: Dash is flat, exec stays 1.** It joins Golit and Marimo on the flat side of
+`b1_compare_hero.svg`; only Streamlit climbs. The older note in this repo calling Dash
+"the other rerun-everything rival" was wrong — corrected here. Its server-compute floor
+is the same Polars work as everyone else's (100K rows):
+
+| depth | Golit | Marimo | Dash (chain) |
+| ---: | ---: | ---: | ---: |
+| 1  | 0.09 ms | 0.09 ms | 0.08 ms |
+| 3  | 0.12 ms | 0.13 ms | 0.11 ms |
+| 10 | 0.27 ms | 0.28 ms | 0.24 ms |
+
+So the floor is a three-way tie, and the unaffected slope is flat for all three. The
+**real** Golit-vs-Dash separation is the wire — and here the benchmark refuted the
+pitch I started with, so this is reported straight. Dash's callback returns a Plotly
+*figure*, serialized to JSON each interaction and drawn client-side by plotly.js; Golit
+renders the *same* chart to a static SVG server-side and ships no charting runtime. For
+the same 16-bar chart (uncompressed):
+
+| | per-update payload | one-time client JS |
+| --- | ---: | ---: |
+| **Golit** (server SVG) | 18.7 KB | ~50 KB (htmx only; **0** charting) |
+| **Dash** (figure JSON) | **6.8 KB** | ~5.9 MB (plotly.js 4.84 MB + React + dash-renderer) |
+
+Read that honestly: **per update, Dash is lighter** (6.8 KB < Golit's 18.7 KB SVG) —
+"Golit wins bytes/update" is *false*, and the often-quoted Golit "177 B/update" is a
+*text* fragment from the synthetic chart, not a real chart, so it isn't the comparison.
+Where Golit wins is the **start**: it ships a self-contained SVG and zero charting code,
+while Dash front-loads ~5.9 MB of client JS before the first figure draws. Cumulative
+bytes `runtime + per_update·N` therefore start far apart and cross only at **≈ 490
+interactions** (`b1_dash_crossover.svg`) — Golit ships less *in total* until a session
+exceeds several hundred slider moves, and never any charting runtime (the SVG renders
+without JS). Dash's trade is the mirror image: a heavy one-time runtime, then light
+diffs. (Bytes are uncompressed; gzip shrinks all four numbers, plotly.js most — the
+crossover moves but stays in the hundreds.)
+
+The qualitative axis the numbers don't show: Golit infers the dependency DAG from
+function signatures; Dash makes you hand-wire every `Input`/`Output`. Same reactive
+result, wired by the framework vs wired by you.
+
+```bash
+make bench-dash      # Dash floor + bytes + charts (needs the bench group)
+# or directly:
+uv run --no-sync python -m bench.run_b1_dash   # -> results/b1_dash.csv + b1_dash_bytes.csv
+```
+
+Needs the `bench` group: `uv pip install 'dash>=2.14'`.
+
 ## B2 — concurrency scaling (`bench/http/run_b2.py`)
 
 B1 is single-client sequential latency; it never asks *how many simultaneous
@@ -264,14 +328,15 @@ uv run --no-sync python -m bench.http.run_b2 --quick  # fast signal
 
 ## Still to do (the publishable version)
 
-- **Dash** as a behaviorally-identical app on the same rig (the other
-  rerun-everything rival; `run_b1_streamlit.py` is the template). Marimo ✅, the
-  reactive rival, is now in.
-- **B2 across separate hosts** — the scaling sweep above is real but capped by
-  running servers + driver on one box; put the instances on their own machines to
-  measure clean linear scaling. The harness ([`run_b2.py`](http/run_b2.py)) already
-  takes N sticky base URLs, so this is a deployment change, not a code one.
-- End-to-end numbers over each rival's *real* transport (Streamlit/Marimo websocket;
-  this comparison is server-compute only); real network RTT; a **standard cloud
-  instance** — everything here is loopback on a dev laptop, suggestive not
-  publishable.
+- All three rivals are now in: Streamlit (rerun-everything) ✅, Marimo (reactive
+  notebook) ✅, Dash (manual reactive DAG) ✅. The rerun-everything *slot* has only one
+  honest occupant (Streamlit) — Dash turned out reactive, which the benchmark reports
+  rather than forcing it into the slot with a strawman single-callback app.
+- **B2 across separate hosts** — the scaling sweep is real but capped by running
+  servers + driver on one box; put the instances on their own machines to measure
+  clean linear scaling. The harness ([`run_b2.py`](http/run_b2.py)) already takes N
+  sticky base URLs, so this is a deployment change, not a code one.
+- End-to-end numbers over each rival's *real* transport (Streamlit/Marimo websocket,
+  Dash's `/_dash-update-component` POST; these comparisons are server-compute only);
+  real network RTT; a **standard cloud instance** — everything here is loopback on a
+  dev laptop, suggestive not publishable.
