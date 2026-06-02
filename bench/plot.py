@@ -107,6 +107,7 @@ def build_compare_chart(
     golit_csv: list[dict],
     st_csv: list[dict],
     marimo_csv: list[dict] | None = None,
+    dash_csv: list[dict] | None = None,
     *,
     depth: int = 3,
 ) -> object:
@@ -115,17 +116,19 @@ def build_compare_chart(
     All series are *server-side* update latency on the same dataset and affected
     depth; the x-axis is the number of unaffected nodes. Two regimes show up:
 
-    * **Reactive** (Golit, Marimo) — flat: a slider move recomputes only its
-      descendants, so cost is independent of the unaffected count.
+    * **Reactive** (Golit, Marimo, Dash) — flat: a slider move recomputes only its
+      dependents, so cost is independent of the unaffected count. Dash earns this the
+      same way Golit and Marimo do — its callbacks fire only for the changed Input
+      (it is a *manually*-wired reactive DAG), so it is **not** a rerun-everything
+      rival; the unaffected nodes are static layout it never re-touches.
     * **Rerun-everything** (Streamlit) — climbs: the whole script re-touches every
       node each interaction, even cached ones.
 
-    Golit and Marimo are both flat; Marimo's floor is near raw-Polars (a thin
-    reactive layer, measured at its best case — bare executor, no kernel/transport),
-    while Golit's update carries content-hash memoization + the PyO3 boundary +
-    fragment render. The honest picture: reactivity buys the flat curve; the floor
-    is a separate axis. (AppTest/our marimo harness each add a fixed overhead that is
-    *constant* in unaffected count, so the **slope** is the load-bearing comparison.)
+    All three reactive engines sit near the raw-Polars floor (the affected chain is
+    the same Polars work); the load-bearing comparison is the **slope** — flat vs
+    climbing. (AppTest/our marimo+dash harnesses each add a fixed overhead constant in
+    unaffected count.) Where Golit and Dash actually diverge is the wire, a separate
+    axis — see :func:`build_crossover_chart`.
     """
     target_rows = max((r["rows"] for r in st_csv), key=int)
     x: list[int] = []
@@ -142,6 +145,8 @@ def build_compare_chart(
     add(golit_csv, "update", "Golit (reactive, dirty subgraph)")
     if marimo_csv:
         add(marimo_csv, "marimo_rerun", "Marimo (reactive, descendant rerun)")
+    if dash_csv:
+        add(dash_csv, "dash_update", "Dash (reactive, manual callback DAG)")
     add(st_csv, "streamlit_rerun", "Streamlit (rerun everything, cached)")
 
     data = {"unaffected": x, "p50_ms": y, "series": series}
@@ -152,8 +157,8 @@ def build_compare_chart(
         + geom_point(size=2.8)
         + labs(
             title=f"{title}{depth}, {target_rows} rows)",
-            subtitle="Reactive engines (Golit, Marimo) stay flat as the graph grows; "
-            "Streamlit reruns the whole script and climbs.",
+            subtitle="Reactive engines (Golit, Marimo, Dash) stay flat as the graph "
+            "grows; Streamlit reruns the whole script and climbs.",
             x="Unaffected nodes in the graph",
             y="Update p50 (ms)" + (", log scale" if scale_y_log10 else ""),
             color="",
@@ -163,6 +168,58 @@ def build_compare_chart(
     if scale_y_log10 is not None:
         plot = plot + scale_y_log10()
     return plot
+
+
+def build_crossover_chart(byte_rows: list[dict]) -> object:
+    """Golit vs Dash — cumulative bytes to the client over a session (same chart).
+
+    The reactive floor is a tie (both flat, both at the Polars floor); the real
+    Golit/Dash split is the wire. Dash front-loads its client runtime — plotly.js +
+    React + the dash-renderer, megabytes — then sends a compact figure-JSON diff per
+    interaction. Golit ships a self-contained server-rendered SVG each update (heavier
+    per move) and **no** charting runtime. So per update Dash is lighter, but
+    cumulative bytes ``runtime + per_update * N`` start far apart: Golit ships less in
+    total until the lines cross, a few hundred interactions in — and never any
+    charting code. This plots both lines so the crossover is explicit, not asserted.
+    """
+    by = {r["framework"]: r for r in byte_rows}
+    g, d = by["Golit"], by["Dash"]
+    g_run, g_step = float(g["client_runtime_bytes"]), float(g["per_update_bytes"])
+    d_run, d_step = float(d["client_runtime_bytes"]), float(d["per_update_bytes"])
+
+    denom = g_step - d_step
+    crossover = (d_run - g_run) / denom if denom > 0 else 0.0
+    n_max = max(int(crossover * 2), 200)
+    xs = [round(n_max * i / 40) for i in range(41)]
+
+    x: list[int] = []
+    y: list[float] = []
+    series: list[str] = []
+    g_label = "Golit (server SVG, 0 charting JS)"
+    d_label = "Dash (figure JSON + ~%.1f MB client JS)" % (d_run / 1_000_000)
+    for n in xs:
+        x.append(n)
+        y.append((g_run + g_step * n) / 1_000_000)
+        series.append(g_label)
+        x.append(n)
+        y.append((d_run + d_step * n) / 1_000_000)
+        series.append(d_label)
+
+    data = {"interactions": x, "cumulative_mb": y, "series": series}
+    return (
+        ggplot(data, aes("interactions", "cumulative_mb", color="series"))
+        + geom_line(size=1.2)
+        + labs(
+            title="Golit vs Dash — cumulative bytes over a session (same chart)",
+            subtitle=f"Dash front-loads ~{d_run / 1_000_000:.1f} MB of client JS then "
+            f"sends light diffs; Golit ships a self-contained SVG and no charting "
+            f"runtime. Crossover ≈ {crossover:.0f} interactions.",
+            x="Slider interactions in the session",
+            y="Cumulative bytes to the client (MB, uncompressed)",
+            color="",
+        )
+        + ggsize(820, 480)
+    )
 
 
 def build_b2_saturation_chart(rows_csv: list[dict]) -> object:
@@ -258,17 +315,24 @@ def main() -> None:
             "python -m bench.http.run_b2")
     _render(build_b2_scaling_chart, "b2.csv", "b2_scaling.svg",
             "python -m bench.http.run_b2")
+    _render(build_crossover_chart, "b1_dash_bytes.csv", "b1_dash_crossover.svg",
+            "python -m bench.run_b1_dash")
 
     golit_path = os.path.join(RESULTS_DIR, "b1.csv")
     st_path = os.path.join(RESULTS_DIR, "b1_streamlit.csv")
     marimo_path = os.path.join(RESULTS_DIR, "b1_marimo.csv")
+    dash_path = os.path.join(RESULTS_DIR, "b1_dash.csv")
     if os.path.exists(golit_path) and os.path.exists(st_path):
         marimo_csv = _load(marimo_path) if os.path.exists(marimo_path) else None
-        svg = plot_to_svg(build_compare_chart(_load(golit_path), _load(st_path), marimo_csv))
+        dash_csv = _load(dash_path) if os.path.exists(dash_path) else None
+        svg = plot_to_svg(
+            build_compare_chart(_load(golit_path), _load(st_path), marimo_csv, dash_csv)
+        )
         out = os.path.join(RESULTS_DIR, "b1_compare_hero.svg")
         with open(out, "w") as f:
             f.write(svg)
-        tail = " (+ marimo)" if marimo_csv else ""
+        extras = [(" +marimo", marimo_csv), (" +dash", dash_csv)]
+        tail = "".join(t for t, present in extras if present)
         print(f"Wrote {out}{tail}")
     else:
         print("skip b1_compare_hero.svg: need both b1.csv and b1_streamlit.csv")
