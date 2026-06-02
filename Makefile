@@ -1,6 +1,6 @@
 PYTHON_VERSION := 3.11
 
-.PHONY: dev build test test-rust test-py lint run bench bench-quick bench-http bench-streamlit bench-marimo docs docs-serve clean
+.PHONY: dev build test test-rust test-py lint run bench bench-quick bench-http bench-b2 bench-streamlit bench-marimo docs docs-serve clean
 
 ## Create the uv venv, install deps, and build the Rust extension (editable).
 dev:
@@ -58,6 +58,11 @@ bench-quick:
 ## End-to-end HTTP B1 only (boots uvicorn per config; drives the real POST path).
 bench-http:
 	uv run --no-sync python -m bench.http.run_b1_http
+	uv run --no-sync python -m bench.plot
+
+## B2 concurrency scaling (boots N sticky uvicorns; multiprocess closed-loop load).
+bench-b2:
+	uv run --no-sync python -m bench.http.run_b2
 	uv run --no-sync python -m bench.plot
 
 ## Build the documentation site (MkDocs Material) into site/.
