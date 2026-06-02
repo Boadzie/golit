@@ -46,12 +46,19 @@ class App:
         return fn
 
     def source(self, fn: NodeFn) -> NodeFn:
+        """Register a **source** node (brings data in — read a file, query a DB,
+        return a sample frame). May depend on inputs. Returns ``fn`` unchanged."""
         return self._register(fn, NodeKind.SOURCE)
 
     def reactive(self, fn: NodeFn) -> NodeFn:
+        """Register a **reactive** node — a pure transform over its upstream nodes
+        and inputs. Re-runs only when one of those changes. Returns ``fn`` unchanged."""
         return self._register(fn, NodeKind.REACTIVE)
 
     def view(self, fn: NodeFn) -> NodeFn:
+        """Register a **view** node — a renderable leaf whose return value Golit
+        turns into a UI fragment. Re-renders only when an input changes. Returns
+        ``fn`` unchanged."""
         return self._register(fn, NodeKind.VIEW)
 
     # -- resolution --------------------------------------------------------

@@ -98,6 +98,8 @@ class Slider(Widget):
 
 
 class NumberInput(Widget):
+    """A numeric text input with optional ``low``/``high`` bounds."""
+
     def __init__(
         self,
         low: float | None = None,
@@ -132,6 +134,8 @@ class NumberInput(Widget):
 
 
 class Select(Widget):
+    """A dropdown of ``options``; the value is the chosen option object."""
+
     def __init__(
         self,
         options: list[Any],
@@ -162,6 +166,8 @@ class Select(Widget):
 
 
 class TextInput(Widget):
+    """A single-line text input. Commits on blur or after a short typing pause."""
+
     def __init__(
         self,
         *,
@@ -187,6 +193,8 @@ class TextInput(Widget):
 
 
 class Checkbox(Widget):
+    """A boolean checkbox. An unchecked box still commits ``False``."""
+
     def __init__(self, *, default: bool = False, label: str | None = None) -> None:
         super().__init__(default=default, label=label)
 
@@ -430,6 +438,7 @@ def slider(
     step: float = 1,
     label: str | None = None,
 ) -> Slider:
+    """A numeric range slider. Commits on release; live drag feedback is client-side."""
     return Slider(low, high, default=default, step=step, label=label)
 
 
@@ -441,26 +450,33 @@ def number(
     step: float = 1,
     label: str | None = None,
 ) -> NumberInput:
+    """A numeric text input with optional ``low``/``high`` bounds."""
     return NumberInput(low, high, default=default, step=step, label=label)
 
 
 def select(options: list[Any], *, default: Any = None, label: str | None = None) -> Select:
+    """A dropdown of ``options``; the value is the chosen option object."""
     return Select(options, default=default, label=label)
 
 
 def text(*, default: str = "", label: str | None = None, placeholder: str = "") -> TextInput:
+    """A single-line text input. Commits on blur or after a short typing pause."""
     return TextInput(default=default, label=label, placeholder=placeholder)
 
 
 def checkbox(*, default: bool = False, label: str | None = None) -> Checkbox:
+    """A boolean checkbox. An unchecked box still commits ``False``."""
     return Checkbox(default=default, label=label)
 
 
 def upload(label: str | None = None, *, accept: str | None = None) -> Upload:
+    """A file upload, coerced to a ``BytesIO`` Polars readers accept. ``None`` until
+    a file is chosen; ``accept`` filters the picker (e.g. ``".csv"``)."""
     return Upload(label, accept=accept)
 
 
 def radio(options: list[Any], *, default: Any = None, label: str | None = None) -> RadioGroup:
+    """A single choice from ``options``, shown as radio buttons."""
     return RadioGroup(options, default=default, label=label)
 
 
@@ -470,14 +486,17 @@ def multiselect(
     default: list[Any] | tuple[Any, ...] = (),
     label: str | None = None,
 ) -> MultiSelect:
+    """Zero or more of ``options`` as a checkbox group; the value is a ``list``."""
     return MultiSelect(options, default=default, label=label)
 
 
 def switch(label: str | None = None, *, default: bool = False) -> Switch:
+    """A boolean toggle (styled checkbox). An off state still commits ``False``."""
     return Switch(label, default=default)
 
 
 def date(*, default: datetime.date | None = None, label: str | None = None) -> DateInput:
+    """A native date picker; the value is a ``datetime.date`` (or ``None``)."""
     return DateInput(default=default, label=label)
 
 
@@ -488,8 +507,11 @@ def textarea(
     placeholder: str = "",
     rows: int = 4,
 ) -> TextArea:
+    """A multi-line text input. Commits on blur or after a short typing pause."""
     return TextArea(default=default, label=label, placeholder=placeholder, rows=rows)
 
 
 def button(label: str | None = None, *, kind: str = "primary") -> Button:
+    """An action trigger — the reactive "on click". Each click posts a fresh nonce
+    so the dirty subgraph re-runs. ``kind`` is primary/secondary/ghost."""
     return Button(label, kind=kind)
