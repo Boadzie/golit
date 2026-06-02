@@ -16,6 +16,7 @@ from .chat import ChatHub
 from .pubsub import InMemoryPubSub, PubSub
 from .routes import chat_ws, events, index, update_node
 from .session import SessionManager
+from .session_store import InMemorySessionStore, SessionStore
 from .sse import SSEManager
 
 LifecycleHook = Callable[..., Any]
@@ -33,6 +34,19 @@ def pubsub_from_env() -> PubSub:
 
         return RedisPubSub(url)
     return InMemoryPubSub()
+
+
+def session_store_from_env() -> SessionStore:
+    """Pick the durable session-state backend: a Redis input-replay store when
+    ``GOLIT_REDIS_URL`` is set (so any worker can reconstruct a session from its
+    inputs), in-memory otherwise (single-node, nothing to persist). Mirrors
+    :func:`pubsub_from_env`; only input scalars are stored, never frames."""
+    url = os.environ.get(REDIS_URL_ENV)
+    if url:
+        from .session_store import RedisSessionStore
+
+        return RedisSessionStore(url)
+    return InMemorySessionStore()
 
 
 async def _start_sse(app: Litestar) -> None:
@@ -54,17 +68,19 @@ def create_app(
     app: App,
     *,
     pubsub: PubSub | None = None,
+    session_store: SessionStore | None = None,
     on_startup: list[LifecycleHook] | None = None,
     on_shutdown: list[LifecycleHook] | None = None,
 ) -> Litestar:
     """Wire a Golit blueprint into a runnable Litestar application.
 
-    ``pubsub`` overrides the SSE fan-out backend; by default it is chosen from
-    the environment (Redis when ``GOLIT_REDIS_URL`` is set, in-memory otherwise).
-    Extra ``on_startup`` hooks can launch background tasks (e.g. a ticker that
-    publishes invalidations to ``app.state.pubsub`` for the SSE channel)."""
+    ``pubsub`` overrides the SSE fan-out backend and ``session_store`` the durable
+    session-state backend; by default each is chosen from the environment (Redis
+    when ``GOLIT_REDIS_URL`` is set, in-memory otherwise). Extra ``on_startup``
+    hooks can launch background tasks (e.g. a ticker that publishes invalidations
+    to ``app.state.pubsub`` for the SSE channel)."""
     app.build()
-    sessions = SessionManager(app)
+    sessions = SessionManager(app, store=session_store or session_store_from_env())
     if pubsub is None:
         pubsub = pubsub_from_env()
     sse = SSEManager(sessions, pubsub)
