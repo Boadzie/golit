@@ -14,12 +14,10 @@ from __future__ import annotations
 import argparse
 import csv
 import os
-import socket
-import subprocess
-import sys
 import time
 
 from .drive import measure_http_update
+from .serverctl import boot, free_port, stop, wait_ready
 
 DEFAULT_DEPTHS = [1, 3, 10]
 DEFAULT_UNAFFECTED = [0, 16, 64, 256]
@@ -28,55 +26,8 @@ _SLIDER_VALUES = [11, 23]
 
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results")
 LOG_PATH = os.path.join(RESULTS_DIR, "uvicorn.log")
-SERVE_TARGET = "bench.http.serve:application"
 FIELDS = ["rows", "depth", "unaffected", "metric", "p50_us", "p95_us", "p99_us", "mean_us",
           "bytes", "n"]
-
-
-def _free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
-def _boot(rows: int, depth: int, unaffected: int, port: int):
-    env = os.environ.copy()
-    env["GOLIT_BENCH_ROWS"] = str(rows)
-    env["GOLIT_BENCH_DEPTH"] = str(depth)
-    env["GOLIT_BENCH_UNAFFECTED"] = str(unaffected)
-    log = open(LOG_PATH, "w")
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", SERVE_TARGET, "--host", "127.0.0.1",
-         "--port", str(port), "--log-level", "warning", "--no-access-log"],
-        env=env, stdout=log, stderr=log,
-    )
-    return proc, log
-
-
-def _wait_ready(port: int, proc: subprocess.Popen, *, timeout: float = 60.0) -> None:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if proc.poll() is not None:
-            with open(LOG_PATH) as f:
-                raise RuntimeError(f"server exited early (code {proc.returncode}):\n{f.read()}")
-        with socket.socket() as s:
-            s.settimeout(0.5)
-            try:
-                s.connect(("127.0.0.1", port))
-                return
-            except OSError:
-                time.sleep(0.1)
-    raise TimeoutError(f"server not ready on :{port} within {timeout}s")
-
-
-def _stop(proc: subprocess.Popen, log) -> None:
-    proc.terminate()
-    try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-    log.close()
 
 
 def run(*, rows: int, depths: list[int], unaffected_list: list[int],
@@ -84,16 +35,16 @@ def run(*, rows: int, depths: list[int], unaffected_list: list[int],
     results: list[dict] = []
     for depth in depths:
         for u in unaffected_list:
-            port = _free_port()
-            proc, log = _boot(rows, depth, u, port)
+            port = free_port()
+            proc, log = boot(rows, depth, u, port, LOG_PATH)
             try:
-                _wait_ready(port, proc)
+                wait_ready(port, proc, LOG_PATH)
                 summary = measure_http_update(
                     f"http://127.0.0.1:{port}", "threshold", _SLIDER_VALUES,
                     warmup=warmup, iters=iters,
                 )
             finally:
-                _stop(proc, log)
+                stop(proc, log)
             row = {"rows": rows, "depth": depth, "unaffected": u, "metric": "http_update",
                    **{k: (round(v, 3) if isinstance(v, float) else v) for k, v in summary.items()}}
             results.append(row)
