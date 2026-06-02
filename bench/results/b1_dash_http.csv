@@ -1,0 +1,4 @@
+framework,transport,rows,depth,p50_us,p95_us,p99_us,mean_us,bytes,n
+Golit (Plotly),uvicorn + spec mount,100000,3,1812.771,2047.3,2464.74,1943.048,12100.2,100
+Dash,waitress + figure JSON,100000,3,1782.958,2061.054,11663.973,1984.44,6877.2,100
+Golit (SVG),uvicorn + server SVG,100000,3,2924.979,3478.446,3749.997,2970.27,18363.6,100
