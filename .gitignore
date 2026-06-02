@@ -15,5 +15,8 @@ build/
 .mypy_cache/
 .ruff_cache/
 
+# Docs
+site/
+
 # Tooling
 .DS_Store

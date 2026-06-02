@@ -48,6 +48,12 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
 ]
+# MkDocs Material docs site; the API reference renders from docstrings via mkdocstrings.
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
+    "pymdown-extensions>=10.0",
+]
 
 [tool.maturin]
 python-source = "python"
