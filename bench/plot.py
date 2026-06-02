@@ -165,6 +165,79 @@ def build_compare_chart(
     return plot
 
 
+def build_b2_saturation_chart(rows_csv: list[dict]) -> object:
+    """B2 single-instance load curve: end-to-end p99 vs achieved throughput.
+
+    Each point is a concurrency level on one instance. The curve rises gently,
+    then hooks sharply upward where the instance saturates (~4000 req/s): past
+    that knee, more concurrency buys no throughput, only queueing latency. That
+    knee is one core's worth of serial ``session.update`` — the update runs inline
+    on the event loop, so a single worker is CPU-bound on compute, not I/O.
+    """
+    conc = [r for r in rows_csv if r["phase"] == "concurrency"]
+    conc.sort(key=lambda r: int(r["concurrency"]))
+    x = [float(r["throughput_rps"]) for r in conc]
+    y = [float(r["p99_us"]) / 1000.0 for r in conc]
+    labels = [f"C={r['concurrency']}" for r in conc]
+    data = {"throughput_rps": x, "p99_ms": y, "C": labels}
+    return (
+        ggplot(data, aes("throughput_rps", "p99_ms"))
+        + geom_line(size=1.2, color="#2563eb")
+        + geom_point(size=2.8, color="#2563eb")
+        + labs(
+            title="B2 — single-instance load curve (100K rows, depth 3)",
+            subtitle="Each point is a concurrency level. The curve hooks up where one "
+            "instance saturates (~4000 req/s) — past the knee, only latency grows.",
+            x="Achieved throughput (req/s)",
+            y="End-to-end update p99 (ms)",
+        )
+        + ggsize(800, 470)
+    )
+
+
+def build_b2_scaling_chart(rows_csv: list[dict]) -> object:
+    """B2 horizontal scaling: throughput vs sticky instances, achieved vs ideal.
+
+    Fixed saturating load, sessions pinned to instances by cookie hash (Golit
+    keeps state worker-local, so this is its scale model). Throughput rises with
+    instance count; the dashed line is perfect linear scaling off the single
+    instance. The achieved/ideal gap is honest — on one host the N servers and
+    the load generator share the same cores, so linear scaling needs separate
+    machines, not a busier laptop.
+    """
+    scaling = [r for r in rows_csv if r["phase"] == "scaling"]
+    scaling.sort(key=lambda r: int(r["instances"]))
+    base = float(scaling[0]["throughput_rps"]) if scaling else 0.0
+
+    x: list[int] = []
+    y: list[float] = []
+    series: list[str] = []
+    for r in scaling:
+        n = int(r["instances"])
+        x.append(n)
+        y.append(float(r["throughput_rps"]))
+        series.append("achieved")
+        x.append(n)
+        y.append(base * n)
+        series.append("ideal (linear)")
+
+    data = {"instances": x, "throughput_rps": y, "series": series}
+    return (
+        ggplot(data, aes("instances", "throughput_rps", color="series"))
+        + geom_line(size=1.2)
+        + geom_point(size=2.8)
+        + labs(
+            title="B2 — horizontal scaling under sticky sessions (C=32, 100K rows)",
+            subtitle="Throughput rises with instances; gap to linear is one-host core "
+            "contention (servers + load generator share the box), not the scale model.",
+            x="Sticky instances",
+            y="Achieved throughput (req/s)",
+            color="",
+        )
+        + ggsize(800, 470)
+    )
+
+
 def _render(build, csv_name: str, out_name: str, hint: str) -> None:
     csv_path = os.path.join(RESULTS_DIR, csv_name)
     if not os.path.exists(csv_path):
@@ -181,6 +254,10 @@ def main() -> None:
     _render(build_chart, "b1.csv", "b1_hero.svg", "python -m bench.run_b1")
     _render(build_http_chart, "b1_http.csv", "b1_http_hero.svg",
             "python -m bench.http.run_b1_http")
+    _render(build_b2_saturation_chart, "b2.csv", "b2_saturation.svg",
+            "python -m bench.http.run_b2")
+    _render(build_b2_scaling_chart, "b2.csv", "b2_scaling.svg",
+            "python -m bench.http.run_b2")
 
     golit_path = os.path.join(RESULTS_DIR, "b1.csv")
     st_path = os.path.join(RESULTS_DIR, "b1_streamlit.csv")
