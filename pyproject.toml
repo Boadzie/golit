@@ -22,6 +22,9 @@ dependencies = [
     "lets-plot>=4.5",
     "numpy>=1.26",     # Lets-Plot ↔ Polars interop converts series via numpy
     "uvicorn>=0.30",
+    # Base uvicorn ships no WebSocket protocol; the chat channel's /ws upgrade
+    # 405s without one. uvicorn auto-detects `websockets` (ws="auto").
+    "websockets>=12",
 ]
 
 [project.optional-dependencies]
