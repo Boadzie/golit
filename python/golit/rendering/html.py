@@ -14,6 +14,7 @@ import json
 TAILWIND_SRC = "https://cdn.tailwindcss.com?plugins=forms,container-queries"
 HTMX_SRC = "https://unpkg.com/htmx.org@2.0.4"
 HTMX_SSE_SRC = "https://unpkg.com/htmx-ext-sse@2.2.2"
+HTMX_WS_SRC = "https://unpkg.com/htmx-ext-ws@2.0.3"
 ALPINE_SRC = "https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"
 
 # CDN runtimes for interactive charts, loaded lazily by the bootstrap below —
@@ -158,6 +159,31 @@ CHART_BOOTSTRAP = """
 })();
 """
 
+# Keeps each chat log (golit.ui.chat) pinned to the newest message. Messages arrive
+# as out-of-band appends over the ws extension, so we watch the log for child changes
+# and scroll to the bottom. Registered via htmx.onLoad → also works after swaps.
+CHAT_BOOTSTRAP = """
+(function () {
+  function attach(root) {
+    root = root || document;
+    if (!root.querySelectorAll) return;
+    Array.prototype.forEach.call(root.querySelectorAll('.golit-chat-log'), function (el) {
+      if (el.__golitChat) return;
+      el.__golitChat = true;
+      var pin = function () { el.scrollTop = el.scrollHeight; };
+      new MutationObserver(pin).observe(el, { childList: true });
+      pin();
+    });
+  }
+  function start() {
+    if (window.htmx && window.htmx.onLoad) window.htmx.onLoad(attach);
+    attach(document);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+"""
+
 # Reactive-update flash: HTMX adds .htmx-settling to swapped fragments.
 GOLIT_CSS = """
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
@@ -223,9 +249,11 @@ def page(title: str, body: str) -> str:
 <style>{GOLIT_CSS}</style>
 <script src="{HTMX_SRC}" defer></script>
 <script src="{HTMX_SSE_SRC}" defer></script>
+<script src="{HTMX_WS_SRC}" defer></script>
 <script src="{ALPINE_SRC}" defer></script>
 <script>{chart_cdn}</script>
 <script>{CHART_BOOTSTRAP}</script>
+<script>{CHAT_BOOTSTRAP}</script>
 </head>
 <body class="bg-surface text-on-surface font-body antialiased" hx-ext="sse" sse-connect="/events">
 <div class="max-w-6xl mx-auto px-6 py-10">

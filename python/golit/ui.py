@@ -48,6 +48,7 @@ __all__ = [
     "json_view",
     "heading",
     "caption",
+    "chat",
 ]
 
 
@@ -364,6 +365,46 @@ def heading(text: str, *, level: int = 2) -> str:
 def caption(text: str) -> str:
     """Small, muted helper text."""
     return f'<p class="golit-caption text-xs text-on-surface-variant">{esc(text)}</p>'
+
+
+# -- realtime -----------------------------------------------------------------
+
+def chat(
+    channel: str,
+    *,
+    author: str = "You",
+    title: str | None = None,
+    placeholder: str = "Message…",
+    height: int = 384,
+) -> str:
+    """A live chat panel backed by a WebSocket at ``/ws/<channel>``.
+
+    Renders a message log that fills as messages arrive (over HTMX's ``ws``
+    extension) and an input that sends over the socket. ``author`` is the sender's
+    display name; ``height`` is the log height in pixels. By default every message
+    relays to all clients on the channel; register an ``@app.on_message(channel)``
+    handler to add bot/assistant/moderation behavior."""
+    log_id = f"golit-chat-{esc(channel)}-log"
+    head = (
+        f'<div class="px-1 pb-3 font-headline text-lg font-bold tracking-tight">{esc(title)}</div>'
+        if title
+        else ""
+    )
+    return (
+        '<div class="golit-chat flex flex-col bg-surface-container-low rounded-xl p-4" '
+        f'hx-ext="ws" ws-connect="/ws/{esc(channel)}">{head}'
+        f'<div id="{log_id}" class="golit-chat-log flex flex-col gap-2 overflow-y-auto pr-1" '
+        f'style="height: {int(height)}px"></div>'
+        '<form ws-send autocomplete="off" x-data x-on:submit="setTimeout(() => $el.reset(), 0)" '
+        'class="golit-chat-form flex gap-2 mt-3">'
+        f'<input type="hidden" name="author" value="{esc(author)}">'
+        f'<input name="message" placeholder="{esc(placeholder)}" autocomplete="off" '
+        'class="flex-1 bg-surface-container-highest border-none rounded-lg px-3 py-2 text-sm '
+        'font-body text-on-surface focus:ring-2 focus:ring-primary">'
+        '<button type="submit" class="bg-primary text-on-primary rounded-lg px-4 py-2 text-sm '
+        'font-semibold hover:opacity-90 transition-all">Send</button>'
+        "</form></div>"
+    )
 
 
 _CODE_CLS = 'bg-surface-container-highest rounded px-1.5 py-0.5 font-mono text-xs'
