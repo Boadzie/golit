@@ -22,9 +22,26 @@ only inside :func:`sql`, never at framework import time.
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import polars as pl
+
+# One DuckDB connection per worker thread, reused across `sql()` calls. Opening a
+# connection per query is wasted setup on the hot path; a thread-local keeps it
+# cheap while staying safe (a DuckDB connection is not meant to be shared across
+# threads concurrently).
+_local = threading.local()
+
+
+def _connection() -> Any:
+    con = getattr(_local, "con", None)
+    if con is None:
+        import duckdb
+
+        con = duckdb.connect()  # in-process, in-memory
+        _local.con = con
+    return con
 
 
 def is_duckdb_relation(value: Any) -> bool:
@@ -50,12 +67,13 @@ def sql(query: str, **frames: Any) -> pl.DataFrame:
     Each keyword binds a name usable in the query (``sql("… FROM data", data=df)``);
     values may be Polars/pandas/Arrow frames. The result is fully materialized, so
     it memoizes and renders exactly like a Polars node output."""
-    import duckdb
-
-    con = duckdb.connect()
+    con = _connection()  # reused per thread
     try:
         for name, frame in frames.items():
             con.register(name, frame)
-        return con.sql(query).pl()
+        return con.sql(query).pl()  # fully materialized before the views are dropped
     finally:
-        con.close()
+        # Unbind this call's frames so they don't leak or collide with the next
+        # query on the same (reused) connection.
+        for name in frames:
+            con.unregister(name)
