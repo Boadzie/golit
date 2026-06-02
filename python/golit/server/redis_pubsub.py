@@ -7,11 +7,13 @@ connection. Redis pub/sub delivers one ``publish`` to every subscribed worker, s
 this class implements the same :class:`~golit.server.pubsub.PubSub` protocol and
 drops into ``create_app`` with no change to the SSE layer.
 
-What does **not** go through Redis: per-session state (the kernel graph and the
-Polars values). That stays worker-local — serializing DataFrames per interaction
-would defeat the whole "cost ∝ change" thesis. The price is *session affinity*:
-a client's POST and its ``/events`` stream must land on the worker that owns its
-state. See ``DEPLOYMENT.md``.
+What does **not** go through Redis: per-session *frames* (the kernel graph's
+Polars values). Those stay worker-local — serializing DataFrames per interaction
+would defeat the whole "cost ∝ change" thesis. Its sibling
+:class:`~golit.server.session_store.RedisSessionStore` persists only each session's
+small *input* map, so affinity is a warm-cache default rather than a hard
+requirement: a request on a worker without the live session reconstructs it by
+replaying those inputs. See ``DEPLOYMENT.md``.
 """
 
 from __future__ import annotations
