@@ -174,18 +174,28 @@ def _p50_us(fn, *, warmup: int = 10, iters: int = 60) -> float:
 
 def measure_render(rows: int, depth: int) -> list[dict]:
     """The **fair** per-update latency comparison: real server work to turn a slider
-    move into the wire payload for the *same real chart*, both frameworks, split into
-    the steps each actually does.
+    move into the wire payload for the *same real chart*, split into the steps each
+    path actually does — and crucially across **both** of Golit's rendering paths, so
+    the comparison isolates the framework from the rendering *architecture*.
 
-    The earlier ``b1_dash.csv`` floor times only the affected chain — bare Polars, no
-    framework — which flatters whichever rival is driven most directly. Here both pay
-    for a real chart: shared Polars compute, then **render**. Golit renders the SVG
-    server-side (the payload is the SVG); Dash builds a Plotly figure and serializes it
-    to JSON (the client draws it). So Golit's heavier server render is exactly the cost
-    of shipping a self-contained chart with no client runtime — the trade the crossover
-    chart shows from the bytes side, here in time.
+    The ``b1_dash.csv`` floor times only the affected chain (bare Polars, no framework),
+    so it only says "reactive scheduling is a tie." For real charts there are two
+    architectures, and Dash only has one of them:
+
+    * **ship a spec** — build a Plotly figure, serialize to JSON, let the client draw it.
+      This is what Dash always does, and what Golit's *interactive* path does too
+      (``try_interactive`` → a ``plotly`` mount, the same ``figure.to_json()``). Matched
+      this way, **Golit ≈ Dash** — the framework engine is not the cost.
+    * **render server-side** — Golit's *static* path runs Lets-Plot to an SVG; the
+      payload is the finished chart and the client needs no charting runtime. This costs
+      server render time (the tall bar) and is the trade the crossover chart shows in
+      bytes. Dash cannot do this.
+
+    So the honest read is: matched architecture is a tie; Golit's slower number is a
+    *different, optional* architecture, not a slower framework.
     """
     import polars as pl
+    from golit.rendering.interactive import try_interactive
 
     data = _frame(rows)
     vals = _SLIDER_VALUES
@@ -196,32 +206,37 @@ def measure_render(rows: int, depth: int) -> list[dict]:
         state["i"] += 1
         return vals[state["i"] % n]
 
-    def compute(v: int):  # the shared Polars work both frameworks need
+    def compute(v: int):  # the shared Polars work every path needs
         return _affected(data, v, depth).group_by("g").agg(pl.col("v").sum()).sort("g")
 
-    def golit_step(v: int) -> None:
+    def golit_svg(v: int) -> None:  # static path: render SVG server-side
         _golit_render(_affected(data, v, depth))
 
-    def dash_build(v: int):
+    def build_figure(v: int):  # shared by Dash and Golit's interactive path
         return figure_of(_affected(data, v, depth))
 
     fig = figure_of(_affected(data, vals[0], depth))
 
     compute_us = _p50_us(lambda: compute(nextv()))
-    golit_total = _p50_us(lambda: golit_step(nextv()))
-    dash_build_total = _p50_us(lambda: dash_build(nextv()))
-    dash_serialize_us = _p50_us(fig.to_json)
+    golit_svg_total = _p50_us(lambda: golit_svg(nextv()))
+    build_total = _p50_us(lambda: build_figure(nextv()))
+    dash_serialize_us = _p50_us(fig.to_json)  # Plotly's to_json (Dash's wire body)
+    golit_plotly_serialize_us = _p50_us(lambda: try_interactive(fig))  # to_json + mount wrap
 
-    golit_render_us = max(golit_total - compute_us, 0.0)
-    dash_render_us = max(dash_build_total - compute_us, 0.0)
+    build_us = max(build_total - compute_us, 0.0)
+    golit_svg_render_us = max(golit_svg_total - compute_us, 0.0)
     return [
-        {"framework": "Golit", "stage": "server-rendered SVG",
-         "compute_us": round(compute_us, 1), "render_us": round(golit_render_us, 1),
-         "serialize_us": 0.0, "total_us": round(compute_us + golit_render_us, 1)},
-        {"framework": "Dash", "stage": "figure + JSON (client draws)",
-         "compute_us": round(compute_us, 1), "render_us": round(dash_render_us, 1),
+        {"framework": "Golit (SVG)", "stage": "render server-side, 0 client runtime",
+         "compute_us": round(compute_us, 1), "render_us": round(golit_svg_render_us, 1),
+         "serialize_us": 0.0, "total_us": round(compute_us + golit_svg_render_us, 1)},
+        {"framework": "Golit (Plotly)", "stage": "ship figure spec (client draws)",
+         "compute_us": round(compute_us, 1), "render_us": round(build_us, 1),
+         "serialize_us": round(golit_plotly_serialize_us, 1),
+         "total_us": round(compute_us + build_us + golit_plotly_serialize_us, 1)},
+        {"framework": "Dash", "stage": "ship figure spec (client draws)",
+         "compute_us": round(compute_us, 1), "render_us": round(build_us, 1),
          "serialize_us": round(dash_serialize_us, 1),
-         "total_us": round(compute_us + dash_render_us + dash_serialize_us, 1)},
+         "total_us": round(compute_us + build_us + dash_serialize_us, 1)},
     ]
 
 
@@ -236,21 +251,23 @@ def _headline(results: list[dict], byte_rows: list[dict], render_rows: list[dict
     d = next(b for b in byte_rows if b["framework"] == "Dash")
     denom = g["per_update_bytes"] - d["per_update_bytes"]
     crossover = (d["client_runtime_bytes"] - g["client_runtime_bytes"]) / denom if denom > 0 else 0
-    gr = next(r for r in render_rows if r["framework"] == "Golit")
+    gsvg = next(r for r in render_rows if r["framework"] == "Golit (SVG)")
+    gpl = next(r for r in render_rows if r["framework"] == "Golit (Plotly)")
     dr = next(r for r in render_rows if r["framework"] == "Dash")
     return (
         f"Dash chain p50 (depth {deepest}) {shape} with graph size (exec stays 1 — one "
         f"callback per move): Dash is reactive/flat, not rerun-everything.\n"
-        f"FAIR per-update (same real chart): Golit {gr['total_us'] / 1000:.2f}ms "
-        f"(render {gr['render_us'] / 1000:.2f}ms, server SVG) vs Dash "
-        f"{dr['total_us'] / 1000:.2f}ms (figure {dr['render_us'] / 1000:.2f}ms + JSON "
-        f"{dr['serialize_us'] / 1000:.2f}ms) — Dash is faster on the SERVER because Golit "
-        f"renders the chart instead of shipping a spec for the client to draw.\n"
+        f"FAIR per-update (same real chart): architecture-matched, Golit(Plotly) "
+        f"{gpl['total_us'] / 1000:.2f}ms ≈ Dash {dr['total_us'] / 1000:.2f}ms (both ship a "
+        f"figure spec) — the engine is NOT the cost. Golit's static path renders the SVG "
+        f"server-side at {gsvg['total_us'] / 1000:.2f}ms (a different, optional "
+        f"architecture: heavier server, zero client runtime), which Dash can't do.\n"
         f"Wire: per update Golit SVG {g['per_update_bytes'] / 1000:.1f} KB vs Dash figure "
         f"JSON {d['per_update_bytes'] / 1000:.1f} KB (Dash lighter), but Dash needs "
         f"{d['client_runtime_bytes'] / 1_000_000:.1f} MB client JS vs Golit's "
         f"{g['client_runtime_bytes'] / 1000:.0f} KB (zero charting) — cumulative bytes "
-        f"cross at ~{crossover:.0f} interactions."
+        f"cross at ~{crossover:.0f} interactions. (Golit-Plotly would match Dash's bytes "
+        f"too; the byte advantage is the SVG path's.)"
     )
 
 

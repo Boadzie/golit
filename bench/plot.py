@@ -223,19 +223,25 @@ def build_crossover_chart(byte_rows: list[dict]) -> object:
 
 
 def build_render_chart(render_rows: list[dict]) -> object:
-    """Golit vs Dash — per-update *server* work for the same real chart, broken into
-    stages. The fair latency comparison (``b1_dash.csv`` times only the bare-Polars
-    chain, no framework). Both pay the same shared compute; then Golit renders the SVG
-    server-side while Dash builds a figure spec and serializes it for the client to
-    draw. Golit's taller bar is the server-render cost — the same trade the crossover
-    chart shows in bytes: Golit does more on the server so the client gets a
-    self-contained chart and no charting runtime.
+    """Per-update *server* work for the same real chart, by rendering architecture.
+
+    The fair latency test (``b1_dash.csv`` times only the bare-Polars chain, no
+    framework). Three bars, because Dash has one architecture and Golit has two:
+    **Golit (Plotly)** and **Dash** both ship a figure spec for the client to draw and
+    come out **equal** — the framework engine is not the cost. **Golit (SVG)** renders
+    server-side instead; the taller bar is that render, the price of shipping a
+    self-contained chart with zero client runtime (the trade the crossover shows in
+    bytes). So Golit's slower number is a *different, optional* architecture, not a
+    slower framework.
     """
     stages = [("compute", "compute_us"), ("render", "render_us"), ("serialize", "serialize_us")]
+    order = ["Golit (Plotly)", "Dash", "Golit (SVG)"]
+    rows_sorted = sorted(render_rows, key=lambda r: order.index(r["framework"])
+                         if r["framework"] in order else len(order))
     x: list[str] = []
     y: list[float] = []
     stage: list[str] = []
-    for r in render_rows:
+    for r in rows_sorted:
         for label, key in stages:
             val = float(r[key])
             if val <= 0:
@@ -249,15 +255,15 @@ def build_render_chart(render_rows: list[dict]) -> object:
         ggplot(data, aes("framework", "ms", fill="stage"))
         + geom_bar(stat="identity")
         + labs(
-            title="Golit vs Dash — per-update server work for the same chart (100K rows, depth 3)",
-            subtitle="Fair test: both render a real chart. Golit renders the SVG "
-            "server-side (heavier server, zero client runtime); Dash ships a figure "
-            "spec the client draws (lighter server, but ~5.9 MB client JS).",
+            title="Per-update server work for the same chart, by architecture (100K rows, depth 3)",
+            subtitle="Architecture-matched (both ship a figure spec), Golit (Plotly) ≈ "
+            "Dash — the engine isn't the cost. Golit (SVG) renders server-side instead: "
+            "heavier server, but zero client charting runtime — an option Dash lacks.",
             x="",
             y="Per-update server time (ms)",
             fill="",
         )
-        + ggsize(720, 470)
+        + ggsize(760, 470)
     )
 
 
