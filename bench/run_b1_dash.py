@@ -50,6 +50,7 @@ _SLIDER_VALUES = [11, 23, 37, 53, 71]
 FIELDS = ["rows", "depth", "unaffected", "metric", "exec",
           "p50_us", "p95_us", "p99_us", "mean_us", "n"]
 BYTES_FIELDS = ["framework", "transport", "per_update_bytes", "client_runtime_bytes", "note"]
+RENDER_FIELDS = ["framework", "stage", "compute_us", "render_us", "serialize_us", "total_us"]
 
 # Golit ships no JS of its own; the only client runtime for a static-SVG dashboard is
 # htmx (loaded once from CDN), and *zero* charting code — the SVG is server-rendered.
@@ -142,19 +143,89 @@ def measure_bytes(rows: int, depth: int) -> list[dict]:
     ]
 
 
-def _golit_svg_bytes(frame) -> int:
-    """Bytes of the same bar chart rendered through Golit's own Lets-Plot -> SVG path."""
+def _golit_render(frame) -> str:
+    """Render the same bar chart through Golit's own Lets-Plot -> SVG path: the work
+    a Golit view does each update to produce the wire payload (a static SVG string)."""
     import polars as pl
     from golit.charts import aes, geom_bar, ggplot
     from golit.rendering.charts import plot_to_svg
 
     agg = frame.group_by("g").agg(pl.col("v").sum()).sort("g")
     data = {"g": agg["g"].to_list(), "v": agg["v"].to_list()}
-    svg = plot_to_svg(ggplot(data, aes("g", "v")) + geom_bar(stat="identity"))
-    return len(svg.encode("utf-8"))
+    return plot_to_svg(ggplot(data, aes("g", "v")) + geom_bar(stat="identity"))
 
 
-def _headline(results: list[dict], byte_rows: list[dict]) -> str:
+def _golit_svg_bytes(frame) -> int:
+    return len(_golit_render(frame).encode("utf-8"))
+
+
+def _p50_us(fn, *, warmup: int = 10, iters: int = 60) -> float:
+    """Median wall time of ``fn`` in microseconds."""
+    for _ in range(warmup):
+        fn()
+    samples: list[int] = []
+    for _ in range(iters):
+        t0 = time.perf_counter_ns()
+        fn()
+        samples.append(time.perf_counter_ns() - t0)
+    samples.sort()
+    return samples[len(samples) // 2] / 1000.0
+
+
+def measure_render(rows: int, depth: int) -> list[dict]:
+    """The **fair** per-update latency comparison: real server work to turn a slider
+    move into the wire payload for the *same real chart*, both frameworks, split into
+    the steps each actually does.
+
+    The earlier ``b1_dash.csv`` floor times only the affected chain — bare Polars, no
+    framework — which flatters whichever rival is driven most directly. Here both pay
+    for a real chart: shared Polars compute, then **render**. Golit renders the SVG
+    server-side (the payload is the SVG); Dash builds a Plotly figure and serializes it
+    to JSON (the client draws it). So Golit's heavier server render is exactly the cost
+    of shipping a self-contained chart with no client runtime — the trade the crossover
+    chart shows from the bytes side, here in time.
+    """
+    import polars as pl
+
+    data = _frame(rows)
+    vals = _SLIDER_VALUES
+    n = len(vals)
+    state = {"i": 0}
+
+    def nextv() -> int:
+        state["i"] += 1
+        return vals[state["i"] % n]
+
+    def compute(v: int):  # the shared Polars work both frameworks need
+        return _affected(data, v, depth).group_by("g").agg(pl.col("v").sum()).sort("g")
+
+    def golit_step(v: int) -> None:
+        _golit_render(_affected(data, v, depth))
+
+    def dash_build(v: int):
+        return figure_of(_affected(data, v, depth))
+
+    fig = figure_of(_affected(data, vals[0], depth))
+
+    compute_us = _p50_us(lambda: compute(nextv()))
+    golit_total = _p50_us(lambda: golit_step(nextv()))
+    dash_build_total = _p50_us(lambda: dash_build(nextv()))
+    dash_serialize_us = _p50_us(fig.to_json)
+
+    golit_render_us = max(golit_total - compute_us, 0.0)
+    dash_render_us = max(dash_build_total - compute_us, 0.0)
+    return [
+        {"framework": "Golit", "stage": "server-rendered SVG",
+         "compute_us": round(compute_us, 1), "render_us": round(golit_render_us, 1),
+         "serialize_us": 0.0, "total_us": round(compute_us + golit_render_us, 1)},
+        {"framework": "Dash", "stage": "figure + JSON (client draws)",
+         "compute_us": round(compute_us, 1), "render_us": round(dash_render_us, 1),
+         "serialize_us": round(dash_serialize_us, 1),
+         "total_us": round(compute_us + dash_render_us + dash_serialize_us, 1)},
+    ]
+
+
+def _headline(results: list[dict], byte_rows: list[dict], render_rows: list[dict]) -> str:
     deepest = max(r["depth"] for r in results)
     line = [r for r in results if r["depth"] == deepest]
     lo = min(line, key=lambda r: r["unaffected"])
@@ -165,9 +236,16 @@ def _headline(results: list[dict], byte_rows: list[dict]) -> str:
     d = next(b for b in byte_rows if b["framework"] == "Dash")
     denom = g["per_update_bytes"] - d["per_update_bytes"]
     crossover = (d["client_runtime_bytes"] - g["client_runtime_bytes"]) / denom if denom > 0 else 0
+    gr = next(r for r in render_rows if r["framework"] == "Golit")
+    dr = next(r for r in render_rows if r["framework"] == "Dash")
     return (
         f"Dash chain p50 (depth {deepest}) {shape} with graph size (exec stays 1 — one "
         f"callback per move): Dash is reactive/flat, not rerun-everything.\n"
+        f"FAIR per-update (same real chart): Golit {gr['total_us'] / 1000:.2f}ms "
+        f"(render {gr['render_us'] / 1000:.2f}ms, server SVG) vs Dash "
+        f"{dr['total_us'] / 1000:.2f}ms (figure {dr['render_us'] / 1000:.2f}ms + JSON "
+        f"{dr['serialize_us'] / 1000:.2f}ms) — Dash is faster on the SERVER because Golit "
+        f"renders the chart instead of shipping a spec for the client to draw.\n"
         f"Wire: per update Golit SVG {g['per_update_bytes'] / 1000:.1f} KB vs Dash figure "
         f"JSON {d['per_update_bytes'] / 1000:.1f} KB (Dash lighter), but Dash needs "
         f"{d['client_runtime_bytes'] / 1_000_000:.1f} MB client JS vs Golit's "
@@ -184,6 +262,7 @@ def main() -> None:
     ap.add_argument("--warmup", type=int, default=8)
     ap.add_argument("--out", default=os.path.join(RESULTS_DIR, "b1_dash.csv"))
     ap.add_argument("--bytes-out", default=os.path.join(RESULTS_DIR, "b1_dash_bytes.csv"))
+    ap.add_argument("--render-out", default=os.path.join(RESULTS_DIR, "b1_dash_render.csv"))
     args = ap.parse_args()
 
     if args.quick:
@@ -200,6 +279,7 @@ def main() -> None:
     results = run(rows=args.rows, depths=depths, unaffected_list=unaffected_list,
                   iters=iters, warmup=warmup)
     byte_rows = measure_bytes(args.rows, max(depths))
+    render_rows = measure_render(args.rows, 3 if 3 in depths else depths[0])
     elapsed = time.perf_counter() - t0
 
     with open(args.out, "w", newline="") as f:
@@ -210,10 +290,14 @@ def main() -> None:
         w = csv.DictWriter(f, fieldnames=BYTES_FIELDS)
         w.writeheader()
         w.writerows(byte_rows)
+    with open(args.render_out, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=RENDER_FIELDS)
+        w.writeheader()
+        w.writerows(render_rows)
 
-    print(f"\nWrote {len(results)} rows to {args.out} and {len(byte_rows)} to "
-          f"{args.bytes_out} in {elapsed:.1f}s")
-    print("\n" + _headline(results, byte_rows))
+    print(f"\nWrote {len(results)} rows to {args.out}, {len(byte_rows)} to "
+          f"{args.bytes_out}, {len(render_rows)} to {args.render_out} in {elapsed:.1f}s")
+    print("\n" + _headline(results, byte_rows, render_rows))
 
 
 if __name__ == "__main__":

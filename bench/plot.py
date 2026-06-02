@@ -14,7 +14,7 @@ from __future__ import annotations
 import csv
 import os
 
-from golit.charts import aes, geom_line, geom_point, ggplot, ggsize, labs
+from golit.charts import aes, geom_bar, geom_line, geom_point, ggplot, ggsize, labs
 from golit.rendering.charts import plot_to_svg
 
 try:  # log scale lives in the lets_plot namespace re-exported by golit.charts
@@ -222,6 +222,45 @@ def build_crossover_chart(byte_rows: list[dict]) -> object:
     )
 
 
+def build_render_chart(render_rows: list[dict]) -> object:
+    """Golit vs Dash — per-update *server* work for the same real chart, broken into
+    stages. The fair latency comparison (``b1_dash.csv`` times only the bare-Polars
+    chain, no framework). Both pay the same shared compute; then Golit renders the SVG
+    server-side while Dash builds a figure spec and serializes it for the client to
+    draw. Golit's taller bar is the server-render cost — the same trade the crossover
+    chart shows in bytes: Golit does more on the server so the client gets a
+    self-contained chart and no charting runtime.
+    """
+    stages = [("compute", "compute_us"), ("render", "render_us"), ("serialize", "serialize_us")]
+    x: list[str] = []
+    y: list[float] = []
+    stage: list[str] = []
+    for r in render_rows:
+        for label, key in stages:
+            val = float(r[key])
+            if val <= 0:
+                continue
+            x.append(r["framework"])
+            y.append(val / 1000.0)
+            stage.append(label)
+
+    data = {"framework": x, "ms": y, "stage": stage}
+    return (
+        ggplot(data, aes("framework", "ms", fill="stage"))
+        + geom_bar(stat="identity")
+        + labs(
+            title="Golit vs Dash — per-update server work for the same chart (100K rows, depth 3)",
+            subtitle="Fair test: both render a real chart. Golit renders the SVG "
+            "server-side (heavier server, zero client runtime); Dash ships a figure "
+            "spec the client draws (lighter server, but ~5.9 MB client JS).",
+            x="",
+            y="Per-update server time (ms)",
+            fill="",
+        )
+        + ggsize(720, 470)
+    )
+
+
 def build_b2_saturation_chart(rows_csv: list[dict]) -> object:
     """B2 single-instance load curve: end-to-end p99 vs achieved throughput.
 
@@ -316,6 +355,8 @@ def main() -> None:
     _render(build_b2_scaling_chart, "b2.csv", "b2_scaling.svg",
             "python -m bench.http.run_b2")
     _render(build_crossover_chart, "b1_dash_bytes.csv", "b1_dash_crossover.svg",
+            "python -m bench.run_b1_dash")
+    _render(build_render_chart, "b1_dash_render.csv", "b1_dash_render.svg",
             "python -m bench.run_b1_dash")
 
     golit_path = os.path.join(RESULTS_DIR, "b1.csv")
