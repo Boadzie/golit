@@ -1,10 +1,8 @@
 # Golit
 
-> **Streamlit, until it goes to production.**
-
-A high-performance **Reactive Directed Acyclic Graph (DAG)** framework for Python.
-Golit maps your data dependencies, then on every interaction recomputes only the
-nodes that changed — not your whole script.
+> **A high-performance **Reactive Directed Acyclic Graph (DAG)** framework for Python.
+> Golit maps your data dependencies, then on every interaction recomputes only the
+> nodes that changed — not your whole script.**
 
 - **Rust reactive kernel** (PyO3) — dirty tracking, topological scheduling, propagation
 - **Polars** data, held Python-side; only node ids/hashes cross the FFI boundary
@@ -56,7 +54,7 @@ application = create_app(app)   # an ASGI app; `golit run app.py` serves it
 
 Moving the slider dirties `threshold → filtered → chart`. The `data` node is never
 touched; only the `chart` fragment is re-rendered and swapped. A view that depends
-only on `data` (e.g. a dataset overview) is *not* re-rendered on a slider move —
+only on `data` (e.g. a dataset overview) is _not_ re-rendered on a slider move —
 that selective recompute is the whole point. See
 [`examples/sales_explorer/app.py`](examples/sales_explorer/app.py).
 
@@ -71,12 +69,12 @@ that selective recompute is the whole point. See
 
 ## Architecture (tiers)
 
-| Tier | Role | Tech |
-| ---- | ---- | ---- |
-| 0 | Reactive kernel | Rust + PyO3 (`src/`, `golit._golit`) |
-| 1 | Orchestrator | Litestar (`golit.server`) |
-| 2 | Transport | HTMX fragments + Lets-Plot SVG (`golit.rendering`) |
-| 3 | Local shield | Alpine.js (widget immediacy) |
+| Tier | Role            | Tech                                               |
+| ---- | --------------- | -------------------------------------------------- |
+| 0    | Reactive kernel | Rust + PyO3 (`src/`, `golit._golit`)               |
+| 1    | Orchestrator    | Litestar (`golit.server`)                          |
+| 2    | Transport       | HTMX fragments + Lets-Plot SVG (`golit.rendering`) |
+| 3    | Local shield    | Alpine.js (widget immediacy)                       |
 
 ## Status
 
