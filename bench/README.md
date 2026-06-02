@@ -89,8 +89,8 @@ What it confirms (100K-row dataset, dev laptop, loopback):
   the B3 story in one number.
 
 This is still single-client sequential latency (B1), over **loopback**, on a
-laptop. Real network RTT, **B2** (concurrency / many simultaneous sessions), and a
-cloud instance are the remaining publishable pieces.
+laptop. **B2** (concurrency / many simultaneous sessions) is the next section;
+real network RTT and a cloud instance are the remaining publishable pieces.
 
 ### Reading the hero chart
 
@@ -203,14 +203,74 @@ Redis fan-out, and concurrency (B2) — versus a single-user notebook kernel. Ca
 kept for fairness: the marimo number is a best case (bare executor, no
 kernel/transport), so "level floor" is the honest claim, not "Golit wins the floor."
 
+## B2 — concurrency scaling (`bench/http/run_b2.py`)
+
+B1 is single-client sequential latency; it never asks *how many simultaneous
+sessions can one instance hold, and does adding instances help?* That's the
+production axis — and the one where Golit's server model should pull ahead of a
+single-user notebook kernel, which has no answer here at all. B2 drives the same
+real HTTP server as B1 (100K rows, depth 3) with a **closed-loop, multiprocess**
+load generator ([`load.py`](http/load.py)): `C` virtual users, each its own
+`httpx.AsyncClient` — own cookie jar, hence own Golit **session** — POSTing slider
+updates back-to-back over a shared wall-clock window. The users are split across
+`min(C, cpu_count)` OS processes so the *driver* never becomes the ceiling (a
+single asyncio client tops out near 3000 req/s and would make a faster server look
+flat). Two sweeps:
+
+**1. Single-instance saturation** — one server, sweep `C` ∈ {1…64}:
+
+| C | p50 | p99 | throughput |
+| ---: | ---: | ---: | ---: |
+| 1  | 0.65 ms | 0.90 ms |  1506 req/s |
+| 4  | 0.99 ms | 1.27 ms |  3966 req/s |
+| 8  | 1.96 ms | 2.38 ms |  **4066 req/s** |
+| 16 | 4.00 ms | 5.28 ms |  3958 req/s |
+| 32 | 7.98 ms | 8.93 ms |  4004 req/s |
+| 64 | 16.4 ms | 21.2 ms |  3866 req/s |
+
+Throughput rises with concurrency to a **~4000 req/s plateau** at C≈8, then holds
+flat while latency climbs *linearly* (C=64 p99 is 23× the C=1 floor). That knee is
+one core's worth of serial compute: the update handler calls `session.update()`
+**inline on the event loop** ([`routes.py`](../python/golit/server/routes.py)), so
+I/O overlaps but CPU does not — a single worker is compute-bound, not I/O-bound.
+The load curve (`b2_saturation.svg`) hooks up sharply at that throughput.
+
+**2. Horizontal scaling** — fixed saturating load (C=32), add **sticky instances**
+`N` ∈ {1,2,4}, each session pinned to one instance by cookie hash (Golit keeps
+session state worker-local — no shared store — so this is exactly its scale model):
+
+| N | p50 | p99 | throughput | vs 1 instance |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 7.99 ms | 9.00 ms | 4000 req/s | 1.0× |
+| 2 | 5.16 ms | 5.96 ms | 6189 req/s | 1.55× |
+| 4 | 4.28 ms | 6.22 ms | 7393 req/s | 1.85× |
+
+Throughput scales with instance count and p99 **recovers** (9.0 → 6.2 ms) even
+though total offered load is fixed — sessions spread out, queues drain. The scaling
+is **sub-linear**, and the reason is honest and local: this is one 14-core laptop
+hosting *both* the N server instances and a 14-process load generator, so at N=4
+they contend for the same cores. The scale model is sound (worker-local state, no
+cross-instance coordination); demonstrating *clean* linear scaling needs the server
+instances on separate hosts from the driver — the cloud step below, not a busier
+box. `b2_scaling.svg` plots achieved vs ideal-linear so the gap is visible, not
+buried.
+
+```bash
+make bench-b2        # full sweep + charts (boots N uvicorns)  (≈1 min)
+# or directly:
+uv run --no-sync python -m bench.http.run_b2          # -> results/b2.csv
+uv run --no-sync python -m bench.http.run_b2 --quick  # fast signal
+```
+
 ## Still to do (the publishable version)
 
 - **Dash** as a behaviorally-identical app on the same rig (the other
   rerun-everything rival; `run_b1_streamlit.py` is the template). Marimo ✅, the
   reactive rival, is now in.
-- **B2** — concurrent-user scaling: many simultaneous sessions, p99 vs concurrency,
-  the production proof, and the axis where Golit's server model should pull ahead of
-  a notebook kernel. (This harness is single-client sequential latency.)
+- **B2 across separate hosts** — the scaling sweep above is real but capped by
+  running servers + driver on one box; put the instances on their own machines to
+  measure clean linear scaling. The harness ([`run_b2.py`](http/run_b2.py)) already
+  takes N sticky base URLs, so this is a deployment change, not a code one.
 - End-to-end numbers over each rival's *real* transport (Streamlit/Marimo websocket;
   this comparison is server-compute only); real network RTT; a **standard cloud
   instance** — everything here is loopback on a dev laptop, suggestive not
