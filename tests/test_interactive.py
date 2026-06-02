@@ -105,3 +105,14 @@ def test_bokeh_figure_renders_as_bokeh_mount() -> None:
     assert 'data-chart-lib="bokeh"' in out
     assert "data-chart-version=" in out  # BokehJS pinned to the installed Bokeh
     assert _spec_of(out)  # valid JSON item
+
+
+def test_plotly_express_figure_renders_as_plotly_mount() -> None:
+    pytest.importorskip("plotly")
+    import plotly.express as px
+
+    # px returns a plotly.graph_objs Figure and takes a Polars frame directly.
+    df = pl.DataFrame({"region": ["North", "South"], "revenue": [120, 200]})
+    out = render_value(px.bar(df, x="region", y="revenue"))
+    assert 'data-chart-lib="plotly"' in out
+    assert _spec_of(out)["data"][0]["type"] == "bar"

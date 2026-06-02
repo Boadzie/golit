@@ -62,13 +62,14 @@ def _missing(lib: str, err: Exception) -> str:
 @app.view
 def plotly_chart(by_region: pl.DataFrame):
     try:
-        import plotly.graph_objects as go
+        import plotly.express as px
     except ImportError as err:
         return _missing("Plotly", err)
-    regions = by_region["region"].to_list()
-    revenue = by_region["revenue"].to_list()
-    fig = go.Figure(go.Bar(x=regions, y=revenue, marker_color=ACCENT))
-    fig.update_layout(title="Plotly", margin=dict(l=40, r=20, t=40, b=30), height=320)
+    # plotly.express takes the Polars frame directly (narwhals); the returned
+    # Figure is auto-detected and rendered as an interactive mount.
+    fig = px.bar(by_region, x="region", y="revenue", title="Plotly Express")
+    fig.update_traces(marker_color=ACCENT)
+    fig.update_layout(margin=dict(l=40, r=20, t=40, b=30), height=320)
     return fig
 
 
