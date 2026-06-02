@@ -65,7 +65,7 @@ application = create_app(app)   # an ASGI app; `golit run app.py` serves it
 
 Moving the slider dirties `threshold → filtered → chart`. The `data` node is never
 touched; only the `chart` fragment is re-rendered and swapped. A view that depends
-only on `data` (e.g. a dataset overview) is *not* re-rendered on a slider move —
+only on `data` (e.g. a dataset overview) is _not_ re-rendered on a slider move —
 that selective recompute is the whole point. See
 [`examples/sales_explorer/app.py`](examples/sales_explorer/app.py).
 
@@ -82,7 +82,7 @@ that selective recompute is the whole point. See
 
 Lets-Plot renders to static SVG (no client runtime). For interactivity, return a
 **Plotly, Altair, or Bokeh** figure — Golit auto-detects it and renders a
-client-side chart that hydrates on the initial load *and* across POST/SSE swaps.
+client-side chart that hydrates on the initial load _and_ across POST/SSE swaps.
 **AnyChart** (no Python package) is available via `anychart()`.
 
 ```python
@@ -137,12 +137,12 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Architecture (tiers)
 
-| Tier | Role            | Tech                                                            |
-| ---- | --------------- | -------------------------------------------------------------- |
-| 0    | Reactive kernel | Rust + PyO3 (`src/`, `golit._golit`)                           |
-| 1    | Orchestrator    | Litestar + SSE/Redis fan-out (`golit.server`)                 |
+| Tier | Role            | Tech                                                                |
+| ---- | --------------- | ------------------------------------------------------------------- |
+| 0    | Reactive kernel | Rust + PyO3 (`src/`, `golit._golit`)                                |
+| 1    | Orchestrator    | Litestar + SSE/Redis fan-out (`golit.server`)                       |
 | 2    | Transport       | HTMX fragments; static SVG + interactive charts (`golit.rendering`) |
-| 3    | Local shield    | Alpine.js (widget immediacy, tab state)                        |
+| 3    | Local shield    | Alpine.js (widget immediacy, tab state)                             |
 
 ## Status
 
