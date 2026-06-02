@@ -1,6 +1,8 @@
 # Golit
 
-A high-performance **Reactive Directed Acyclic Graph (DAG)** framework for Python.
+> **Streamlit, until it goes to production.**
+
+A high-performance **Reactive Directed Acyclic Graph (DAG)** framework for building reactive data apps in Python.
 Golit maps your data dependencies, then on every interaction recomputes only the
 nodes that changed — not your whole script.
 
