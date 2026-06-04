@@ -130,14 +130,18 @@ CHART_BOOTSTRAP = """
     chart.container(el); chart.draw();
   }
   function drawMap(el, spec) {
-    // A maplibre spec carries a full style (URL or dict) plus camera. geo_map's
-    // GeoJSON source + layers live inside `style`, so the map is fully declarative
-    // and redraws identically on a swap — each swap is a fresh element, and the old
-    // map's WebGL context is freed by the htmx:beforeCleanupElement hook below.
+    // A maplibre spec carries a style (URL or dict) plus camera. For a preset/dict
+    // basemap geo_map bakes its GeoJSON source + layers into `style` (fully declarative,
+    // redraws identically on a swap). For a vector-style *URL* basemap we can't merge
+    // server-side, so the data rides in spec.overlay and is added once the style loads.
+    // Either way each swap is a fresh element and the old WebGL context is freed by the
+    // htmx:beforeCleanupElement hook below.
     if (el.style && spec.height) el.style.height = spec.height;
     var opts = {container: el, style: spec.style};
-    if (spec.bounds) { opts.bounds = spec.bounds; opts.fitBoundsOptions = {padding: 24}; }
-    else {
+    if (spec.bounds) {
+      opts.bounds = spec.bounds;
+      opts.fitBoundsOptions = {padding: (spec.fitPadding != null) ? spec.fitPadding : 24};
+    } else {
       opts.center = spec.center || [0, 0];
       opts.zoom = (spec.zoom != null) ? spec.zoom : 1;
     }
@@ -147,9 +151,21 @@ CHART_BOOTSTRAP = """
     if (spec.maxZoom != null) opts.maxZoom = spec.maxZoom;
     var map = new maplibregl.Map(opts);
     el._golitMap = map;
-    // geo_map can request click popups over its data layer: spec.tooltip lists the
-    // feature properties to show, spec.tooltipLayer is the layer to bind. Values are
-    // escaped — the GeoDataFrame is developer data, but treat it as untrusted anyway.
+    if (spec.overlay) {
+      map.on('load', function () {
+        var ov = spec.overlay, sid;
+        for (sid in (ov.sources || {})) {
+          if (!map.getSource(sid)) map.addSource(sid, ov.sources[sid]);
+        }
+        (ov.layers || []).forEach(function (ly) {
+          if (!map.getLayer(ly.id)) map.addLayer(ly);
+        });
+      });
+    }
+    // geo_map can request popups over its data layer: spec.tooltip lists the feature
+    // properties to show, spec.tooltipLayer the layer to bind, spec.tooltipTrigger
+    // 'click' (default) or 'hover'. Layer-scoped handlers fire even for an overlay layer
+    // added later. Values are escaped — treat GeoDataFrame attributes as untrusted.
     if (spec.tooltip && spec.tooltipLayer) {
       var esc = function (s) {
         return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -157,8 +173,9 @@ CHART_BOOTSTRAP = """
         });
       };
       var fields = spec.tooltip, layer = spec.tooltipLayer;
-      var popup = new maplibregl.Popup({closeButton: false});
-      map.on('click', layer, function (e) {
+      var hover = spec.tooltipTrigger === 'hover';
+      var popup = new maplibregl.Popup({closeButton: !hover, closeOnClick: !hover});
+      var show = function (e) {
         var f = e.features && e.features[0];
         if (!f) return;
         var rows = fields.map(function (k) {
@@ -167,9 +184,13 @@ CHART_BOOTSTRAP = """
         }).join('');
         popup.setLngLat(e.lngLat).setHTML('<div style="font:12px Inter,sans-serif">' +
           rows + '</div>').addTo(map);
-      });
+      };
+      map.on(hover ? 'mousemove' : 'click', layer, show);
       map.on('mouseenter', layer, function () { map.getCanvas().style.cursor = 'pointer'; });
-      map.on('mouseleave', layer, function () { map.getCanvas().style.cursor = ''; });
+      map.on('mouseleave', layer, function () {
+        map.getCanvas().style.cursor = '';
+        if (hover) popup.remove();
+      });
     }
   }
   function draw(el, lib, spec) {

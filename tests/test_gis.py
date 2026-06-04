@@ -129,6 +129,33 @@ def test_geo_map_basemap_presets_and_none() -> None:
         gis.geo_map(_squares(), basemap="bogus")
 
 
+def test_geo_map_style_url_basemap_overlays_the_data() -> None:
+    url = "https://demotiles.maplibre.org/style.json"
+    spec = _spec_of(gis.geo_map(_squares(), basemap=url, color="revenue"))
+    # A remote style can't be merged server-side, so the data rides in `overlay`.
+    assert spec["style"] == url
+    assert spec["overlay"]["sources"]["golit-geo"]["type"] == "geojson"
+    assert any(layer["id"] == "golit-geo" for layer in spec["overlay"]["layers"])
+
+
+def test_geo_map_preset_basemap_still_bakes_data_into_the_style() -> None:
+    spec = _spec_of(gis.geo_map(_squares(), basemap="light"))
+    assert spec["style"]["sources"]["golit-geo"]["type"] == "geojson"
+    assert "overlay" not in spec
+
+
+def test_geo_map_fit_padding_is_emitted_only_when_non_default() -> None:
+    assert _spec_of(gis.geo_map(_squares(), fit_padding=60))["fitPadding"] == 60
+    assert "fitPadding" not in _spec_of(gis.geo_map(_squares()))
+
+
+def test_geo_map_hover_tooltip_trigger() -> None:
+    spec = _spec_of(gis.geo_map(_squares(), tooltip=["name"], tooltip_trigger="hover"))
+    assert spec["tooltipTrigger"] == "hover"
+    # click is the default and stays implicit
+    assert "tooltipTrigger" not in _spec_of(gis.geo_map(_squares(), tooltip=["name"]))
+
+
 def test_render_value_routes_a_geodataframe_to_a_map_not_a_table() -> None:
     out = render_value(_squares())
     assert 'data-chart-lib="maplibre"' in out
@@ -157,6 +184,8 @@ def test_page_shell_carries_maplibre_cdn_and_css() -> None:
     assert "maplibre-gl@5.24.0/dist/maplibre-gl.js" in shell  # CDN runtime wired in
     assert "maplibre-gl@5.24.0/dist/maplibre-gl.css" in shell  # required stylesheet linked
     assert "drawMap" in shell  # the bootstrap can render a map mount
+    assert "spec.overlay" in shell  # vector style-URL data overlay path
+    assert "tooltipTrigger" in shell  # hover/click tooltips
 
 
 def test_geo_map_numeric_color_overlays_a_gradient_legend() -> None:

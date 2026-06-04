@@ -76,6 +76,10 @@ When `color` is set, a **legend** is overlaid automatically — a gradient bar f
 choropleth, swatches for a categorical one. It's plain server-rendered markup (no client
 runtime); pass `legend=False` to hide it.
 
+`basemap` also accepts a **vector style-URL** (`basemap="https://…/style.json"`) — the data
+is overlaid once the remote style loads — and `tooltip_trigger="hover"` shows the popup on
+hover instead of click. `fit_padding` controls the bounds-fit inset.
+
 ## `maplibre` — a native map from a style
 
 When you want a base map for its own sake — a vector tile style, 3D buildings, terrain —

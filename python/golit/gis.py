@@ -99,8 +99,10 @@ def maplibre(
     return chart_spec("maplibre", spec)
 
 
-def _base_style(basemap: Any) -> dict[str, Any]:
-    """Build the base MapLibre style (just the basemap) that geo_map layers onto."""
+def _base_style(basemap: Any) -> dict[str, Any] | str:
+    """The base MapLibre style geo_map layers onto: a style ``dict`` we can bake the data
+    into, or a style-**URL** string (returned as-is — geo_map overlays the data on load,
+    since a remote style can't be merged server-side)."""
     if isinstance(basemap, dict):
         style = dict(basemap)
         style.setdefault("version", 8)
@@ -113,6 +115,8 @@ def _base_style(basemap: Any) -> dict[str, Any]:
     if basemap in (None, "none"):
         background = {"id": "bg", "type": "background", "paint": {"background-color": "#eaeef2"}}
         return {"version": 8, "sources": {}, "layers": [background]}
+    if isinstance(basemap, str) and basemap.startswith(("http://", "https://", "mapbox://")):
+        return basemap  # a vector style URL — the data is overlaid after the style loads
     try:
         tiles, attribution = _BASEMAPS[basemap]
     except KeyError:
@@ -245,8 +249,10 @@ def geo_map(
     *,
     color: str | None = None,
     tooltip: Any = None,
+    tooltip_trigger: str = "click",
     basemap: Any = "default",
     fit: bool = True,
+    fit_padding: int = 24,
     legend: bool = True,
     geometry: str | None = None,
     height: str = "420px",
@@ -259,10 +265,11 @@ def geo_map(
     layer picked from the geometry type. ``color`` names a column to drive the fill — a
     blue ramp for a numeric column (a choropleth), a categorical palette for a text one;
     when ``color`` is set, a ``legend`` is overlaid (gradient bar or swatches) unless
-    turned off. ``tooltip`` shows feature properties on click: ``True`` for every
-    attribute, or a column name / list of names. ``basemap`` is a preset (``"default"``,
-    ``"light"``, ``"dark"``, ``"osm"``, ``"none"``) or a full style ``dict``. With ``fit``
-    the camera frames the data's bounds::
+    turned off. ``tooltip`` shows feature properties: ``True`` for every attribute, or a
+    column name / list of names — on click, or on hover with ``tooltip_trigger="hover"``.
+    ``basemap`` is a preset (``"default"``, ``"light"``, ``"dark"``, ``"osm"``,
+    ``"none"``), a full style ``dict``, or a vector **style-URL** string (the data is
+    overlaid on it). With ``fit`` the camera frames the data's bounds (``fit_padding`` px)::
 
         @app.view
         def map(regions):                  # regions is a filtered GeoDataFrame
@@ -291,19 +298,32 @@ def geo_map(
 
     mapping = _color_mapping(gdf, color) if color else None
     geojson = json.loads(gdf.to_json())
-    style = _base_style(basemap)
-    style["sources"][_SOURCE] = {"type": "geojson", "data": geojson}
-    style["layers"].extend(_data_layers(gdf, mapping))
+    source = {"type": "geojson", "data": geojson}
+    layers = _data_layers(gdf, mapping)
 
-    spec: dict[str, Any] = {"style": style, "height": height}
+    base = _base_style(basemap)
+    spec: dict[str, Any] = {"height": height}
+    if isinstance(base, str):
+        # vector style URL — overlay the data once the remote style finishes loading
+        spec["style"] = base
+        spec["overlay"] = {"sources": {_SOURCE: source}, "layers": layers}
+    else:
+        base["sources"][_SOURCE] = source
+        base["layers"].extend(layers)
+        spec["style"] = base
+
     if fit and "bounds" not in opts:
         minx, miny, maxx, maxy = (float(v) for v in gdf.total_bounds)
         spec["bounds"] = [[minx, miny], [maxx, maxy]]
+        if fit_padding != 24:
+            spec["fitPadding"] = fit_padding
 
     fields = _tooltip_fields(gdf, tooltip)
     if fields:
         spec["tooltip"] = fields
         spec["tooltipLayer"] = _SOURCE
+        if tooltip_trigger != "click":
+            spec["tooltipTrigger"] = tooltip_trigger
 
     spec.update(opts)
     mount = chart_spec("maplibre", spec)
