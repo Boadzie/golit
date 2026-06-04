@@ -158,14 +158,16 @@ def map(regions):                      # regions is a filtered GeoDataFrame
 ```
 
 Raster works too: `gis.raster(dataarray)` colormaps a georeferenced **rioxarray/xarray**
-array (or GeoTIFF) to a MapLibre image layer, and `gis.rgb(stack, bands=…)` renders a
-multiband raster as a true/false-color **satellite composite** (`pip install
-"golit[gis-raster]"`). Install vector with `pip install "golit[gis]"` (DuckDB spatial rides
-on the `sql` extra). Moving a control re-runs only the filter + map node — the fragment swaps
-in place on the initial load and after a POST/SSE. See
-[`examples/geo_explorer/app.py`](examples/geo_explorer/app.py) (vector),
-[`examples/raster_explorer/app.py`](examples/raster_explorer/app.py) (raster), and
-[`examples/rgb_composite/app.py`](examples/rgb_composite/app.py) (RGB composite).
+array (or GeoTIFF) to a MapLibre image layer, `gis.rgb(stack, bands=…)` renders a multiband
+raster as a true/false-color **satellite composite** (`pip install "golit[gis-raster]"`), and
+`gis.tiles("scene.tif")` streams a **very large COG** as on-demand `z/x/y` tiles via rio-tiler
+(`pip install "golit[gis-tiles]"`) — only the visible window crosses the wire. Install vector
+with `pip install "golit[gis]"` (DuckDB spatial rides on the `sql` extra). Moving a control
+re-runs only the filter + map node — the fragment swaps in place on the initial load and
+after a POST/SSE. See [`examples/geo_explorer/app.py`](examples/geo_explorer/app.py) (vector),
+[`examples/raster_explorer/app.py`](examples/raster_explorer/app.py) (raster),
+[`examples/rgb_composite/app.py`](examples/rgb_composite/app.py) (RGB composite), and
+[`examples/tiled_raster/app.py`](examples/tiled_raster/app.py) (tiled COG).
 
 ## Components
 
@@ -240,15 +242,14 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **136** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **141** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
 maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps,
-single-band + RGB-composite raster maps, spatial SQL — `golit.gis`), Litestar server
-(POST + SSE), Redis pub/sub fan-out, multi-worker deployment, the benchmark harness
+single-band + RGB-composite + tiled-COG raster maps, spatial SQL — `golit.gis`), Litestar
+server (POST + SSE), Redis pub/sub fan-out, multi-worker deployment, the benchmark harness
 ([`bench/`](bench/), with measured Golit-vs-Dash results), and the examples. **Deferred:**
-tiled rasters (rio-tiler/titiler) for very large data and the wider phase-3 GIS (Earth
-Engine, terrain analysis), a standard-cloud-instance benchmark publication, and the wider
-design suite in `golit_pages/`.
+the wider phase-3 GIS (Earth Engine, terrain analysis), a standard-cloud-instance benchmark
+publication, and the wider design suite in `golit_pages/`.
 
 ## Development
 

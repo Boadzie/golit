@@ -31,6 +31,12 @@ Render a multiband raster (satellite imagery) as a true/false-color RGB composit
 
 ::: golit.gis.rgb
 
+## tiles
+
+Stream a very large Cloud-Optimized GeoTIFF as on-demand `z/x/y` map tiles via rio-tiler — only the visible window crosses the wire. Needs `pip install "golit[gis-tiles]"`.
+
+::: golit.gis.tiles
+
 ## explore
 
 The folium/leafmap escape hatch — embed `gdf.explore()` as a swappable fragment.

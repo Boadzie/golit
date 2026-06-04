@@ -12,7 +12,8 @@ Install the extras:
 
 ```bash
 pip install "golit[gis]"          # vector: geo_map, spatial_sql, explore
-pip install "golit[gis-raster]"   # raster: gis.raster (rasterio / rioxarray / xarray)
+pip install "golit[gis-raster]"   # raster: gis.raster / gis.rgb (rasterio / rioxarray / xarray)
+pip install "golit[gis-tiles]"    # tiled rasters: gis.tiles (rio-tiler, large COGs)
 ```
 
 `gis` pulls in GeoPandas, Shapely, pyproj, and folium. MapLibre GL itself loads from a CDN —
@@ -162,10 +163,34 @@ are nodata in any band are transparent. Band-first `(band, y, x)` (the rasterio/
 layout) and channel-last `(y, x, band)` arrays are both accepted. Like `raster`, the
 composite is a single PNG image layer over the basemap — no client charting runtime.
 
+## `tiles` — very large rasters, streamed
+
+`raster` and `rgb` ship the whole array as one PNG — perfect up to a point, but a
+multi-gigabyte scene can't cross the wire that way. `gis.tiles` serves a **Cloud-Optimized
+GeoTIFF** (a local path or a remote `http(s)` URL) through a built-in tile route: rio-tiler
+reads only the `z/x/y` window each MapLibre request needs — low zooms hit the COG's
+overviews, high zooms the native blocks — so the full raster never loads or transmits.
+
+```python
+@app.view
+def scene(layer: str = select(["elevation", "landcover"], default="elevation")):
+    return gis.tiles(f"/data/{layer}.tif", cmap="terrain")   # a COG path or URL
+```
+
+`bands` selects the source band(s): omit (or one index) for a single colormapped band
+(`cmap` is any rio-tiler colormap), three indexes for an RGB composite. Each band is
+contrast-stretched to `rescale=(min, max)` — or automatically to the COG's 2nd–98th
+percentile when omitted — and the data's footprint frames the camera. Needs
+`pip install "golit[gis-tiles]"` (rio-tiler).
+
+The tile route (`/gis/tiles/{token}/{z}/{x}/{y}`) is part of every Golit server. A view
+registers its source under an opaque token; tiles are served by the **same worker** that
+rendered the view (Golit's usual session affinity), and the token is a hash — never a path —
+so a tile request can only reach a source a view has already opened.
+
 !!! note "GIS phases"
     Phase 1 is vector (GeoDataFrames, spatial SQL); phase 2 is the single-array `raster`
-    overlay; phase 2.5 adds these multiband `rgb` composites. Tiled rasters
-    (rio-tiler/titiler) for very large data are a later step.
+    overlay; phase 2.5 adds multiband `rgb` composites and `tiles` for very large COGs.
 
 ## DuckDB spatial SQL
 
