@@ -68,7 +68,7 @@ Lets-Plot static SVG out of the box, plus auto-detected interactive **Plotly / A
 
 <div markdown>
 ### :material-map: Maps & GIS
-Return a **GeoDataFrame** and get a native **MapLibre GL** map — choropleths, tooltips, basemaps — plus DuckDB **spatial SQL**. A map is a reactive view like any other.
+Return a **GeoDataFrame** for a native **MapLibre GL** choropleth, or a **rioxarray/xarray** array for a raster layer — plus DuckDB **spatial SQL**. A map is a reactive view like any other.
 </div>
 
 <div markdown>
@@ -89,6 +89,7 @@ pip install golit                 # core
 pip install "golit[charts]"       # interactive Plotly / Altair / Bokeh
 pip install "golit[sql]"          # DuckDB SQL nodes over Polars frames
 pip install "golit[gis]"          # native MapLibre maps from GeoDataFrames
+pip install "golit[gis-raster]"   # raster maps from rioxarray/xarray arrays
 pip install "golit[redis]"        # Redis fan-out for multi-worker
 ```
 

@@ -1,7 +1,8 @@
 # GIS
 
-`golit.gis` — reactive maps as ordinary views. Phase 1 covers vector data with native
-MapLibre GL rendering plus DuckDB spatial SQL. Install with `pip install "golit[gis]"`;
+`golit.gis` — reactive maps as ordinary views: vector data (GeoDataFrames), raster data
+(georeferenced arrays), and DuckDB spatial SQL, all rendered with native MapLibre GL.
+Install with `pip install "golit[gis]"` (vector) and `"golit[gis-raster]"` (raster);
 everything heavy is imported lazily, so `import golit` never pulls it in. See the
 [Maps & GIS tutorial](../tutorial/maps.md) for usage.
 
@@ -17,6 +18,12 @@ A GeoPandas `GeoDataFrame` straight to a MapLibre choropleth / line / point map.
 may also just *return* a `GeoDataFrame` — `render_value` routes it here with defaults.
 
 ::: golit.gis.geo_map
+
+## raster
+
+Render a georeferenced raster (rioxarray/xarray `DataArray`, GeoTIFF path, or NumPy array + bounds) as a native MapLibre image layer.
+
+::: golit.gis.raster
 
 ## explore
 
@@ -39,3 +46,7 @@ Turn a frame with a WKB/WKT/shapely geometry column into a `GeoDataFrame` — th
 ## is_geodataframe
 
 ::: golit.gis.is_geodataframe
+
+## is_dataarray
+
+::: golit.gis.is_dataarray

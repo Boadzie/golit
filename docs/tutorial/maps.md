@@ -5,16 +5,17 @@ narrows your data and Golit re-runs only the filter and the map node; everything
 a memo hit. No special map widget, no callback wiring: a view returns a map and the
 fragment swaps in place on the initial load, on POST, and on SSE pushes alike.
 
-Phase 1 covers **vector data** rendered with **native MapLibre GL**, plus **DuckDB
-spatial SQL**. (Raster — rasterio/xarray tile layers — is phase 2.)
+Golit renders **vector data** (GeoDataFrames) and **raster data** (georeferenced arrays)
+with **native MapLibre GL**, plus **DuckDB spatial SQL** over your frames.
 
-Install the extra:
+Install the extras:
 
 ```bash
-pip install "golit[gis]"
+pip install "golit[gis]"          # vector: geo_map, spatial_sql, explore
+pip install "golit[gis-raster]"   # raster: gis.raster (rasterio / rioxarray / xarray)
 ```
 
-It pulls in GeoPandas, Shapely, pyproj, and folium. MapLibre GL itself loads from a CDN —
+`gis` pulls in GeoPandas, Shapely, pyproj, and folium. MapLibre GL itself loads from a CDN —
 there's no Python map package and nothing to bundle. Everything heavy is imported lazily
 *inside* `golit.gis`, so `import golit` never pays for it.
 
@@ -111,6 +112,33 @@ def city(center):
 
 A MapLibre map owns a WebGL context, so Golit disposes the old map when its fragment is
 replaced — you can drive a map from a slider continuously without leaking contexts.
+
+## `raster` — georeferenced arrays
+
+`gis.raster` renders a raster — a **rioxarray/xarray `DataArray`**, a **GeoTIFF path**, or a
+NumPy 2-D array with explicit `bounds=[w, s, e, n]` — as a native MapLibre image layer. A
+DataArray is reprojected to lon/lat via its `.rio` CRS; a single band is colormapped to a
+PNG, overlaid on the basemap, and framed. A colorbar legend is overlaid automatically.
+
+```python
+from golit import select, slider
+
+
+@app.view
+def map(elevation,                                  # a georeferenced DataArray
+        cmap: str = select(["terrain", "viridis", "magma"], default="terrain"),
+        opacity: int = slider(20, 100, default=85, step=5)):
+    return gis.raster(elevation, cmap=cmap, opacity=opacity / 100, label="Elevation (m)")
+```
+
+`cmap` is one of `viridis`, `magma`, `blues`, `terrain`, `greys` (dependency-free — no
+matplotlib); `vmin`/`vmax` set the range and NaN nodata is transparent. Large rasters are
+downsampled to `max_size` px on the long edge to keep the fragment small. A view may also
+just `return` a georeferenced `DataArray`. Needs `pip install "golit[gis-raster]"`.
+
+!!! note "Phase 1 vs 2"
+    Phase 1 is vector (GeoDataFrames, spatial SQL); phase 2 adds this single-array raster
+    overlay. Tiled rasters (rio-tiler/titiler) and RGB composites are a later step.
 
 ## DuckDB spatial SQL
 
