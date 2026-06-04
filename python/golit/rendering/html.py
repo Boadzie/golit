@@ -220,9 +220,15 @@ CHART_BOOTSTRAP = """
   }
   window.golitInitCharts = initCharts;
   function start() {
-    if (window.htmx && window.htmx.onLoad) window.htmx.onLoad(initCharts);
+    // Re-init on every swap, OOB included. A plain htmx:load listener (not the
+    // htmx.onLoad helper) so registration can't lose a race with htmx's own deferred
+    // <script>: if window.htmx isn't defined yet when start() runs, the guarded
+    // onLoad call silently no-ops and swapped-in charts/maps never hydrate.
+    document.addEventListener('htmx:load', function (e) {
+      initCharts((e.detail && e.detail.elt) || e.target);
+    });
     // htmx fires this per element it removes during a swap (POST/OOB and SSE alike).
-    document.body.addEventListener('htmx:beforeCleanupElement', function (e) {
+    document.addEventListener('htmx:beforeCleanupElement', function (e) {
       disposeMaps(e.target);
     });
     initCharts(document);
@@ -249,7 +255,11 @@ CHAT_BOOTSTRAP = """
     });
   }
   function start() {
-    if (window.htmx && window.htmx.onLoad) window.htmx.onLoad(attach);
+    // Plain htmx:load listener (not htmx.onLoad) so it can't lose a race with htmx's
+    // deferred <script> — see the chart bootstrap for the same fix.
+    document.addEventListener('htmx:load', function (e) {
+      attach((e.detail && e.detail.elt) || e.target);
+    });
     attach(document);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
