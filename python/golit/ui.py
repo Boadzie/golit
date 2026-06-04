@@ -50,6 +50,7 @@ __all__ = [
     "heading",
     "caption",
     "chat",
+    "webcam",
 ]
 
 
@@ -465,6 +466,49 @@ def chat(
         '<button type="submit" class="bg-primary text-on-primary rounded-lg px-4 py-2 text-sm '
         'font-semibold hover:opacity-90 transition-all">Send</button>'
         "</form></div>"
+    )
+
+
+def webcam(
+    name: str,
+    *,
+    title: str | None = None,
+    height: int = 384,
+    width: int | None = None,
+) -> str:
+    """A live video panel showing the server-side stream registered as ``name`` with
+    ``@app.stream(name)`` — for webcam / computer-vision views.
+
+    Frames arrive as an MJPEG (``multipart/x-mixed-replace``) response that the browser
+    plays natively in a plain ``<img>``: no client JS, and the connection is independent of
+    the reactive graph, so the view never re-renders mid-stream. Pair it with a producer
+    that reads a camera and draws its detector's output on each frame::
+
+        @app.stream("camera")
+        def camera():
+            ...  # yield annotated JPEG bytes or RGB arrays
+
+        @app.view
+        def live() -> str:
+            return ui.webcam("camera", title="Detections")
+
+    ``height`` is the display height in pixels; ``width`` (optional) caps the width, else it
+    scales to its container. The frame keeps its aspect ratio (letterboxed, not cropped)."""
+    head = (
+        f'<div class="px-1 pb-3 font-headline text-lg font-bold tracking-tight">{esc(title)}</div>'
+        if title
+        else ""
+    )
+    style = f"height: {int(height)}px"
+    if width is not None:
+        style += f"; max-width: {int(width)}px"
+    return (
+        '<div class="golit-webcam flex flex-col bg-surface-container-low rounded-xl p-4">'
+        f"{head}"
+        '<div class="golit-webcam-frame overflow-hidden rounded-lg bg-black" '
+        f'style="{style}">'
+        f'<img src="/golit/stream/{esc(name)}" alt="{esc(title or name)}" '
+        'class="golit-webcam-img w-full h-full object-contain"></div></div>'
     )
 
 
