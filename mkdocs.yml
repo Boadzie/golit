@@ -118,6 +118,7 @@ nav:
       - Inputs & widgets: tutorial/inputs.md
       - Views & rendering: tutorial/views.md
       - Charts: tutorial/charts.md
+      - Maps & GIS: tutorial/maps.md
       - UI components: tutorial/ui-components.md
       - Page layout: tutorial/layout.md
       - SQL nodes: tutorial/sql.md
@@ -139,6 +140,7 @@ nav:
       - App & nodes: reference/app.md
       - Widgets: reference/widgets.md
       - Charts: reference/charts.md
+      - Maps / GIS: reference/gis.md
       - UI components: reference/ui.md
       - Layout: reference/layout.md
       - SQL / data: reference/data.md
