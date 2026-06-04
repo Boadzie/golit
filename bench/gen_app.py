@@ -163,3 +163,60 @@ def make_app(*, rows: int, depth: int, unaffected: int, chart: str = "text") -> 
 
     app.build()
     return app
+
+
+def memo_heavy(frame: pl.DataFrame) -> pl.DataFrame:
+    """The shared, expensive upstream of the memoization benches: a full-frame sort +
+    derive — the kind of step a real app computes once and feeds to several views. Cost
+    scales with rows. Both engines run the *same* function, so the only difference the
+    bench measures is whether it is recomputed (Dash) or memoized (Golit)."""
+    return frame.sort("v").with_columns((pl.col("v") * 2).alias("w"))
+
+
+def memo_payload(heavy: pl.DataFrame, threshold: int) -> dict[str, Any]:
+    """The cheap per-view work, identical on both engines: filter the shared frame by the
+    slider and aggregate to the 16-bar Plotly bar spec (a raw dict, no figure object)."""
+    agg = heavy.filter(pl.col("v") > threshold).group_by("g").agg(pl.col("v").sum()).sort("g")
+    return {"data": [{"type": "bar", "x": agg["g"].to_list(), "y": agg["v"].to_list()}],
+            "layout": {"margin": {"t": 10}}}
+
+
+def make_memo_app(*, rows: int, on_heavy: Callable[[], None] | None = None) -> App:
+    """Shared-upstream app for the memoization bench::
+
+        data ── heavy(data) ──┬── view_a(heavy, threshold_a)
+                              └── view_b(heavy, threshold_b)
+
+    Moving ``threshold_a`` dirties only ``view_a``; ``heavy`` depends solely on ``data``
+    so it stays clean and the kernel memoizes it (executed zero times per update). ``on_heavy``
+    (if given) is invoked each time ``heavy`` runs — the in-process bench uses it to prove
+    that. Views hand the chart back as a raw dict via ``chart_spec``."""
+    from golit.rendering import chart_spec
+
+    frame = _make_frame(rows)
+    app = App(title=f"memo r{rows}")
+
+    def data() -> pl.DataFrame:
+        return frame
+
+    def heavy(data: pl.DataFrame) -> pl.DataFrame:
+        if on_heavy is not None:
+            on_heavy()
+        return memo_heavy(data)
+
+    def view_a(
+        heavy: pl.DataFrame, threshold_a: Any = slider(0, 100, default=10, label="A"),
+    ) -> str:
+        return chart_spec("plotly", memo_payload(heavy, threshold_a))
+
+    def view_b(
+        heavy: pl.DataFrame, threshold_b: Any = slider(0, 100, default=10, label="B"),
+    ) -> str:
+        return chart_spec("plotly", memo_payload(heavy, threshold_b))
+
+    app.source(data)
+    app.reactive(heavy)
+    app.view(view_a)
+    app.view(view_b)
+    app.build()
+    return app

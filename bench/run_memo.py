@@ -42,31 +42,12 @@ import time
 import numpy as np
 import polars as pl
 from golit.engine import Session
-from golit.rendering import chart_spec
+
+from .gen_app import _make_frame, make_memo_app, memo_heavy, memo_payload
 
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
 _SLIDER_VALUES = [11, 23, 37, 53, 71]
 FIELDS = ["rows", "metric", "p50_us", "p95_us", "p99_us", "heavy_runs", "speedup_vs_recompute"]
-
-
-def _frame(rows: int, *, groups: int = 16, seed: int = 0) -> pl.DataFrame:
-    rng = np.random.default_rng(seed)
-    v = rng.integers(0, 100, size=rows)
-    return pl.DataFrame({"v": v, "g": v % groups})
-
-
-def _heavy(frame: pl.DataFrame) -> pl.DataFrame:
-    """The shared, expensive upstream: a full-frame sort + derive — the kind of step a
-    real app computes once and feeds to several charts. Cost scales with rows."""
-    return frame.sort("v").with_columns((pl.col("v") * 2).alias("w"))
-
-
-def _payload(heavy: pl.DataFrame, threshold: int) -> dict:
-    """The cheap per-view work, identical on both sides: filter the shared frame by the
-    slider and aggregate to the 16-bar chart spec."""
-    agg = heavy.filter(pl.col("v") > threshold).group_by("g").agg(pl.col("v").sum()).sort("g")
-    return {"data": [{"type": "bar", "x": agg["g"].to_list(), "y": agg["v"].to_list()}],
-            "layout": {"margin": {"t": 10}}}
 
 
 def _p_us(fn, *, warmup: int, iters: int) -> dict[str, float]:
@@ -83,57 +64,40 @@ def _p_us(fn, *, warmup: int, iters: int) -> dict[str, float]:
             "p99": float(np.percentile(a, 99))}
 
 
-def _build_golit(frame: pl.DataFrame) -> tuple[Session, dict]:
-    """The shared-upstream app, with a call counter on ``heavy`` to prove it is memoized
-    (executed only during the initial render, never on a ``threshold_a`` update)."""
-    from golit import App, slider
-
+def _build_golit(rows: int) -> tuple[Session, dict]:
+    """The shared-upstream app (see :func:`gen_app.make_memo_app`), with a call counter on
+    ``heavy`` to prove it is memoized — executed only during the initial render, never on a
+    ``threshold_a`` update."""
     calls = {"heavy": 0}
 
-    def data() -> pl.DataFrame:
-        return frame
-
-    def heavy(data: pl.DataFrame) -> pl.DataFrame:
+    def on_heavy() -> None:
         calls["heavy"] += 1
-        return _heavy(data)
 
-    def view_a(heavy: pl.DataFrame, threshold_a=slider(0, 100, default=10, label="A")) -> str:
-        return chart_spec("plotly", _payload(heavy, threshold_a))
-
-    def view_b(heavy: pl.DataFrame, threshold_b=slider(0, 100, default=10, label="B")) -> str:
-        return chart_spec("plotly", _payload(heavy, threshold_b))
-
-    app = App(title="memo")
-    app.source(data)
-    app.reactive(heavy)
-    app.view(view_a)
-    app.view(view_b)
-    app.build()
-
+    app = make_memo_app(rows=rows, on_heavy=on_heavy)
     session = Session(app)
     session.initial_render()  # heavy computed once here
     return session, calls
 
 
 def measure_rows(rows: int, *, warmup: int, iters: int) -> list[dict]:
-    frame = _frame(rows)
+    frame = _make_frame(rows)
 
     # --- Golit: memoized update (heavy is clean, only view_a runs) ---
-    session, calls = _build_golit(frame)
+    session, calls = _build_golit(rows)
     runs_before = calls["heavy"]
     golit = _p_us(lambda v: session.update("threshold_a", v), warmup=warmup, iters=iters)
     heavy_runs = calls["heavy"] - runs_before  # executions during updates only
 
     # --- Dash (recompute): the callback re-runs heavy(data) + view every move ---
     def dash_recompute(v: int) -> str:
-        return json.dumps(_payload(_heavy(frame), v))
+        return json.dumps(memo_payload(memo_heavy(frame), v))
     dash = _p_us(dash_recompute, warmup=warmup, iters=iters)
 
     # --- Dash (dcc.Store): no recompute, but deserialize the cached intermediate ---
-    heavy_json = json.dumps(_heavy(frame).to_dict(as_series=False))
+    heavy_json = json.dumps(memo_heavy(frame).to_dict(as_series=False))
     def store_tax(v: int) -> object:
         cached = json.loads(heavy_json)              # the per-update Store deserialize
-        return _payload(pl.DataFrame(cached), v)     # then the same cheap view work
+        return memo_payload(pl.DataFrame(cached), v)  # then the same cheap view work
     store = _p_us(store_tax, warmup=max(2, warmup // 2), iters=max(8, iters // 4))
 
     speedup = dash["p50"] / max(golit["p50"], 1e-9)
