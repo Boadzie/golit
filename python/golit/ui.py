@@ -15,7 +15,7 @@ nest a DataFrame, a chart figure, another component, or trusted HTML uniformly::
         )
 
 Layout (card/columns/grid/tabs/expander/accordion/divider), display
-(metric/alert/badge/progress/skeleton/spinner), and rich data
+(metric/scorecard/alert/badge/progress/skeleton/spinner), and rich data
 (table/markdown/code/json_view/heading/caption).
 """
 
@@ -37,6 +37,7 @@ __all__ = [
     "accordion",
     "divider",
     "metric",
+    "scorecard",
     "alert",
     "badge",
     "progress",
@@ -168,6 +169,26 @@ def divider(*, label: str | None = None) -> str:
 
 # -- display & status ---------------------------------------------------------
 
+def _delta_html(delta: Any, delta_color: str) -> str:
+    """An up/down delta pill (green good / red bad), shared by :func:`metric` and
+    :func:`scorecard`. ``delta_color`` is ``normal`` (up=good), ``inverse`` (down=good), or
+    ``off`` (neutral); a leading ``-`` marks a downward delta."""
+    if delta is None:
+        return ""
+    ds = str(delta).strip()
+    down = ds.startswith("-")
+    if delta_color == "off":
+        color = "text-on-surface-variant"
+    else:
+        good = down if delta_color == "inverse" else not down
+        color = "text-green-600" if good else "text-red-600"
+    arrow = "▼" if down else "▲"
+    return (
+        f'<span class="inline-flex items-center gap-0.5 text-sm font-semibold {color}">'
+        f"{arrow} {esc(ds.lstrip('+-'))}</span>"
+    )
+
+
 def metric(
     label: str,
     value: Any,
@@ -178,20 +199,6 @@ def metric(
 ) -> str:
     """A KPI: big value, label, and an optional up/down delta. ``delta_color`` is
     ``normal`` (up=good/green), ``inverse`` (down=good), or ``off`` (neutral)."""
-    delta_html = ""
-    if delta is not None:
-        ds = str(delta).strip()
-        down = ds.startswith("-")
-        if delta_color == "off":
-            color = "text-on-surface-variant"
-        else:
-            good = down if delta_color == "inverse" else not down
-            color = "text-green-600" if good else "text-red-600"
-        arrow = "▼" if down else "▲"
-        delta_html = (
-            f'<span class="inline-flex items-center gap-0.5 text-sm font-semibold {color}">'
-            f"{arrow} {esc(ds.lstrip('+-'))}</span>"
-        )
     help_html = ""
     if help:
         help_html = (
@@ -204,7 +211,61 @@ def metric(
         f'text-on-surface-variant">{esc(label)}{help_html}</div>'
         '<div class="flex items-baseline gap-2 mt-1">'
         f'<span class="font-headline text-3xl font-bold tracking-tight">{esc(value)}</span>'
-        f"{delta_html}</div></div>"
+        f"{_delta_html(delta, delta_color)}</div></div>"
+    )
+
+
+_SCORECARD_ACCENT = {
+    "default": ("bg-surface-container-high", "text-on-surface-variant"),
+    "primary": ("bg-primary-fixed", "text-primary"),
+    "success": ("bg-green-100", "text-green-700"),
+    "warning": ("bg-amber-100", "text-amber-700"),
+    "error": ("bg-error-container", "text-error"),
+}
+
+
+def scorecard(
+    label: str,
+    value: Any,
+    *,
+    delta: Any = None,
+    delta_color: str = "normal",
+    icon: str | None = None,
+    caption: str | None = None,
+    kind: str = "default",
+) -> str:
+    """A standalone KPI **card**: a label, a big value, an optional trend ``delta``, an
+    optional Material Symbols ``icon``, and an optional ``caption`` footer — where
+    :func:`metric` is a bare KPI for composing, ``scorecard`` is the complete surface you
+    drop into a :func:`grid` for a dashboard header row::
+
+        ui.grid([
+            ui.scorecard("Revenue", "$84.2k", delta="+8%", icon="payments", kind="primary"),
+            ui.scorecard("Churn", "2.1%", delta="-0.4%", delta_color="inverse",
+                         icon="trending_down", caption="vs last month"),
+        ], cols=2)
+
+    ``delta_color`` behaves as in :func:`metric` (``normal`` / ``inverse`` / ``off``).
+    ``kind`` tints the icon — ``default`` / ``primary`` / ``success`` / ``warning`` /
+    ``error``."""
+    bg, fg = _SCORECARD_ACCENT.get(kind, _SCORECARD_ACCENT["default"])
+    icon_html = ""
+    if icon:
+        icon_html = (
+            f'<div class="flex items-center justify-center w-10 h-10 rounded-full {bg} {fg}">'
+            f'<span class="material-symbols-outlined text-xl">{esc(icon)}</span></div>'
+        )
+    caption_html = ""
+    if caption:
+        caption_html = f'<p class="text-xs text-on-surface-variant mt-2">{esc(caption)}</p>'
+    return (
+        '<div class="golit-scorecard bg-surface-container-low rounded-xl p-5 shadow-sm">'
+        '<div class="flex items-start justify-between gap-3">'
+        '<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">'
+        f"{esc(label)}</span>{icon_html}</div>"
+        '<div class="flex items-baseline gap-2 mt-2">'
+        f'<span class="font-headline text-3xl font-bold tracking-tight">{esc(value)}</span>'
+        f"{_delta_html(delta, delta_color)}</div>{caption_html}</div>"
     )
 
 
