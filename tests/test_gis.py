@@ -255,6 +255,94 @@ def test_to_geo_parses_wkt_geometry_to_a_geodataframe() -> None:
     assert "name" in gdf.columns
 
 
+def test_raster_from_numpy_array_is_a_png_image_overlay() -> None:
+    np = pytest.importorskip("numpy")
+    arr = np.arange(20, dtype=float).reshape(4, 5)
+    out = gis.raster(arr, bounds=[-1, -1, 1, 1], cmap="viridis", label="val")
+    spec = _spec_of(out)
+    source = _geo_container(spec)["sources"]["golit-raster"]
+    assert source["type"] == "image"
+    assert source["url"].startswith("data:image/png;base64,")
+    # MapLibre image coordinates: TL, TR, BR, BL.
+    assert source["coordinates"] == [[-1.0, 1.0], [1.0, 1.0], [1.0, -1.0], [-1.0, -1.0]]
+    layer = _geo_container(spec)["layers"][0]
+    assert layer["type"] == "raster" and layer["paint"]["raster-opacity"] == 0.85
+    assert spec["bounds"] == [[-1.0, -1.0], [1.0, 1.0]]
+    assert "golit-map-legend" in out and "val" in out  # colorbar legend
+
+
+def test_raster_emits_a_valid_png() -> None:
+    import base64
+
+    np = pytest.importorskip("numpy")
+    out = gis.raster(np.zeros((3, 3)), bounds=[0, 0, 1, 1], legend=False)
+    uri = _geo_container(_spec_of(out))["sources"]["golit-raster"]["url"]
+    png = base64.b64decode(uri.split(",", 1)[1])
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"  # PNG signature
+
+
+def test_raster_numpy_array_requires_bounds() -> None:
+    np = pytest.importorskip("numpy")
+    with pytest.raises(ValueError):
+        gis.raster(np.zeros((2, 2)))
+
+
+def test_raster_unknown_cmap_raises() -> None:
+    np = pytest.importorskip("numpy")
+    with pytest.raises(ValueError):
+        gis.raster(np.zeros((2, 2)), bounds=[0, 0, 1, 1], cmap="bogus")
+
+
+def test_raster_max_size_downsamples() -> None:
+    np = pytest.importorskip("numpy")
+    out = gis.raster(np.zeros((4000, 4000)), bounds=[0, 0, 1, 1], max_size=256, legend=False)
+    assert "golit-raster" in out  # encodes without choking on a large array
+
+
+def test_raster_from_georeferenced_dataarray() -> None:
+    xr = pytest.importorskip("xarray")
+    pytest.importorskip("rioxarray")
+    np = pytest.importorskip("numpy")
+    import rioxarray  # noqa: F401  (registers .rio)
+
+    da = xr.DataArray(
+        np.random.rand(3, 4),
+        dims=("y", "x"),
+        coords={"y": [2.0, 1.0, 0.0], "x": [0.0, 1.0, 2.0, 3.0]},
+    ).rio.write_crs("EPSG:4326")
+    spec = _spec_of(gis.raster(da, cmap="terrain"))
+    assert _geo_container(spec)["sources"]["golit-raster"]["type"] == "image"
+    # bounds derive from the grid's cell edges
+    assert spec["bounds"] == [[-0.5, -0.5], [3.5, 2.5]]
+
+
+def test_render_value_routes_a_georeferenced_dataarray_to_a_raster_map() -> None:
+    xr = pytest.importorskip("xarray")
+    pytest.importorskip("rioxarray")
+    np = pytest.importorskip("numpy")
+    import rioxarray  # noqa: F401
+
+    da = xr.DataArray(
+        np.zeros((2, 2)), dims=("y", "x"), coords={"y": [1.0, 0.0], "x": [0.0, 1.0]}
+    ).rio.write_crs("EPSG:4326")
+    out = render_value(da)
+    assert 'data-chart-lib="maplibre"' in out and "golit-raster" in out
+
+
+def test_render_value_non_georeferenced_dataarray_falls_back_to_repr() -> None:
+    xr = pytest.importorskip("xarray")
+    np = pytest.importorskip("numpy")
+    out = render_value(xr.DataArray(np.zeros((2, 2))))  # no CRS, no bounds
+    assert "golit-raster" not in out  # not a raster map; xarray's own repr instead
+
+
+def test_is_dataarray_detects_without_false_positives() -> None:
+    xr = pytest.importorskip("xarray")
+    np = pytest.importorskip("numpy")
+    assert gis.is_dataarray(xr.DataArray(np.zeros((2, 2))))
+    assert not gis.is_dataarray({"a": 1})
+
+
 def test_spatial_sql_runs_st_functions() -> None:
     pytest.importorskip("duckdb")
     import polars as pl
