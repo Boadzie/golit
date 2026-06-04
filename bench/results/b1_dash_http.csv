@@ -1,4 +1,5 @@
 framework,transport,rows,depth,p50_us,p95_us,p99_us,mean_us,bytes,n
-Golit (Plotly),uvicorn + spec mount,100000,3,1812.771,2047.3,2464.74,1943.048,12100.2,100
-Dash,waitress + figure JSON,100000,3,1782.958,2061.054,11663.973,1984.44,6877.2,100
-Golit (SVG),uvicorn + server SVG,100000,3,2924.979,3478.446,3749.997,2970.27,18363.6,100
+Golit (Plotly),uvicorn + figure JSON,100000,3,1962.876,2292.762,2721.524,2107.193,12100.2,100
+Golit (spec),uvicorn + raw dict spec,100000,3,1467.646,1947.275,2073.937,1476.619,635.2,100
+Dash,waitress + figure JSON,100000,3,2014.937,2754.389,5108.694,2225.402,6877.2,100
+Golit (SVG),uvicorn + server SVG,100000,3,3041.542,3563.646,3827.333,3104.894,18363.6,100

@@ -94,6 +94,19 @@ def _chart_body(kind: str, prev: str) -> Callable[[dict[str, Any]], Any]:
             agg = kw[_p].group_by("g").agg(pl.col("v").sum()).sort("g")
             return go.Figure(go.Bar(x=agg["g"].to_list(), y=agg["v"].to_list()))
         return plotly_body
+    if kind == "spec":
+        def spec_body(kw: dict[str, Any], _p: str = prev) -> Any:
+            from golit.rendering import chart_spec
+
+            # The *same* 16-bar chart as ``plotly``/``svg``, but handed over as the raw
+            # wire spec the runtime draws — skipping the graph_objects build and Plotly's
+            # to_json (the hot path a view that rebuilds its chart each update should use).
+            agg = kw[_p].group_by("g").agg(pl.col("v").sum()).sort("g")
+            return chart_spec("plotly", {
+                "data": [{"type": "bar", "x": agg["g"].to_list(), "y": agg["v"].to_list()}],
+                "layout": {"margin": {"t": 10}},
+            })
+        return spec_body
     raise ValueError(f"unknown chart kind: {kind!r}")
 
 
@@ -101,8 +114,10 @@ def make_app(*, rows: int, depth: int, unaffected: int, chart: str = "text") -> 
     """Build a synthetic app with the given shape (see module docstring).
 
     ``chart`` selects the terminal view: ``text`` (default, wire-minimal — the B1/B2
-    engine isolation), ``svg`` (a real Lets-Plot chart Golit renders server-side), or
-    ``plotly`` (a real Plotly figure Golit ships as a spec, matching Dash)."""
+    engine isolation), ``svg`` (a real Lets-Plot chart Golit renders server-side),
+    ``plotly`` (a real Plotly figure Golit ships as a spec, matching idiomatic Dash), or
+    ``spec`` (the same chart handed over as a raw dict via ``chart_spec`` — the hot
+    path that skips the figure build + ``to_json``)."""
     if depth < 1:
         raise ValueError("depth must be >= 1")
     frame = _make_frame(rows)

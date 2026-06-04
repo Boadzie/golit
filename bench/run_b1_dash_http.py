@@ -86,8 +86,10 @@ def _measure_dash(*, rows: int, depth: int, unaffected: int,
 
 def run(*, rows: int, depth: int, unaffected: int, warmup: int, iters: int) -> list[dict]:
     cases = [
-        ("Golit (Plotly)", "uvicorn + spec mount", lambda: _measure_golit(
+        ("Golit (Plotly)", "uvicorn + figure JSON", lambda: _measure_golit(
             "plotly", rows=rows, depth=depth, unaffected=unaffected, warmup=warmup, iters=iters)),
+        ("Golit (spec)", "uvicorn + raw dict spec", lambda: _measure_golit(
+            "spec", rows=rows, depth=depth, unaffected=unaffected, warmup=warmup, iters=iters)),
         ("Dash", "waitress + figure JSON", lambda: _measure_dash(
             rows=rows, depth=depth, unaffected=unaffected, warmup=warmup, iters=iters)),
         ("Golit (SVG)", "uvicorn + server SVG", lambda: _measure_golit(
@@ -106,13 +108,16 @@ def run(*, rows: int, depth: int, unaffected: int, warmup: int, iters: int) -> l
 def _headline(results: list[dict]) -> str:
     by = {r["framework"]: r for r in results}
     gpl, d = by["Golit (Plotly)"], by["Dash"]
-    gsvg = by["Golit (SVG)"]
+    gspec, gsvg = by["Golit (spec)"], by["Golit (SVG)"]
+    speedup = d["p50_us"] / max(gspec["p50_us"], 1e-9)
     return (
-        f"Over real HTTP, same chart: architecture-matched Golit(Plotly) "
-        f"{gpl['p50_us'] / 1000:.2f}ms ({gpl['bytes']:.0f} B) vs Dash "
-        f"{d['p50_us'] / 1000:.2f}ms ({d['bytes']:.0f} B) — the full-stack per-update "
-        f"latency including Flask vs Litestar dispatch. Golit(SVG) {gsvg['p50_us'] / 1000:.2f}ms "
-        f"({gsvg['bytes']:.0f} B): server-rendered, no client runtime."
+        f"Over real HTTP, same 16-bar chart. Returning a Plotly *figure*, Golit "
+        f"{gpl['p50_us'] / 1000:.2f}ms ({gpl['bytes']:.0f} B) ties idiomatic Dash "
+        f"{d['p50_us'] / 1000:.2f}ms ({d['bytes']:.0f} B) — same figure build + to_json on "
+        f"both. Returning a raw dict via chart_spec, Golit (spec) drops to "
+        f"{gspec['p50_us'] / 1000:.2f}ms ({gspec['bytes']:.0f} B): {speedup:.1f}x faster than "
+        f"figure-returning Dash, skipping the graph_objects build and to_json. "
+        f"Golit(SVG) {gsvg['p50_us'] / 1000:.2f}ms: server-rendered, no client runtime."
     )
 
 
