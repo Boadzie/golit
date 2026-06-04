@@ -40,7 +40,8 @@ That uniformity is the point: a `card` doesn't care whether you hand it a string
 
 | Component | Purpose |
 | --- | --- |
-| `metric(label, value, *, delta=None, delta_color="normal", help=None)` | A KPI: big value, label, optional up/down delta. |
+| `metric(label, value, *, delta=None, delta_color="normal", help=None)` | A bare KPI: big value, label, optional up/down delta. |
+| `scorecard(label, value, *, delta=None, delta_color="normal", icon=None, caption=None, kind="default")` | A standalone KPI **card** — icon, value, trend, caption. Drop several in a `grid` for a header row. |
 | `alert(*body, kind="info", title=None)` | A callout — `info` / `success` / `warning` / `error`. |
 | `badge(text, *, kind="default")` | A small status pill. |
 | `progress(value, *, label=None, total=1.0)` | A progress bar; `value` is out of `total`. |
