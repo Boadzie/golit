@@ -84,6 +84,29 @@ A view does **not** return ready-made `<script>` HTML. Instead Golit emits a lib
 
 The page shell registers an `htmx.onLoad` bootstrap that finds these mounts, lazy-loads the right CDN runtime **once**, and draws the spec — on the initial render, on every swap, and on SSE pushes alike. There's no inline script to misfire, so the same fragment works on all three paths. (Bokeh is special: its JS must match the installed Python Bokeh, so the version rides on the mount and the loader builds the URLs from it.)
 
+### The hot path: `chart_spec`
+
+Returning a `go.Figure` (or an Altair/Bokeh figure) is convenient, but constructing the figure object and `to_json`-ing it costs a few hundred microseconds *and* ships kilobytes of default template — on **every** interaction. For a view that rebuilds its chart each update, hand Golit the raw spec dict directly with `chart_spec`:
+
+```python
+from golit.charts import chart_spec
+
+
+@app.view
+def revenue(by_region: pl.DataFrame):
+    return chart_spec("plotly", {
+        "data": [{"type": "bar",
+                  "x": by_region["region"].to_list(),
+                  "y": by_region["revenue"].to_list()}],
+        "layout": {"margin": {"t": 10}},
+    })
+```
+
+It's the same JSON the runtime draws, so the chart is identical — just far cheaper to produce and far smaller on the wire. In the HTTP benchmark (same 16-bar chart, 100K rows on a dev laptop), the spec path runs the per-update round-trip in ~1.5 ms at ~635 B, versus ~2.0 ms at ~6.9 KB for the figure path — and the figure path is exactly what idiomatic Dash does, so `chart_spec` is ~1.4× faster end-to-end with a ~10× smaller payload, drawing the same chart. `lib` is any runtime the bootstrap knows (`plotly`, `vega`, `bokeh`, `anychart`); the spec must already be in that runtime's own format.
+
+!!! note "Use the figure for convenience, the spec for the hot loop"
+    Returning a figure is the friendly default and perfectly fine for charts that don't rebuild on every keystroke. Reach for `chart_spec` on the views a slider drives continuously, where shaving the figure build + serialize per interaction matters.
+
 ## AnyChart
 
 AnyChart has no Python figure object, so Golit gives you a helper that builds a mount from a DataFrame (or `[label, value]` rows). It loads from a CDN — no Python package, no extra to install:

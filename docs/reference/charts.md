@@ -6,6 +6,14 @@
 
 Plotly, Altair, and Bokeh figures need no helper — return one from a view and Golit auto-detects and renders it as an interactive client-side chart.
 
+## chart_spec
+
+The hot path for an interactive view that rebuilds its chart every interaction: hand
+Golit the raw wire-format spec (a plain `dict`) instead of a figure object, skipping the
+`graph_objects` build and `to_json`. See the [Charts tutorial](../tutorial/charts.md#the-hot-path-chart_spec).
+
+::: golit.rendering.interactive.chart_spec
+
 ## anychart
 
 For AnyChart (which has no Python figure object), build a mount explicitly:
