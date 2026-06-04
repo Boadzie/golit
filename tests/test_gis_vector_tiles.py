@@ -133,6 +133,17 @@ def test_vector_route_serves_decodable_mvt_and_status_codes() -> None:
         assert client.get(f"/gis/vector/0000000000000000/{z}/{x}/{y}").status_code == 404
 
 
+def test_page_shell_absolutizes_relative_tile_urls() -> None:
+    # Vector tiles load in a web worker with no document base, so root-relative tile URLs
+    # must be absolutized (transformRequest) or the worker can't fetch them. Regression guard
+    # for a bug only a real browser surfaces (TestClient runs no JS).
+    from golit.rendering.html import page
+
+    shell = page("Maps", "<main></main>")
+    assert "transformRequest" in shell
+    assert "location.origin" in shell
+
+
 def test_importing_golit_does_not_import_mapbox_vector_tile() -> None:
     code = (
         "import sys, golit\n"

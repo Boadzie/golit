@@ -149,6 +149,13 @@ CHART_BOOTSTRAP = """
     if (spec.bearing) opts.bearing = spec.bearing;
     if (spec.minZoom != null) opts.minZoom = spec.minZoom;
     if (spec.maxZoom != null) opts.maxZoom = spec.maxZoom;
+    // Golit's tile routes (/gis/tiles, /gis/vector) are emitted as root-relative URLs.
+    // Vector tiles load in a web worker with no document base, so a relative URL can't be
+    // parsed there ("Failed to construct 'Request'"); absolutize against the page origin so
+    // both the main thread (raster) and the worker (vector) resolve them identically.
+    opts.transformRequest = function (url) {
+      return (url && url.charAt(0) === '/') ? {url: location.origin + url} : undefined;
+    };
     var map = new maplibregl.Map(opts);
     el._golitMap = map;
     if (spec.overlay) {
