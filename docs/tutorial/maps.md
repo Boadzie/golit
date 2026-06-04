@@ -15,6 +15,7 @@ pip install "golit[gis]"          # vector: geo_map, spatial_sql, explore
 pip install "golit[gis-raster]"   # raster: gis.raster / gis.rgb (rasterio / rioxarray / xarray)
 pip install "golit[gis-tiles]"    # tiled rasters: gis.tiles (rio-tiler, large COGs)
 pip install "golit[gis-terrain]"  # terrain analysis: gis.terrain (WhiteboxTools)
+pip install "golit[gis-ee]"       # Earth Engine overlays: gis.ee_layer (earthengine-api)
 ```
 
 `gis` pulls in GeoPandas, Shapely, pyproj, and folium. MapLibre GL itself loads from a CDN —
@@ -214,10 +215,38 @@ keyword args pass straight to the tool. The DEM should be a `DataArray` (or GeoT
 its compiled binary on first use; needs `pip install "golit[gis-terrain]"`. Because terrain
 is a reactive node like any other, the analysis re-runs only when its inputs change.
 
+## `ee_layer` — Google Earth Engine
+
+`gis.ee_layer` overlays a **Google Earth Engine** image. Earth Engine renders the imagery on
+its own servers; Golit asks for a tile-URL template (`image.getMapId(vis)`) and points a
+MapLibre raster source at it. Authenticate once (`earthengine authenticate` +
+`ee.Initialize(project=…)`), then drive an EE expression with your controls:
+
+```python
+import ee
+ee.Initialize(project="my-cloud-project")
+aoi = ee.Geometry.Rectangle([-0.40, 5.45, 0.10, 5.80])
+
+
+@app.view
+def scene(cloud: int = slider(5, 80, default=30)):
+    composite = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+                 .filterBounds(aoi)
+                 .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", cloud))
+                 .median())
+    return gis.ee_layer(composite, vis={"bands": ["B4", "B3", "B2"], "min": 0, "max": 3000},
+                        center=[-0.15, 5.62], zoom=10)
+```
+
+`vis` is the usual Earth Engine visualization dict; `center`/`zoom` frame the camera (an EE
+image can be global, so there's no data extent to fit). `ee_layer` imports nothing itself —
+the `ee` objects and authentication are yours. Needs `pip install "golit[gis-ee]"` plus an
+Earth Engine account.
+
 !!! note "GIS phases"
     Phase 1 is vector (GeoDataFrames, spatial SQL); phase 2 is the single-array `raster`
     overlay; phase 2.5 adds multiband `rgb` composites and `tiles` for very large COGs;
-    phase 3 adds `terrain` analysis (WhiteboxTools).
+    phase 3 adds `terrain` analysis (WhiteboxTools) and `ee_layer` (Earth Engine).
 
 ## DuckDB spatial SQL
 

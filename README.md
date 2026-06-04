@@ -163,14 +163,17 @@ raster as a true/false-color **satellite composite** (`pip install "golit[gis-ra
 `gis.tiles("scene.tif")` streams a **very large COG** as on-demand `z/x/y` tiles via rio-tiler
 (`pip install "golit[gis-tiles]"`) — only the visible window crosses the wire. And
 `gis.terrain(dem, "hillshade")` runs **WhiteboxTools** terrain analysis (slope, flow
-accumulation, …) into a renderable raster (`pip install "golit[gis-terrain]"`). Install vector
-with `pip install "golit[gis]"` (DuckDB spatial rides on the `sql` extra). Moving a control
-re-runs only the filter + map node — the fragment swaps in place on the initial load and
-after a POST/SSE. See [`examples/geo_explorer/app.py`](examples/geo_explorer/app.py) (vector),
+accumulation, …) into a renderable raster (`pip install "golit[gis-terrain]"`), and
+`gis.ee_layer(image, vis=…)` overlays **Google Earth Engine** imagery as live tiles
+(`pip install "golit[gis-ee]"`). Install vector with `pip install "golit[gis]"` (DuckDB
+spatial rides on the `sql` extra). Moving a control re-runs only the filter + map node — the
+fragment swaps in place on the initial load and after a POST/SSE. See
+[`examples/geo_explorer/app.py`](examples/geo_explorer/app.py) (vector),
 [`examples/raster_explorer/app.py`](examples/raster_explorer/app.py) (raster),
 [`examples/rgb_composite/app.py`](examples/rgb_composite/app.py) (RGB composite),
-[`examples/tiled_raster/app.py`](examples/tiled_raster/app.py) (tiled COG), and
-[`examples/terrain_analysis/app.py`](examples/terrain_analysis/app.py) (terrain).
+[`examples/tiled_raster/app.py`](examples/tiled_raster/app.py) (tiled COG),
+[`examples/terrain_analysis/app.py`](examples/terrain_analysis/app.py) (terrain), and
+[`examples/earth_engine/app.py`](examples/earth_engine/app.py) (Earth Engine).
 
 ## Components
 
@@ -245,14 +248,14 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **146** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **151** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
-maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps,
-single-band + RGB-composite + tiled-COG raster maps, WhiteboxTools terrain, spatial SQL —
-`golit.gis`), Litestar server (POST + SSE), Redis pub/sub fan-out, multi-worker deployment,
-the benchmark harness ([`bench/`](bench/), with measured Golit-vs-Dash results), and the
-examples. **Deferred:** Earth Engine / geemap tile overlays, a standard-cloud-instance
-benchmark publication, and the wider design suite in `golit_pages/`.
+maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps;
+single-band, RGB-composite, tiled-COG raster maps; WhiteboxTools terrain; Earth Engine
+overlays; spatial SQL — `golit.gis`), Litestar server (POST + SSE), Redis pub/sub fan-out,
+multi-worker deployment, the benchmark harness ([`bench/`](bench/), with measured
+Golit-vs-Dash results), and the examples. **Deferred:** a standard-cloud-instance benchmark
+publication and the wider design suite in `golit_pages/`.
 
 ## Development
 

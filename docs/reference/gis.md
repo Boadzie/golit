@@ -43,6 +43,12 @@ Run a WhiteboxTools terrain operation (hillshade, slope, aspect, fill, flow accu
 
 ::: golit.gis.terrain
 
+## ee_layer
+
+Overlay a Google Earth Engine image as live XYZ tiles — EE renders the imagery, Golit points a MapLibre raster source at the tile URL from `getMapId(vis)`. Needs `pip install "golit[gis-ee]"` and an Earth Engine account.
+
+::: golit.gis.ee_layer
+
 ## explore
 
 The folium/leafmap escape hatch — embed `gdf.explore()` as a swappable fragment.
