@@ -66,8 +66,9 @@ That uniformity is the point: a `card` doesn't care whether you hand it a string
 | Component | Purpose |
 | --- | --- |
 | `chat(channel, *, author="You", title=None, …)` | A live, WebSocket-backed chat panel. |
+| `webcam(name, *, title=None, height=384, width=None)` | A live video panel showing a server-side MJPEG stream. |
 
-`chat` is different from the others: it opens a bidirectional WebSocket and updates itself as messages arrive, rather than rendering once. It's covered in full under [WebSocket chat](../advanced/websockets.md).
+These two are different from the others: rather than rendering once, they hold a live connection and update on their own. `chat` opens a bidirectional WebSocket and appends messages as they arrive — see [WebSocket chat](../advanced/websockets.md). `webcam` shows a frame producer registered with `@app.stream(name)` as native MJPEG in a plain `<img>` — see [Video streams](../advanced/video-streams.md).
 
 ## A worked example
 

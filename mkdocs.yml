@@ -132,6 +132,7 @@ nav:
       - advanced/index.md
       - Server-push updates (SSE): advanced/server-push.md
       - WebSocket chat: advanced/websockets.md
+      - Video streams (CV): advanced/video-streams.md
       - Custom rendering: advanced/custom-rendering.md
       - Sessions & state: advanced/sessions.md
       - Deployment & scaling: advanced/deployment.md
