@@ -10,9 +10,10 @@ serialize to markup. Resolution order (first match wins):
 5. anything exposing ``to_svg()`` (other static-SVG sources);
 6. a Polars ``DataFrame`` → an HTML table;
 7. a GeoPandas ``GeoDataFrame`` → a native MapLibre map (``golit.gis.geo_map``);
-8. anything exposing ``_repr_html_()`` (pandas, …);
-9. a Matplotlib figure → SVG;
-10. fallback: escaped ``repr`` in a ``<pre>``.
+8. a georeferenced xarray ``DataArray`` → a raster map (``golit.gis.raster``);
+9. anything exposing ``_repr_html_()`` (pandas, …);
+10. a Matplotlib figure → SVG;
+11. fallback: escaped ``repr`` in a ``<pre>``.
 """
 
 from __future__ import annotations
@@ -83,6 +84,11 @@ def _is_geodataframe(value: Any) -> bool:
     return cls.__name__ == "GeoDataFrame" and (cls.__module__ or "").startswith("geopandas")
 
 
+def _is_dataarray(value: Any) -> bool:
+    cls = type(value)
+    return cls.__name__ == "DataArray" and (cls.__module__ or "").startswith("xarray")
+
+
 def _mpl_svg(fig: Any) -> str:
     buffer = io.StringIO()
     fig.savefig(buffer, format="svg")
@@ -116,6 +122,15 @@ def render_value(value: Any) -> str:
         from ..gis import geo_map
 
         return geo_map(value)
+    if _is_dataarray(value):
+        # A georeferenced DataArray renders as a raster map; a plain (non-geo) one
+        # falls through to xarray's own _repr_html_ below.
+        from ..gis import raster
+
+        try:
+            return raster(value)
+        except Exception:  # noqa: BLE001 - not georeferenced; fall back to the repr
+            pass
     repr_html = getattr(value, "_repr_html_", None)
     if callable(repr_html):
         return _to_text(repr_html())

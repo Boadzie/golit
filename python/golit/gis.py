@@ -19,6 +19,7 @@ existing ``sql`` extra).
 from __future__ import annotations
 
 import html as _html
+import os
 from typing import Any
 
 import polars as pl
@@ -58,6 +59,17 @@ _RASTER_BASEMAPS = {
 }
 
 _SOURCE = "golit-geo"  # the GeoJSON source/layer id geo_map injects into the style
+_RASTER = "golit-raster"  # the image source/layer id raster() injects into the style
+
+# Colormaps for raster(), as anchor colors interpolated to a 256-entry LUT with numpy —
+# dependency-free (no matplotlib). The same anchors drive the raster legend's gradient.
+_RASTER_CMAPS = {
+    "viridis": ["#440154", "#3b528b", "#21918c", "#5ec962", "#fde725"],
+    "magma": ["#000004", "#51127c", "#b73779", "#fc8961", "#fcfdbf"],
+    "blues": ["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"],
+    "terrain": ["#333399", "#0099cc", "#33cc66", "#ffff66", "#b35900", "#ffffff"],
+    "greys": ["#ffffff", "#000000"],
+}
 
 
 def is_geodataframe(value: Any) -> bool:
@@ -433,3 +445,185 @@ def spatial_sql(query: str, **frames: Any) -> pl.DataFrame:
         # doesn't register; it loads fine as its Binary storage, so quiet the notice.
         warnings.filterwarnings("ignore", message=".*geoarrow.wkb.*")
         return sql(query, **frames)
+
+
+def is_dataarray(value: Any) -> bool:
+    """Whether ``value`` is an xarray ``DataArray`` — by class, without importing xarray.
+    Used by :func:`golit.rendering.render_value` so a view can return a (georeferenced)
+    raster directly."""
+    cls = type(value)
+    return cls.__name__ == "DataArray" and (cls.__module__ or "").startswith("xarray")
+
+
+def _build_lut(anchors: list[str]) -> Any:
+    """A 256-entry RGB lookup table from anchor hex colors (linearly interpolated)."""
+    import numpy as np
+
+    cols = np.array([[int(h[i : i + 2], 16) for i in (1, 3, 5)] for h in anchors], dtype=float)
+    src = np.linspace(0.0, 1.0, len(cols))
+    dst = np.linspace(0.0, 1.0, 256)
+    lut = np.stack([np.interp(dst, src, cols[:, c]) for c in range(3)], axis=1)
+    return lut.round().astype(np.uint8)  # (256, 3)
+
+
+def _colormap_to_rgba(arr: Any, cmap: str, vmin: float | None, vmax: float | None) -> Any:
+    """Colormap a 2-D float array to an ``(h, w, 4)`` uint8 RGBA array; non-finite cells
+    (NaN nodata) become transparent. Returns the array and the (lo, hi) range used."""
+    import numpy as np
+
+    anchors = _RASTER_CMAPS.get(cmap)
+    if anchors is None:
+        raise ValueError(f"unknown cmap {cmap!r}; use one of {sorted(_RASTER_CMAPS)}")
+    arr = np.asarray(arr, dtype=float)
+    finite = np.isfinite(arr)
+    lo = float(np.nanmin(arr)) if vmin is None else float(vmin)
+    hi = float(np.nanmax(arr)) if vmax is None else float(vmax)
+    if hi <= lo:
+        hi = lo + 1.0
+    norm = np.clip((np.where(finite, arr, lo) - lo) / (hi - lo), 0.0, 1.0)
+    rgb = _build_lut(anchors)[(norm * 255).astype(np.uint8)]  # (h, w, 3)
+    alpha = np.where(finite, 255, 0).astype(np.uint8)[..., None]
+    return np.concatenate([rgb, alpha], axis=2), (lo, hi)
+
+
+def _png_data_uri(rgba: Any) -> str:
+    """Encode an ``(h, w, 4)`` uint8 RGBA array as a base64 PNG ``data:`` URI — a minimal
+    dependency-free encoder (one IDAT, no row filtering), enough for a map image layer."""
+    import base64
+    import struct
+    import zlib
+
+    import numpy as np
+
+    rgba = np.ascontiguousarray(rgba, dtype=np.uint8)
+    height, width = rgba.shape[:2]
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + tag
+            + data
+            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        )
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)  # 8-bit RGBA
+    rows = np.empty((height, width * 4 + 1), dtype=np.uint8)
+    rows[:, 0] = 0  # filter type 0 (none) per scanline
+    rows[:, 1:] = rgba.reshape(height, width * 4)
+    idat = zlib.compress(rows.tobytes(), 9)
+    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", idat) + chunk(b"IEND", b"")
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+
+
+def _resolve_raster(data: Any, band: int | None, bounds: Any, max_size: int) -> Any:
+    """Resolve ``data`` (a rioxarray/xarray ``DataArray``, a GeoTIFF path, or a NumPy
+    array + ``bounds``) to a north-up 2-D float array and its lon/lat bounds."""
+    import numpy as np
+
+    if isinstance(data, (str, os.PathLike)):
+        import rioxarray
+
+        data = rioxarray.open_rasterio(data)
+
+    if is_dataarray(data):
+        try:
+            import rioxarray  # noqa: F401  (registers the .rio accessor on DataArray)
+        except ModuleNotFoundError:
+            pass
+        da = data
+        rio = getattr(da, "rio", None)
+        crs = getattr(rio, "crs", None) if rio is not None else None
+        if bounds is not None:
+            minx, miny, maxx, maxy = (float(v) for v in bounds)
+        elif crs is not None:
+            if crs.to_epsg() != 4326:
+                da = da.rio.reproject("EPSG:4326")
+            minx, miny, maxx, maxy = (float(v) for v in da.rio.bounds())
+        else:
+            raise ValueError("raster: a DataArray without a CRS needs explicit bounds=[w,s,e,n]")
+        arr = np.asarray(da.values, dtype=float)
+        ys = da["y"].values if "y" in getattr(da, "coords", {}) else None
+        if ys is not None and len(ys) > 1 and ys[0] < ys[-1]:
+            arr = arr[..., ::-1, :]  # flip so row 0 is the north edge
+    else:
+        arr = np.asarray(data, dtype=float)
+        if bounds is None:
+            raise ValueError("raster: a NumPy array needs explicit bounds=[w,s,e,n]")
+        minx, miny, maxx, maxy = (float(v) for v in bounds)
+
+    if arr.ndim == 3:
+        arr = arr[0 if band is None else band]
+    if arr.ndim != 2:
+        raise ValueError(f"raster: expected a 2-D band, got shape {arr.shape}")
+    step = max(1, int(np.ceil(max(arr.shape) / max_size)))
+    if step > 1:
+        arr = arr[::step, ::step]  # downsample large rasters (wire + draw cost)
+    return arr, (minx, miny, maxx, maxy)
+
+
+def raster(
+    data: Any,
+    *,
+    cmap: str = "viridis",
+    opacity: float = 0.85,
+    band: int | None = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    bounds: Any = None,
+    label: str = "value",
+    basemap: Any = "default",
+    fit: bool = True,
+    fit_padding: int = 24,
+    legend: bool = True,
+    max_size: int = 1024,
+    height: str = "420px",
+    **opts: Any,
+) -> str:
+    """Render a georeferenced raster as a native MapLibre image layer (GIS phase 2).
+
+    ``data`` is a rioxarray/xarray ``DataArray`` (reprojected to EPSG:4326 via its ``.rio``
+    CRS), a **GeoTIFF path**, or a NumPy 2-D array with explicit ``bounds=[w, s, e, n]``. A
+    single band is colormapped (``cmap``: ``"viridis"``, ``"magma"``, ``"blues"``,
+    ``"terrain"``, ``"greys"``; ``vmin``/``vmax`` set the range, NaN nodata is transparent),
+    encoded to a PNG, and placed as an image source on the ``basemap`` with ``opacity``. A
+    colorbar ``legend`` (titled ``label``) is overlaid. Large rasters are downsampled to
+    ``max_size`` px on the long edge to keep the fragment small::
+
+        @app.view
+        def map(elevation, cmap=select(["viridis", "terrain"], default="terrain")):
+            return gis.raster(elevation, cmap=cmap, label="Elevation (m)")
+
+    A view may also just ``return`` a georeferenced ``DataArray``. Requires
+    ``pip install "golit[gis-raster]"``."""
+    arr, (minx, miny, maxx, maxy) = _resolve_raster(data, band, bounds, max_size)
+    rgba, (lo, hi) = _colormap_to_rgba(arr, cmap, vmin, vmax)
+    source = {
+        "type": "image",
+        "url": _png_data_uri(rgba),
+        # MapLibre image coordinates: top-left, top-right, bottom-right, bottom-left.
+        "coordinates": [[minx, maxy], [maxx, maxy], [maxx, miny], [minx, miny]],
+    }
+    layer = {"id": _RASTER, "type": "raster", "source": _RASTER,
+             "paint": {"raster-opacity": opacity}}
+
+    base = _base_style(basemap)
+    spec: dict[str, Any] = {"height": height}
+    if isinstance(base, str):
+        spec["style"] = base
+        spec["overlay"] = {"sources": {_RASTER: source}, "layers": [layer]}
+    else:
+        base["sources"][_RASTER] = source
+        base["layers"].append(layer)
+        spec["style"] = base
+
+    if fit and "bounds" not in opts:
+        spec["bounds"] = [[minx, miny], [maxx, maxy]]
+        if fit_padding != 24:
+            spec["fitPadding"] = fit_padding
+
+    spec.update(opts)
+    mount = chart_spec("maplibre", spec)
+    if legend:
+        mapping = {"kind": "numeric", "vmin": lo, "vmax": hi, "colors": _RASTER_CMAPS[cmap]}
+        return f'<div class="golit-map-wrap relative">{mount}{_legend_html(label, mapping)}</div>'
+    return mount

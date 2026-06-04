@@ -41,8 +41,12 @@ sql = ["duckdb>=1.0", "pyarrow>=14.0"]
 # shapely/pyproj for geometry + reprojection, folium for the gdf.explore() escape
 # hatch, leafmap for richer embeds. MapLibre GL itself is loaded from CDN (no Python
 # package). DuckDB spatial SQL (golit.gis.spatial_sql) needs only the `sql` extra.
-# Raster (rasterio/rioxarray/xarray) is deferred to a phase-2 `gis-raster` extra.
+# Raster (rasterio/rioxarray/xarray) is the separate `gis-raster` extra below.
 gis = ["geopandas>=1.0", "shapely>=2.0", "pyproj>=3.6", "folium>=0.16", "leafmap>=0.30"]
+# GIS phase 2 — raster maps via golit.gis.raster: rioxarray/rasterio read + reproject a
+# georeferenced array, xarray for the array model. Renders an array -> colormapped PNG
+# image layer on a MapLibre map. (rasterio ships GDAL in its wheels — no system GDAL.)
+gis-raster = ["rasterio>=1.3", "rioxarray>=0.15", "xarray>=2024.1"]
 
 [project.scripts]
 golit = "golit.cli:main"
@@ -56,11 +60,6 @@ dev = [
     "fakeredis>=2.20",  # in-process Redis for the RedisPubSub round-trip test
     "ruff>=0.6",
     "mypy>=1.11",
-    # Phase-2 GIS raster stack, installed in dev now so that work is unblocked; it
-    # ships to users as a separate `gis-raster` extra when phase 2 lands.
-    "rasterio>=1.3",
-    "rioxarray>=0.15",
-    "xarray>=2024.1",
 ]
 # MkDocs Material docs site; the API reference renders from docstrings via mkdocstrings.
 docs = [
