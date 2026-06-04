@@ -37,6 +37,12 @@ Stream a very large Cloud-Optimized GeoTIFF as on-demand `z/x/y` map tiles via r
 
 ::: golit.gis.tiles
 
+## terrain
+
+Run a WhiteboxTools terrain operation (hillshade, slope, aspect, fill, flow accumulation, …) on a DEM, returning a georeferenced `DataArray` that feeds `raster`/`tiles`. Needs `pip install "golit[gis-terrain]"`.
+
+::: golit.gis.terrain
+
 ## explore
 
 The folium/leafmap escape hatch — embed `gdf.explore()` as a swappable fragment.

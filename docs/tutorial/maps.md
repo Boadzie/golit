@@ -14,6 +14,7 @@ Install the extras:
 pip install "golit[gis]"          # vector: geo_map, spatial_sql, explore
 pip install "golit[gis-raster]"   # raster: gis.raster / gis.rgb (rasterio / rioxarray / xarray)
 pip install "golit[gis-tiles]"    # tiled rasters: gis.tiles (rio-tiler, large COGs)
+pip install "golit[gis-terrain]"  # terrain analysis: gis.terrain (WhiteboxTools)
 ```
 
 `gis` pulls in GeoPandas, Shapely, pyproj, and folium. MapLibre GL itself loads from a CDN —
@@ -188,9 +189,35 @@ registers its source under an opaque token; tiles are served by the **same worke
 rendered the view (Golit's usual session affinity), and the token is a hash — never a path —
 so a tile request can only reach a source a view has already opened.
 
+## `terrain` — WhiteboxTools analysis
+
+`gis.terrain` runs a **WhiteboxTools** terrain operation on a DEM and returns the result as
+a georeferenced `DataArray` — a *compute* node you render with `raster` (or `tiles`), or
+just return:
+
+```python
+@app.reactive
+def shaded(dem,                                          # a DEM path or DataArray
+          azimuth: int = slider(0, 360, default=315)):
+    return gis.terrain(dem, "hillshade", azimuth=azimuth)   # -> a DataArray
+
+
+@app.view
+def relief(shaded):
+    return gis.raster(shaded, cmap="greys", label="Hillshade")
+```
+
+`op` is one of the curated operations — `"hillshade"`, `"slope"`, `"aspect"`, `"fill"`
+(fill depressions), `"flow_accumulation"` — or any other WhiteboxTools tool name; extra
+keyword args pass straight to the tool. The DEM should be a `DataArray` (or GeoTIFF) in a
+**projected** CRS (metres — e.g. a UTM zone) so cell sizes are real. WhiteboxTools downloads
+its compiled binary on first use; needs `pip install "golit[gis-terrain]"`. Because terrain
+is a reactive node like any other, the analysis re-runs only when its inputs change.
+
 !!! note "GIS phases"
     Phase 1 is vector (GeoDataFrames, spatial SQL); phase 2 is the single-array `raster`
-    overlay; phase 2.5 adds multiband `rgb` composites and `tiles` for very large COGs.
+    overlay; phase 2.5 adds multiband `rgb` composites and `tiles` for very large COGs;
+    phase 3 adds `terrain` analysis (WhiteboxTools).
 
 ## DuckDB spatial SQL
 
