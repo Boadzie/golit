@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import secrets
 
 from anyio import to_thread
@@ -27,9 +28,20 @@ from .chat import ChatHub, message_oob
 from .session import COOKIE, SessionManager
 from .sse import SSEManager
 
+_OFFLOAD = os.environ.get("GOLIT_NO_OFFLOAD") != "1"
+
 
 def _manager(request: Request) -> SessionManager:
     return request.app.state.sessions
+
+
+async def _dispatch(manager: SessionManager, cookie_sid, fn, *args):
+    """Offload a session method off the loop under the per-session lock (prod),
+    or run it inline on the loop (benchmark A/B via ``GOLIT_NO_OFFLOAD=1``)."""
+    if _OFFLOAD:
+        async with manager.lock_for(cookie_sid):
+            return await to_thread.run_sync(fn, *args)
+    return fn(*args)
 
 
 def _session_cookie(sid: str) -> list[Cookie]:
@@ -62,8 +74,7 @@ async def index(request: Request) -> Response:
     cookie_sid = request.cookies.get(COOKIE)
     # Resolve/build/render off the event loop so a cold render doesn't stall the
     # worker; the per-session lock keeps concurrent same-session requests ordered.
-    async with manager.lock_for(cookie_sid):
-        sid, session, created = await to_thread.run_sync(manager.prepare, cookie_sid)
+    sid, session, created = await _dispatch(manager, cookie_sid, manager.prepare, cookie_sid)
     return _html(page(session.app.title, _layout(session)), sid, created)
 
 
@@ -81,10 +92,9 @@ async def update_node(input_id: FromPath[str], request: Request) -> Response:
     # doesn't block the event loop, under the session lock so the in-place kernel
     # graph isn't mutated by two requests at once.
     try:
-        async with manager.lock_for(cookie_sid):
-            sid, _session, created, fragments = await to_thread.run_sync(
-                manager.prepare_and_update, cookie_sid, input_id, raw
-            )
+        sid, _session, created, fragments = await _dispatch(
+            manager, cookie_sid, manager.prepare_and_update, cookie_sid, input_id, raw
+        )
     except KeyError as exc:
         raise NotFoundException(f"no such input: {input_id!r}") from exc
 
@@ -101,8 +111,7 @@ async def events(request: Request) -> ServerSentEvent:
     sid = cookie_sid
     if manager.get(cookie_sid) is None:
         # Reconstruct the session on this worker so SSE dispatch can find it.
-        async with manager.lock_for(cookie_sid):
-            sid, _session, _ = await to_thread.run_sync(manager.prepare, cookie_sid)
+        sid, _session, _ = await _dispatch(manager, cookie_sid, manager.prepare, cookie_sid)
     assert sid is not None
     sse: SSEManager = request.app.state.sse
     return ServerSentEvent(sse.stream(sid))
