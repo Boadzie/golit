@@ -56,6 +56,10 @@ gis-tiles = ["rio-tiler>=6.0"]
 # flow accumulation, …) over a DEM, returning a DataArray that feeds raster()/tiles().
 # whitebox downloads its compiled binary on first use; rioxarray reads the result back.
 gis-terrain = ["whitebox>=2.3", "rioxarray>=0.15"]
+# GIS phase 3 — Google Earth Engine overlays via golit.gis.ee_layer: EE renders the tiles
+# on its own servers and Golit points a MapLibre raster source at the tile URL. Needs the
+# earthengine-api client and a one-time `earthengine authenticate` + ee.Initialize(project=).
+gis-ee = ["earthengine-api>=0.1"]
 
 [project.scripts]
 golit = "golit.cli:main"
