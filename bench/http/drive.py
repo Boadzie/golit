@@ -63,6 +63,8 @@ def measure_dash_http(
     warmup: int,
     iters: int,
     timeout: float = 120.0,
+    output_id: str = "chart",
+    input_id: str = "threshold",
 ) -> dict[str, float]:
     """Drive Dash's **real** callback endpoint, the analog of ``measure_http_update``.
 
@@ -71,14 +73,15 @@ def measure_dash_http(
     ``callback_context``, runs the callback (chain + build the Plotly figure), and
     returns the figure JSON. Timing that round-trip over loopback folds in everything
     the direct-call floor skipped — Flask, input deserialization, figure serialization.
-    ``values`` cycle so every POST is a genuine recompute. Returns the e2e latency
-    summary plus mean response ``bytes`` (the figure JSON Dash puts on the wire)."""
+    ``values`` cycle so every POST is a genuine recompute. ``output_id``/``input_id``
+    select the callback's chart and slider (the memo twin uses ``chart_a``/``threshold_a``).
+    Returns the e2e latency summary plus mean response ``bytes``."""
     def body(value: int) -> str:
         return json.dumps({
-            "output": "chart.figure",
-            "outputs": {"id": "chart", "property": "figure"},
-            "inputs": [{"id": "threshold", "property": "value", "value": value}],
-            "changedPropIds": ["threshold.value"],
+            "output": f"{output_id}.figure",
+            "outputs": {"id": output_id, "property": "figure"},
+            "inputs": [{"id": input_id, "property": "value", "value": value}],
+            "changedPropIds": [f"{input_id}.value"],
         })
 
     headers = {"content-type": "application/json"}
