@@ -67,6 +67,11 @@ Lets-Plot static SVG out of the box, plus auto-detected interactive **Plotly / A
 </div>
 
 <div markdown>
+### :material-map: Maps & GIS
+Return a **GeoDataFrame** and get a native **MapLibre GL** map — choropleths, tooltips, basemaps — plus DuckDB **spatial SQL**. A map is a reactive view like any other.
+</div>
+
+<div markdown>
 ### :material-server-network: Scales horizontally
 A single process needs nothing extra. Add **Redis** and a sticky load balancer to fan a fleet of workers out — server state stays worker-local by design.
 </div>
@@ -83,6 +88,7 @@ Golit requires **Python 3.11+**. The core install pulls in [Litestar](https://li
 pip install golit                 # core
 pip install "golit[charts]"       # interactive Plotly / Altair / Bokeh
 pip install "golit[sql]"          # DuckDB SQL nodes over Polars frames
+pip install "golit[gis]"          # native MapLibre maps from GeoDataFrames
 pip install "golit[redis]"        # Redis fan-out for multi-worker
 ```
 
@@ -136,6 +142,7 @@ Open <http://127.0.0.1:8000>. Moving the slider dirties `threshold → filtered 
 | Wire format      | WebSocket diff     | JSON        | **HTML fragments**         |
 | Data engine      | Pandas             | Pandas      | **Polars (Rust)**          |
 | Charting         | Plotly/Altair (JS) | Plotly (JS) | **Lets-Plot → static SVG** |
+| Maps / GIS       | pydeck / `st.map`  | dash-leaflet (JS) | **MapLibre from a GeoDataFrame** |
 | Reactive core    | Python rerun       | Python      | **Rust (PyO3)**            |
 | Horizontal scale | Hard               | Manual      | **Redis-backed, native**   |
 
