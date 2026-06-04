@@ -46,6 +46,37 @@ def test_metric_delta_direction_and_colors():
     assert "text-on-surface-variant" in ui.metric("R", "1", delta="-8%", delta_color="off")
 
 
+def test_scorecard_value_label_delta_icon_caption():
+    out = ui.scorecard(
+        "Revenue", "$84.2k", delta="+8%", icon="payments", caption="vs last month",
+        kind="primary",
+    )
+    assert "golit-scorecard" in out
+    assert "Revenue" in out and "$84.2k" in out
+    assert "▲" in out and "text-green-600" in out  # shares the metric delta pill
+    assert "material-symbols-outlined" in out and "payments" in out  # icon
+    assert "text-primary" in out  # kind accent on the icon
+    assert "vs last month" in out  # caption footer
+
+
+def test_scorecard_minimal_has_no_icon_or_caption():
+    out = ui.scorecard("Rows", "1,204")
+    assert "Rows" in out and "1,204" in out
+    assert "material-symbols-outlined" not in out  # no icon requested
+    assert "▲" not in out and "▼" not in out  # no delta requested
+
+
+def test_scorecard_inverse_delta_color():
+    # down is good under inverse (e.g. churn dropping)
+    assert "text-green-600" in ui.scorecard("Churn", "2%", delta="-0.4%", delta_color="inverse")
+
+
+def test_scorecard_escapes_user_values():
+    out = ui.scorecard("<x>", "<b>v</b>", caption="<i>c</i>")
+    assert "<x>" not in out and "&lt;x&gt;" in out
+    assert "<b>v</b>" not in out and "&lt;b&gt;v&lt;/b&gt;" in out
+
+
 def test_alert_kind_classes_and_icon():
     out = ui.alert("watch out", kind="warning", title="Heads up")
     assert "bg-amber-50" in out and "warning" in out and "Heads up" in out
