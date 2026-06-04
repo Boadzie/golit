@@ -1,4 +1,4 @@
 framework,stage,compute_us,render_us,serialize_us,total_us
-Golit (SVG),"render server-side, 0 client runtime",771.6,1598.9,0.0,2370.5
-Golit (Plotly),ship figure spec (client draws),771.6,239.6,336.2,1347.3
-Dash,ship figure spec (client draws),771.6,239.6,313.1,1324.3
+Golit (SVG),"render server-side, 0 client runtime",790.1,1708.8,0.0,2498.9
+Golit (Plotly),ship figure spec (client draws),790.1,233.8,350.1,1374.0
+Dash,ship figure spec (client draws),790.1,233.8,329.4,1353.3
