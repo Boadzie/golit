@@ -10,6 +10,11 @@ native MapLibre GL rendering plus DuckDB spatial SQL:
 * :func:`explore` — the folium/leafmap escape hatch (``gdf.explore`` embedded as-is);
 * :func:`spatial_sql` — DuckDB ``ST_*`` SQL over Polars/GeoJSON sources, returning Polars.
 
+Raster (phases 2 / 2.5) overlays a georeferenced array as a native MapLibre image layer:
+
+* :func:`raster` — a single band colormapped to a PNG (``cmap``, legend, nodata→transparent);
+* :func:`rgb` — a multiband raster as a true/false-color RGB composite with per-band stretch.
+
 Everything heavy (GeoPandas, pyproj, folium, DuckDB) is imported lazily *inside* the
 functions, so ``import golit`` — and therefore ``import golit.gis`` — never pulls them
 in. Install the extra with ``pip install "golit[gis]"`` (DuckDB spatial rides on the
@@ -515,9 +520,12 @@ def _png_data_uri(rgba: Any) -> str:
     return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
 
 
-def _resolve_raster(data: Any, band: int | None, bounds: Any, max_size: int) -> Any:
+def _load_raster(data: Any, bounds: Any, max_size: int) -> Any:
     """Resolve ``data`` (a rioxarray/xarray ``DataArray``, a GeoTIFF path, or a NumPy
-    array + ``bounds``) to a north-up 2-D float array and its lon/lat bounds."""
+    array + ``bounds``) to a north-up float array and its lon/lat bounds. The array keeps
+    all bands — 2-D for a single band, band-first 3-D ``(band, y, x)`` for a multiband
+    raster. Band selection / single-band validation is left to the caller (:func:`raster`
+    takes one band; :func:`rgb` takes three)."""
     import numpy as np
 
     if isinstance(data, (str, os.PathLike)):
@@ -551,14 +559,111 @@ def _resolve_raster(data: Any, band: int | None, bounds: Any, max_size: int) -> 
             raise ValueError("raster: a NumPy array needs explicit bounds=[w,s,e,n]")
         minx, miny, maxx, maxy = (float(v) for v in bounds)
 
-    if arr.ndim == 3:
-        arr = arr[0 if band is None else band]
-    if arr.ndim != 2:
-        raise ValueError(f"raster: expected a 2-D band, got shape {arr.shape}")
-    step = max(1, int(np.ceil(max(arr.shape) / max_size)))
+    # Downsample on the spatial axes only (the last two), so a band-first cube is preserved.
+    step = max(1, int(np.ceil(max(arr.shape[-2:]) / max_size)))
     if step > 1:
-        arr = arr[::step, ::step]  # downsample large rasters (wire + draw cost)
+        arr = arr[..., ::step, ::step]  # downsample large rasters (wire + draw cost)
     return arr, (minx, miny, maxx, maxy)
+
+
+def _select_bands(arr: Any, bands: Any) -> Any:
+    """Pick three bands from a multiband raster as a ``(3, y, x)`` stack. Accepts the
+    rioxarray/rasterio band-first ``(band, y, x)`` layout and the channel-last
+    ``(y, x, band)`` layout (auto-detected); ``bands`` indexes the band axis."""
+    import numpy as np
+
+    if arr.ndim == 2:
+        raise ValueError("rgb: expected a multiband raster (>= 3 bands), got a single 2-D band")
+    if arr.ndim != 3:
+        raise ValueError(f"rgb: expected a 3-D (band, y, x) raster, got shape {arr.shape}")
+    if arr.shape[-1] in (3, 4) and arr.shape[0] > 4:
+        arr = np.moveaxis(arr, -1, 0)  # channel-last (y, x, band) -> band-first
+    try:
+        return np.stack([arr[b] for b in bands], axis=0)
+    except IndexError as exc:
+        raise ValueError(
+            f"rgb: bands={tuple(bands)} out of range for a {arr.shape[0]}-band raster"
+        ) from exc
+
+
+def _composite_to_rgba(bands_arr: Any, percentiles: Any, vmin: Any, vmax: Any,
+                       gamma: float | None) -> Any:
+    """Stretch a ``(3, y, x)`` float array into an ``(h, w, 4)`` uint8 RGBA composite. Each
+    band is contrast-stretched independently — to an explicit ``vmin``/``vmax`` (a scalar
+    applied to all three, or a 3-sequence per band) or to the given ``percentiles`` —
+    then optionally gamma-corrected. A pixel non-finite in any band is transparent (a
+    nodata border). Returns the array and the per-band ``(lo, hi)`` ranges used."""
+    import numpy as np
+
+    plo, phi = percentiles
+    height, width = bands_arr.shape[-2:]
+    rgb_out = np.zeros((height, width, 3), dtype=np.uint8)
+    finite_all = np.ones((height, width), dtype=bool)
+    ranges: list[tuple[float, float]] = []
+    for i in range(3):
+        band = np.asarray(bands_arr[i], dtype=float)
+        finite = np.isfinite(band)
+        finite_all &= finite
+        if vmin is not None and vmax is not None:
+            lo = float(vmin[i]) if isinstance(vmin, (list, tuple)) else float(vmin)
+            hi = float(vmax[i]) if isinstance(vmax, (list, tuple)) else float(vmax)
+        elif finite.any():
+            lo = float(np.nanpercentile(band, plo))
+            hi = float(np.nanpercentile(band, phi))
+        else:
+            lo, hi = 0.0, 1.0  # an all-nodata band; the stretch is moot (alpha hides it)
+        if hi <= lo:
+            hi = lo + 1.0
+        ranges.append((lo, hi))
+        norm = np.clip((np.where(finite, band, lo) - lo) / (hi - lo), 0.0, 1.0)
+        if gamma:
+            norm = norm ** (1.0 / gamma)
+        rgb_out[..., i] = (norm * 255).astype(np.uint8)
+    alpha = np.where(finite_all, 255, 0).astype(np.uint8)[..., None]
+    return np.concatenate([rgb_out, alpha], axis=2), ranges
+
+
+def _image_layer_spec(
+    url: str,
+    bounds: tuple[float, float, float, float],
+    *,
+    opacity: float,
+    basemap: Any,
+    fit: bool,
+    fit_padding: int,
+    height: str,
+    opts: dict[str, Any],
+) -> str:
+    """Place a PNG ``data:`` URI as a MapLibre image layer over ``basemap`` and return the
+    map mount. Shared by :func:`raster` (colormapped single band) and :func:`rgb` (RGB
+    composite); rides the same baked-vs-overlay basemap split as :func:`geo_map`."""
+    minx, miny, maxx, maxy = bounds
+    source = {
+        "type": "image",
+        "url": url,
+        # MapLibre image coordinates: top-left, top-right, bottom-right, bottom-left.
+        "coordinates": [[minx, maxy], [maxx, maxy], [maxx, miny], [minx, miny]],
+    }
+    layer = {"id": _RASTER, "type": "raster", "source": _RASTER,
+             "paint": {"raster-opacity": opacity}}
+
+    base = _base_style(basemap)
+    spec: dict[str, Any] = {"height": height}
+    if isinstance(base, str):
+        spec["style"] = base
+        spec["overlay"] = {"sources": {_RASTER: source}, "layers": [layer]}
+    else:
+        base["sources"][_RASTER] = source
+        base["layers"].append(layer)
+        spec["style"] = base
+
+    if fit and "bounds" not in opts:
+        spec["bounds"] = [[minx, miny], [maxx, maxy]]
+        if fit_padding != 24:
+            spec["fitPadding"] = fit_padding
+
+    spec.update(opts)
+    return chart_spec("maplibre", spec)
 
 
 def raster(
@@ -593,37 +698,67 @@ def raster(
         def map(elevation, cmap=select(["viridis", "terrain"], default="terrain")):
             return gis.raster(elevation, cmap=cmap, label="Elevation (m)")
 
-    A view may also just ``return`` a georeferenced ``DataArray``. Requires
-    ``pip install "golit[gis-raster]"``."""
-    arr, (minx, miny, maxx, maxy) = _resolve_raster(data, band, bounds, max_size)
+    A view may also just ``return`` a georeferenced ``DataArray``. For a multiband raster
+    (satellite imagery), see :func:`rgb`. Requires ``pip install "golit[gis-raster]"``."""
+    arr, bnds = _load_raster(data, bounds, max_size)
+    if arr.ndim == 3:
+        arr = arr[0 if band is None else band]  # one band -> colormap; rgb() takes three
+    if arr.ndim != 2:
+        raise ValueError(f"raster: expected a 2-D band, got shape {arr.shape}")
     rgba, (lo, hi) = _colormap_to_rgba(arr, cmap, vmin, vmax)
-    source = {
-        "type": "image",
-        "url": _png_data_uri(rgba),
-        # MapLibre image coordinates: top-left, top-right, bottom-right, bottom-left.
-        "coordinates": [[minx, maxy], [maxx, maxy], [maxx, miny], [minx, miny]],
-    }
-    layer = {"id": _RASTER, "type": "raster", "source": _RASTER,
-             "paint": {"raster-opacity": opacity}}
-
-    base = _base_style(basemap)
-    spec: dict[str, Any] = {"height": height}
-    if isinstance(base, str):
-        spec["style"] = base
-        spec["overlay"] = {"sources": {_RASTER: source}, "layers": [layer]}
-    else:
-        base["sources"][_RASTER] = source
-        base["layers"].append(layer)
-        spec["style"] = base
-
-    if fit and "bounds" not in opts:
-        spec["bounds"] = [[minx, miny], [maxx, maxy]]
-        if fit_padding != 24:
-            spec["fitPadding"] = fit_padding
-
-    spec.update(opts)
-    mount = chart_spec("maplibre", spec)
+    mount = _image_layer_spec(
+        _png_data_uri(rgba), bnds, opacity=opacity, basemap=basemap,
+        fit=fit, fit_padding=fit_padding, height=height, opts=opts,
+    )
     if legend:
         mapping = {"kind": "numeric", "vmin": lo, "vmax": hi, "colors": _RASTER_CMAPS[cmap]}
         return f'<div class="golit-map-wrap relative">{mount}{_legend_html(label, mapping)}</div>'
     return mount
+
+
+def rgb(
+    data: Any,
+    *,
+    bands: Any = (0, 1, 2),
+    percentiles: Any = (2.0, 98.0),
+    vmin: Any = None,
+    vmax: Any = None,
+    gamma: float | None = None,
+    opacity: float = 1.0,
+    bounds: Any = None,
+    basemap: Any = "default",
+    fit: bool = True,
+    fit_padding: int = 24,
+    max_size: int = 1024,
+    height: str = "420px",
+    **opts: Any,
+) -> str:
+    """Render a multiband raster as a true/false-color **RGB composite** (GIS phase 2.5).
+
+    ``data`` is a rioxarray/xarray ``DataArray`` (reprojected to EPSG:4326 via its ``.rio``
+    CRS), a multiband **GeoTIFF path**, or a NumPy array with explicit ``bounds=[w, s, e, n]``
+    — band-first ``(band, y, x)`` (the rasterio/rioxarray layout) or channel-last
+    ``(y, x, band)`` (auto-detected). ``bands`` selects the three bands mapped to red,
+    green, blue: the default ``(0, 1, 2)`` is a natural-color composite for an R-G-B raster;
+    pick others for false color (e.g. NIR-R-G to highlight vegetation).
+
+    Each band is contrast-stretched independently — by default to its 2nd–98th
+    ``percentiles`` (robust to outliers), or to an explicit ``vmin``/``vmax`` (a scalar for
+    all three, or a 3-sequence per band). ``gamma`` brightens (>1) or darkens (<1) the
+    midtones; pixels that are nodata (non-finite) in any band are transparent. The composite
+    is encoded to a PNG and placed as an image layer on the ``basemap`` with ``opacity``.
+    Large rasters are downsampled to ``max_size`` px on the long edge::
+
+        @app.view
+        def scene(stack, combo=select(["natural", "false-color"], default="natural")):
+            bands = (0, 1, 2) if combo == "natural" else (3, 0, 1)  # NIR-R-G
+            return gis.rgb(stack, bands=bands)
+
+    Requires ``pip install "golit[gis-raster]"``."""
+    arr, bnds = _load_raster(data, bounds, max_size)
+    composite = _select_bands(arr, bands)
+    rgba, _ranges = _composite_to_rgba(composite, percentiles, vmin, vmax, gamma)
+    return _image_layer_spec(
+        _png_data_uri(rgba), bnds, opacity=opacity, basemap=basemap,
+        fit=fit, fit_padding=fit_padding, height=height, opts=opts,
+    )
