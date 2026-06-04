@@ -7,6 +7,9 @@ native MapLibre GL rendering plus DuckDB spatial SQL:
 * :func:`maplibre` — a native, GPU vector map from a style (URL or dict) and a camera;
 * :func:`geo_map` — a GeoDataFrame straight to a MapLibre choropleth/line/point map
   (a view may also just *return* the GeoDataFrame — see :func:`golit.rendering.render_value`);
+* :func:`vector_tiles` — a *large* GeoDataFrame served as on-demand MVT vector tiles (the
+  data stays server-side; only the visible tiles cross the wire — the vector analog of
+  :func:`tiles`);
 * :func:`explore` — the folium/leafmap escape hatch (``gdf.explore`` embedded as-is);
 * :func:`spatial_sql` — DuckDB ``ST_*`` SQL over Polars/GeoJSON sources, returning Polars.
 
@@ -72,8 +75,9 @@ _RASTER_BASEMAPS = {
     "carto-dark": (_CARTO_DARK, _CARTO_ATTR),
 }
 
-_SOURCE = "golit-geo"  # the GeoJSON source/layer id geo_map injects into the style
+_SOURCE = "golit-geo"  # the GeoJSON/vector source + layer id geo_map/vector_tiles inject
 _RASTER = "golit-raster"  # the image source/layer id raster() injects into the style
+_VTILE_LAYER = "golit"  # the MVT layer name inside vector_tiles' tiles
 
 # Colormaps for raster(), as anchor colors interpolated to a 256-entry LUT with numpy —
 # dependency-free (no matplotlib). The same anchors drive the raster legend's gradient.
@@ -201,47 +205,36 @@ def _color_mapping(gdf: Any, column: str) -> dict[str, Any]:
     return {"expr": expr, "kind": "categorical", "categories": pairs}
 
 
-def _data_layers(gdf: Any, mapping: dict[str, Any] | None) -> list[dict[str, Any]]:
-    """The fill/line/circle layer(s) for the GeoJSON source, chosen by geometry type."""
+def _data_layers(
+    gdf: Any, mapping: dict[str, Any] | None, source_layer: str | None = None
+) -> list[dict[str, Any]]:
+    """The fill/line/circle layer(s) for the data source, chosen by geometry type. With a
+    ``source_layer`` the layers target a MapLibre *vector* source (the MVT layer name);
+    without it they target an inline GeoJSON source (:func:`geo_map`)."""
     paint = mapping["expr"] if mapping else "#1565c0"
     kinds = {str(t).replace("Multi", "") for t in gdf.geom_type.dropna().unique()}
     if "Polygon" in kinds:
-        return [
-            {
-                "id": _SOURCE,
-                "type": "fill",
-                "source": _SOURCE,
-                "paint": {"fill-color": paint, "fill-opacity": 0.7},
-            },
-            {
-                "id": f"{_SOURCE}-outline",
-                "type": "line",
-                "source": _SOURCE,
-                "paint": {"line-color": "#ffffff", "line-width": 0.6},
-            },
+        layers = [
+            {"id": _SOURCE, "type": "fill", "source": _SOURCE,
+             "paint": {"fill-color": paint, "fill-opacity": 0.7}},
+            {"id": f"{_SOURCE}-outline", "type": "line", "source": _SOURCE,
+             "paint": {"line-color": "#ffffff", "line-width": 0.6}},
         ]
-    if "LineString" in kinds:
-        return [
-            {
-                "id": _SOURCE,
-                "type": "line",
-                "source": _SOURCE,
-                "paint": {"line-color": paint, "line-width": 2.5},
-            }
+    elif "LineString" in kinds:
+        layers = [
+            {"id": _SOURCE, "type": "line", "source": _SOURCE,
+             "paint": {"line-color": paint, "line-width": 2.5}},
         ]
-    return [
-        {
-            "id": _SOURCE,
-            "type": "circle",
-            "source": _SOURCE,
-            "paint": {
-                "circle-color": paint,
-                "circle-radius": 5,
-                "circle-stroke-color": "#ffffff",
-                "circle-stroke-width": 1,
-            },
-        }
-    ]
+    else:
+        layers = [
+            {"id": _SOURCE, "type": "circle", "source": _SOURCE,
+             "paint": {"circle-color": paint, "circle-radius": 5,
+                       "circle-stroke-color": "#ffffff", "circle-stroke-width": 1}},
+        ]
+    if source_layer is not None:
+        for layer in layers:
+            layer["source-layer"] = source_layer  # a vector source needs the MVT layer name
+    return layers
 
 
 def _fmt(value: float) -> str:
@@ -372,6 +365,128 @@ def geo_map(
         # Overlay the legend on the map; the relative wrapper anchors the absolute legend.
         return f'<div class="golit-map-wrap relative">{mount}{_legend_html(color, mapping)}</div>'
     return mount
+
+
+def vector_tiles(
+    gdf: Any,
+    *,
+    color: str | None = None,
+    tooltip: Any = None,
+    tooltip_trigger: str = "click",
+    properties: Any = None,
+    basemap: Any = "default",
+    fit: bool = True,
+    fit_padding: int = 24,
+    legend: bool = True,
+    geometry: str | None = None,
+    min_zoom: int = 0,
+    max_zoom: int = 14,
+    height: str = "420px",
+    **opts: Any,
+) -> str:
+    """Render a **large** ``GeoDataFrame`` as server-side **vector tiles** (GIS phase 2.5).
+
+    Where :func:`geo_map` inlines the whole GeoJSON into the page — fine for thousands of
+    features, not for hundreds of thousands — ``vector_tiles`` keeps the data **server-side**
+    and streams only the features in each ``z/x/y`` tile as a Mapbox Vector Tile (MVT). The
+    map looks the same (``color`` choropleth, ``tooltip`` popups, ``basemap``, ``legend``) but
+    scales: nothing but the visible tiles crosses the wire, and the GPU styles the vector
+    features client-side::
+
+        @app.view
+        def map(parcels):                          # parcels: a big GeoDataFrame
+            return gis.vector_tiles(parcels, color="value", tooltip=["id", "value"])
+
+    The frame is reprojected to Web Mercator and registered under an opaque token; the
+    ``/gis/vector`` route encodes tiles on demand. ``properties`` limits which columns ride in
+    the tiles (the ``color`` column and ``tooltip`` fields are always included); ``min_zoom`` /
+    ``max_zoom`` bound the tile pyramid (MapLibre over-zooms past ``max_zoom``). A plain
+    Polars/pandas frame works with ``geometry=<column>`` (as in :func:`geo_map`). Requires
+    ``pip install "golit[gis,gis-vector-tiles]"``."""
+    from .server.vector_tiles import register_source
+
+    if not is_geodataframe(gdf):
+        if geometry is None:
+            raise TypeError(
+                "vector_tiles expects a GeoDataFrame, or a frame plus geometry=<column name>"
+            )
+        gdf = to_geo(gdf, geometry=geometry)
+
+    mapping = _color_mapping(gdf, color) if color else None
+
+    # Columns to embed as MVT feature properties — everything by default, or an explicit list
+    # plus whatever the choropleth/tooltips need so they keep working client-side.
+    geom_name = gdf.geometry.name
+    if properties is None:
+        cols = [c for c in gdf.columns if c != geom_name]
+    else:
+        wanted = set(properties)
+        if color:
+            wanted.add(color)
+        wanted.update(_tooltip_fields(gdf, tooltip) or [])
+        cols = [c for c in gdf.columns if c != geom_name and c in wanted]
+
+    crs = getattr(gdf, "crs", None)
+    web = gdf.to_crs(epsg=3857) if crs is not None else gdf  # the tiling CRS (Web Mercator)
+
+    from pyproj import Transformer
+
+    to4326 = Transformer.from_crs(3857, 4326, always_xy=True)
+    minx, miny, maxx, maxy = (float(v) for v in web.total_bounds)
+    west, south = to4326.transform(minx, miny)
+    east, north = to4326.transform(maxx, maxy)
+
+    token = _tile_token("vector", len(web), sorted(map(str, cols)), color,
+                        round(west, 5), round(south, 5), round(east, 5), round(north, 5),
+                        min_zoom, max_zoom, _attrs_fingerprint(web, cols))
+    register_source(token, {"gdf": web, "properties": cols, "layer": _VTILE_LAYER})
+
+    source = {
+        "type": "vector",
+        "tiles": [f"/gis/vector/{token}/{{z}}/{{x}}/{{y}}"],
+        "minzoom": min_zoom,
+        "maxzoom": max_zoom,
+    }
+    layers = _data_layers(gdf, mapping, source_layer=_VTILE_LAYER)
+
+    base = _base_style(basemap)
+    spec: dict[str, Any] = {"height": height}
+    if isinstance(base, str):
+        spec["style"] = base
+        spec["overlay"] = {"sources": {_SOURCE: source}, "layers": layers}
+    else:
+        base["sources"][_SOURCE] = source
+        base["layers"].extend(layers)
+        spec["style"] = base
+
+    if fit and "bounds" not in opts:
+        spec["bounds"] = [[west, south], [east, north]]
+        if fit_padding != 24:
+            spec["fitPadding"] = fit_padding
+
+    fields = _tooltip_fields(gdf, tooltip)
+    if fields:
+        spec["tooltip"] = fields
+        spec["tooltipLayer"] = _SOURCE
+        if tooltip_trigger != "click":
+            spec["tooltipTrigger"] = tooltip_trigger
+
+    spec.update(opts)
+    mount = chart_spec("maplibre", spec)
+    if legend and mapping is not None and color is not None:
+        return f'<div class="golit-map-wrap relative">{mount}{_legend_html(color, mapping)}</div>'
+    return mount
+
+
+def _attrs_fingerprint(gdf: Any, cols: list[str]) -> int:
+    """A cheap content fingerprint of the attribute columns (no per-geometry hashing) so the
+    registry token is stable for identical data + distinct for different — keeps the tile
+    source worker-local without paying a full GeoJSON content hash."""
+    if not cols:
+        return 0
+    import pandas as pd
+
+    return int(pd.util.hash_pandas_object(gdf[cols], index=False).sum() & 0xFFFFFFFFFFFFFFFF)
 
 
 def to_geo(data: Any, *, geometry: str = "geometry", crs: Any = 4326) -> Any:
