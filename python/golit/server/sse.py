@@ -10,6 +10,7 @@ fragment as a named event ``node:<id>`` — which HTMX's SSE extension swaps int
 from __future__ import annotations
 
 import asyncio
+import os
 from collections import defaultdict
 from collections.abc import AsyncIterator
 
@@ -20,6 +21,11 @@ from .session import SessionManager
 
 # A queued push: (view node id, rendered fragment content).
 Event = tuple[str, str]
+
+# Keepalive cadence: how often an idle stream emits a comment so proxies with a
+# short idle timeout don't drop the connection. Tunable via env for fronting
+# proxies (and the concurrency benchmark, which samples loop responsiveness here).
+DEFAULT_PING_INTERVAL = float(os.environ.get("GOLIT_SSE_PING_INTERVAL", "15.0"))
 
 
 class SSEManager:
@@ -62,7 +68,7 @@ class SSEManager:
 
     # -- per-connection event stream --------------------------------------
     async def stream(
-        self, sid: str, *, ping_interval: float = 15.0
+        self, sid: str, *, ping_interval: float = DEFAULT_PING_INTERVAL
     ) -> AsyncIterator[ServerSentEventMessage]:
         queue = self.connect(sid)
         try:
