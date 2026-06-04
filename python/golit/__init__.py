@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from golit._golit import kernel_version
 
-from . import layout, ui
+from . import gis, layout, ui
 from .app import App
 from .data import sql
 from .engine import Session
@@ -48,6 +48,7 @@ __all__ = [
     "kernel_version",
     "ui",
     "layout",
+    "gis",
     "App",
     "Session",
     "create_app",
