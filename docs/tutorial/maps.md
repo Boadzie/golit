@@ -72,6 +72,10 @@ The color mapping is emitted as a MapLibre **style expression**, so the GPU does
 data→color step client-side — the server ships the GeoJSON and the rules, not a
 pre-colored image. Polygons get a fill layer, lines a line layer, points a circle layer.
 
+When `color` is set, a **legend** is overlaid automatically — a gradient bar for a numeric
+choropleth, swatches for a categorical one. It's plain server-rendered markup (no client
+runtime); pass `legend=False` to hide it.
+
 ## `maplibre` — a native map from a style
 
 When you want a base map for its own sake — a vector tile style, 3D buildings, terrain —
@@ -96,8 +100,8 @@ replaced — you can drive a map from a slider continuously without leaking cont
 
 A reactive node can be written as spatial SQL. `gis.spatial_sql` loads the DuckDB
 `spatial` extension (so `ST_*` functions work) and runs the query over your named frames,
-returning Polars — which then feeds `geo_map` like any frame. It needs only the `sql`
-extra; DuckDB downloads the extension on first use.
+returning **Polars**. It needs only the `sql` extra; DuckDB downloads the extension on
+first use.
 
 ```python
 from golit import slider
@@ -106,11 +110,25 @@ from golit import slider
 @app.reactive
 def nearby(places, radius_km: float = slider(1, 50, default=10)):
     return gis.spatial_sql(
-        "SELECT name, geom FROM p "
+        "SELECT name, ST_AsWKB(geom) AS geometry FROM p "
         f"WHERE ST_DWithin(geom, ST_Point(-0.19, 5.6), {radius_km} / 111.0)",
         p=places,
     )
 ```
+
+Because `spatial_sql` returns a plain frame (geometry as a WKB/WKT column), bridge it to a
+map with `gis.to_geo` — or just point `geo_map` at the geometry column directly:
+
+```python
+@app.view
+def map(nearby):                       # nearby is the spatial_sql frame above
+    return gis.geo_map(nearby, geometry="geometry", color="name")
+    # equivalently: gis.geo_map(gis.to_geo(nearby, geometry="geometry"), color="name")
+```
+
+`gis.to_geo(frame, geometry="geometry")` parses a WKB-bytes, WKT-text, or shapely geometry
+column into a `GeoDataFrame` (defaulting to EPSG:4326). Select geometry as `ST_AsWKB(geom)`
+(or `ST_AsText(geom)`) in the query.
 
 ## The folium escape hatch
 

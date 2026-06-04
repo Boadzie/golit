@@ -159,6 +159,43 @@ def test_page_shell_carries_maplibre_cdn_and_css() -> None:
     assert "drawMap" in shell  # the bootstrap can render a map mount
 
 
+def test_geo_map_numeric_color_overlays_a_gradient_legend() -> None:
+    out = gis.geo_map(_squares(), color="revenue")
+    assert out.strip().startswith('<div class="golit-map-wrap relative"')
+    assert "golit-map-legend" in out
+    assert "linear-gradient" in out  # numeric -> gradient bar
+    assert "revenue" in out  # legend titled by the column
+
+
+def test_geo_map_categorical_color_legend_has_one_swatch_per_value() -> None:
+    out = gis.geo_map(_squares(), color="name")
+    assert "golit-map-legend" in out
+    assert out.count("width:10px;height:10px") == 2  # one swatch per distinct value
+
+
+def test_geo_map_legend_off_and_no_color_have_no_legend() -> None:
+    assert "golit-map-legend" not in gis.geo_map(_squares(), color="revenue", legend=False)
+    assert "golit-map-legend" not in gis.geo_map(_squares())  # no color -> no legend
+
+
+def test_geo_map_non_geo_frame_without_geometry_raises() -> None:
+    import polars as pl
+
+    with pytest.raises(TypeError):
+        gis.geo_map(pl.DataFrame({"a": [1]}))
+
+
+def test_to_geo_parses_wkt_geometry_to_a_geodataframe() -> None:
+    import polars as pl
+
+    frame = pl.DataFrame({"name": ["A"], "geometry": ["POINT (1 2)"]})
+    gdf = gis.to_geo(frame, geometry="geometry")
+    assert gis.is_geodataframe(gdf)
+    assert str(gdf.crs).endswith("4326")
+    assert gdf.geometry.iloc[0].wkt == "POINT (1 2)"
+    assert "name" in gdf.columns
+
+
 def test_spatial_sql_runs_st_functions() -> None:
     pytest.importorskip("duckdb")
     import polars as pl
@@ -169,3 +206,18 @@ def test_spatial_sql_runs_st_functions() -> None:
         pytest.skip(f"DuckDB spatial extension unavailable: {exc}")
     assert isinstance(out, pl.DataFrame)
     assert out.to_dicts() == [{"p": "POINT (1 2)"}]
+
+
+def test_spatial_sql_to_geo_to_map_seam() -> None:
+    pytest.importorskip("duckdb")
+    try:
+        frame = gis.spatial_sql(
+            "SELECT 'A' AS name, 5 AS v, "
+            "ST_AsWKB(ST_GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))')) AS geom"
+        )
+    except Exception as exc:  # noqa: BLE001 - extension download needs network
+        pytest.skip(f"DuckDB spatial extension unavailable: {exc}")
+    # spatial_sql returns a Polars frame with a WKB geometry column; geometry= bridges it.
+    out = gis.geo_map(frame, geometry="geom", color="v")
+    spec = _spec_of(out)
+    assert spec["style"]["sources"]["golit-geo"]["data"]["type"] == "FeatureCollection"

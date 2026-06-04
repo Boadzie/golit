@@ -26,9 +26,15 @@ The folium/leafmap escape hatch — embed `gdf.explore()` as a swappable fragmen
 
 ## spatial_sql
 
-DuckDB `ST_*` SQL over Polars/GeoJSON sources, returning Polars (feeds `geo_map`).
+DuckDB `ST_*` SQL over Polars/GeoJSON sources, returning Polars (bridge to `geo_map` with `to_geo`).
 
 ::: golit.gis.spatial_sql
+
+## to_geo
+
+Turn a frame with a WKB/WKT/shapely geometry column into a `GeoDataFrame` — the bridge from `spatial_sql` to `geo_map`.
+
+::: golit.gis.to_geo
 
 ## is_geodataframe
 

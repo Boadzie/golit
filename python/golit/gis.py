@@ -18,6 +18,7 @@ existing ``sql`` extra).
 
 from __future__ import annotations
 
+import html as _html
 from typing import Any
 
 import polars as pl
@@ -126,9 +127,11 @@ def _base_style(basemap: Any) -> dict[str, Any]:
     }
 
 
-def _color_expr(gdf: Any, column: str) -> Any:
-    """A MapLibre paint expression mapping ``column`` to a color: an ``interpolate``
-    ramp for a numeric column, a ``match`` over distinct values for a categorical one."""
+def _color_mapping(gdf: Any, column: str) -> dict[str, Any]:
+    """Map ``column`` to a MapLibre paint expression *and* the data a legend needs:
+    an ``interpolate`` ramp for a numeric column (a choropleth), a ``match`` over
+    distinct values for a categorical one. Computed once, reused by the layer and the
+    legend so they can't drift."""
     from pandas.api.types import is_numeric_dtype
 
     series = gdf[column]
@@ -137,30 +140,34 @@ def _color_expr(gdf: Any, column: str) -> Any:
         vmax = float(series.max())
         if vmin == vmax:
             vmax = vmin + 1.0
-        stops: list[Any] = []
         last = len(_SEQUENTIAL) - 1
+        expr: list[Any] = ["interpolate", ["linear"], ["get", column]]
         for i, color in enumerate(_SEQUENTIAL):
-            stops.extend([vmin + (vmax - vmin) * i / last, color])
-        return ["interpolate", ["linear"], ["get", column], *stops]
+            expr.extend([vmin + (vmax - vmin) * i / last, color])
+        return {"expr": expr, "kind": "numeric", "vmin": vmin, "vmax": vmax,
+                "colors": _SEQUENTIAL}
     cats = list(dict.fromkeys(str(v) for v in series.tolist()))
-    match: list[Any] = ["match", ["get", column]]
+    expr = ["match", ["get", column]]
+    pairs: list[tuple[str, str]] = []
     for i, cat in enumerate(cats):
-        match.extend([cat, _CATEGORICAL[i % len(_CATEGORICAL)]])
-    match.append("#9ca3af")  # fallback for values not seen at build time
-    return match
+        color = _CATEGORICAL[i % len(_CATEGORICAL)]
+        expr.extend([cat, color])
+        pairs.append((cat, color))
+    expr.append("#9ca3af")  # fallback for values not seen at build time
+    return {"expr": expr, "kind": "categorical", "categories": pairs}
 
 
-def _data_layers(gdf: Any, color: str | None) -> list[dict[str, Any]]:
+def _data_layers(gdf: Any, mapping: dict[str, Any] | None) -> list[dict[str, Any]]:
     """The fill/line/circle layer(s) for the GeoJSON source, chosen by geometry type."""
+    paint = mapping["expr"] if mapping else "#1565c0"
     kinds = {str(t).replace("Multi", "") for t in gdf.geom_type.dropna().unique()}
     if "Polygon" in kinds:
-        fill = color and _color_expr(gdf, color) or "#1565c0"
         return [
             {
                 "id": _SOURCE,
                 "type": "fill",
                 "source": _SOURCE,
-                "paint": {"fill-color": fill, "fill-opacity": 0.7},
+                "paint": {"fill-color": paint, "fill-opacity": 0.7},
             },
             {
                 "id": f"{_SOURCE}-outline",
@@ -170,29 +177,67 @@ def _data_layers(gdf: Any, color: str | None) -> list[dict[str, Any]]:
             },
         ]
     if "LineString" in kinds:
-        line = color and _color_expr(gdf, color) or "#1565c0"
         return [
             {
                 "id": _SOURCE,
                 "type": "line",
                 "source": _SOURCE,
-                "paint": {"line-color": line, "line-width": 2.5},
+                "paint": {"line-color": paint, "line-width": 2.5},
             }
         ]
-    circle = color and _color_expr(gdf, color) or "#1565c0"
     return [
         {
             "id": _SOURCE,
             "type": "circle",
             "source": _SOURCE,
             "paint": {
-                "circle-color": circle,
+                "circle-color": paint,
                 "circle-radius": 5,
                 "circle-stroke-color": "#ffffff",
                 "circle-stroke-width": 1,
             },
         }
     ]
+
+
+def _fmt(value: float) -> str:
+    """Compact number label for the legend (thousands-separated; integers stay integers)."""
+    if value == int(value):
+        return f"{int(value):,}"
+    return f"{value:,.2f}".rstrip("0").rstrip(".")
+
+
+def _legend_html(column: str, mapping: dict[str, Any]) -> str:
+    """A small server-rendered legend overlaid on the map: a gradient bar for a numeric
+    choropleth, color swatches for a categorical one. No client runtime — plain markup."""
+    title = (
+        '<p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant '
+        f'mb-1">{_html.escape(column)}</p>'
+    )
+    if mapping["kind"] == "numeric":
+        gradient = ", ".join(mapping["colors"])
+        bar = (
+            f'<div style="height:8px;border-radius:4px;background:linear-gradient('
+            f'to right,{gradient})"></div>'
+        )
+        labels = (
+            '<div class="flex justify-between text-[10px] text-on-surface-variant mt-1">'
+            f'<span>{_fmt(mapping["vmin"])}</span><span>{_fmt(mapping["vmax"])}</span></div>'
+        )
+        body = bar + labels
+    else:
+        rows = "".join(
+            '<div class="flex items-center gap-1.5">'
+            f'<span style="width:10px;height:10px;border-radius:2px;background:{color}"></span>'
+            f'<span class="text-[10px]">{_html.escape(cat)}</span></div>'
+            for cat, color in mapping["categories"]
+        )
+        body = f'<div class="flex flex-col gap-1">{rows}</div>'
+    return (
+        '<div class="golit-map-legend absolute bottom-3 left-3 z-10 bg-surface-container-lowest/90 '
+        'backdrop-blur rounded-lg shadow-sm p-2.5 min-w-[120px] pointer-events-none">'
+        f"{title}{body}</div>"
+    )
 
 
 def geo_map(
@@ -202,6 +247,8 @@ def geo_map(
     tooltip: Any = None,
     basemap: Any = "default",
     fit: bool = True,
+    legend: bool = True,
+    geometry: str | None = None,
     height: str = "420px",
     **opts: Any,
 ) -> str:
@@ -210,28 +257,43 @@ def geo_map(
     The frame is reprojected to EPSG:4326 if needed, serialized to GeoJSON, and added to
     a MapLibre style as a source with a fill (polygons), line (lines), or circle (points)
     layer picked from the geometry type. ``color`` names a column to drive the fill — a
-    blue ramp for a numeric column (a choropleth), a categorical palette for a text one.
-    ``tooltip`` shows feature properties on click: ``True`` for every attribute, or a
-    column name / list of names. ``basemap`` is a preset (``"default"``, ``"light"``,
-    ``"dark"``, ``"osm"``, ``"none"``) or a full style ``dict``. With ``fit`` the camera
-    frames the data's bounds::
+    blue ramp for a numeric column (a choropleth), a categorical palette for a text one;
+    when ``color`` is set, a ``legend`` is overlaid (gradient bar or swatches) unless
+    turned off. ``tooltip`` shows feature properties on click: ``True`` for every
+    attribute, or a column name / list of names. ``basemap`` is a preset (``"default"``,
+    ``"light"``, ``"dark"``, ``"osm"``, ``"none"``) or a full style ``dict``. With ``fit``
+    the camera frames the data's bounds::
 
         @app.view
         def map(regions):                  # regions is a filtered GeoDataFrame
             return gis.geo_map(regions, color="revenue", tooltip=["name", "revenue"])
 
-    A view may also just ``return`` the GeoDataFrame — :func:`golit.rendering.render_value`
+    A plain Polars/pandas frame works too if you name its geometry column with
+    ``geometry=`` (WKB/WKT/shapely) — the bridge from :func:`spatial_sql`::
+
+        return gis.geo_map(gis.spatial_sql("SELECT name, geom FROM p …", p=places),
+                           geometry="geom", color="name")
+
+    A view may also just ``return`` a GeoDataFrame — :func:`golit.rendering.render_value`
     routes it here with defaults. Requires ``pip install "golit[gis]"``."""
     import json
+
+    if not is_geodataframe(gdf):
+        if geometry is None:
+            raise TypeError(
+                "geo_map expects a GeoDataFrame, or a frame plus geometry=<column name>"
+            )
+        gdf = to_geo(gdf, geometry=geometry)
 
     crs = getattr(gdf, "crs", None)
     if crs is not None and crs.to_epsg() != 4326:
         gdf = gdf.to_crs(epsg=4326)
 
+    mapping = _color_mapping(gdf, color) if color else None
     geojson = json.loads(gdf.to_json())
     style = _base_style(basemap)
     style["sources"][_SOURCE] = {"type": "geojson", "data": geojson}
-    style["layers"].extend(_data_layers(gdf, color))
+    style["layers"].extend(_data_layers(gdf, mapping))
 
     spec: dict[str, Any] = {"style": style, "height": height}
     if fit and "bounds" not in opts:
@@ -244,7 +306,38 @@ def geo_map(
         spec["tooltipLayer"] = _SOURCE
 
     spec.update(opts)
-    return chart_spec("maplibre", spec)
+    mount = chart_spec("maplibre", spec)
+    if legend and mapping is not None and color is not None:
+        # Overlay the legend on the map; the relative wrapper anchors the absolute legend.
+        return f'<div class="golit-map-wrap relative">{mount}{_legend_html(color, mapping)}</div>'
+    return mount
+
+
+def to_geo(data: Any, *, geometry: str = "geometry", crs: Any = 4326) -> Any:
+    """Turn a frame with a geometry column into a GeoPandas ``GeoDataFrame``.
+
+    The bridge from :func:`spatial_sql` (which returns Polars) to :func:`geo_map`. The
+    ``geometry`` column may be **WKB** bytes (a DuckDB ``GEOMETRY`` / ``ST_AsWKB`` column —
+    the usual ``spatial_sql`` output), **WKT** text (``ST_AsText``), or shapely objects.
+    Accepts a Polars or pandas frame; ``crs`` defaults to EPSG:4326 (lon/lat)::
+
+        frame = gis.spatial_sql("SELECT name, ST_AsWKB(geom) AS geometry FROM p …", p=places)
+        gdf = gis.to_geo(frame, geometry="geometry")
+
+    Requires ``pip install "golit[gis]"``."""
+    import geopandas as gpd
+    import shapely
+
+    pdf = data.to_pandas() if isinstance(data, pl.DataFrame) else data.copy()
+    column = pdf[geometry]
+    sample = next((v for v in column if v is not None), None)
+    if isinstance(sample, (bytes, bytearray)):
+        geom = shapely.from_wkb(list(column))
+    elif isinstance(sample, str):
+        geom = shapely.from_wkt(list(column))
+    else:
+        geom = list(column)  # already shapely geometries (or all-null)
+    return gpd.GeoDataFrame(pdf.drop(columns=[geometry]), geometry=list(geom), crs=crs)
 
 
 def _tooltip_fields(gdf: Any, tooltip: Any) -> list[str] | None:
@@ -293,8 +386,15 @@ def spatial_sql(query: str, **frames: Any) -> pl.DataFrame:
             )
 
     Requires the ``sql`` extra (``pip install "golit[sql]"``); DuckDB downloads the
-    spatial extension on first use."""
+    spatial extension on first use. Select geometry as ``ST_AsWKB(geom)`` (or
+    ``ST_AsText``) and pass it through :func:`to_geo` to feed :func:`geo_map`."""
+    import warnings
+
     from .data import load_extension, sql
 
     load_extension("spatial")
-    return sql(query, **frames)
+    with warnings.catch_warnings():
+        # A DuckDB GEOMETRY column comes back as a geoarrow.wkb extension type Polars
+        # doesn't register; it loads fine as its Binary storage, so quiet the notice.
+        warnings.filterwarnings("ignore", message=".*geoarrow.wkb.*")
+        return sql(query, **frames)
