@@ -13,7 +13,9 @@ native MapLibre GL rendering plus DuckDB spatial SQL:
 Raster (phases 2 / 2.5) overlays a georeferenced array as a native MapLibre image layer:
 
 * :func:`raster` — a single band colormapped to a PNG (``cmap``, legend, nodata→transparent);
-* :func:`rgb` — a multiband raster as a true/false-color RGB composite with per-band stretch.
+* :func:`rgb` — a multiband raster as a true/false-color RGB composite with per-band stretch;
+* :func:`tiles` — a very large COG streamed as on-demand ``z/x/y`` tiles via rio-tiler
+  (a server-side tile route; only the visible window crosses the wire).
 
 Everything heavy (GeoPandas, pyproj, folium, DuckDB) is imported lazily *inside* the
 functions, so ``import golit`` — and therefore ``import golit.gis`` — never pulls them
@@ -762,3 +764,105 @@ def rgb(
         _png_data_uri(rgba), bnds, opacity=opacity, basemap=basemap,
         fit=fit, fit_padding=fit_padding, height=height, opts=opts,
     )
+
+
+def _tile_token(*parts: Any) -> str:
+    """A short opaque token keying a tile source in the server registry — a hash of the
+    path + render params, so re-rendering the same view reuses one registry slot."""
+    import hashlib
+
+    return hashlib.sha1(repr(parts).encode()).hexdigest()[:16]
+
+
+def tiles(
+    source: Any,
+    *,
+    bands: Any = None,
+    cmap: str = "viridis",
+    rescale: Any = None,
+    opacity: float = 1.0,
+    basemap: Any = "default",
+    fit: bool = True,
+    fit_padding: int = 24,
+    min_zoom: int | None = None,
+    max_zoom: int | None = None,
+    tile_size: int = 256,
+    height: str = "420px",
+    **opts: Any,
+) -> str:
+    """Stream a **very large** raster as on-demand map tiles (GIS phase 2.5).
+
+    Where :func:`raster`/:func:`rgb` ship the whole array as one PNG, ``tiles`` serves a
+    **Cloud-Optimized GeoTIFF** (a local path or a remote ``http(s)`` URL) through a
+    server-side tile route: rio-tiler reads only the ``z/x/y`` window each MapLibre request
+    needs, colormaps/rescales it, and returns a 256-px PNG. A multi-gigabyte COG renders
+    without ever loading or transmitting the full raster.
+
+    ``bands`` selects the source band(s): omit (or one index) for a single band, colormapped
+    with ``cmap`` (any rio-tiler colormap — ``"viridis"``, ``"magma"``, ``"terrain"``, …);
+    three indexes for an RGB composite (no colormap). Each band is contrast-stretched to
+    ``rescale`` — a ``(min, max)`` per band, or auto from the COG's 2nd–98th percentile
+    statistics when omitted. The data's geographic footprint frames the camera (``fit``)::
+
+        @app.view
+        def scene(layer=select(["elevation", "landcover"], default="elevation")):
+            return gis.tiles(f"/data/{layer}.tif", cmap="terrain")   # a COG path or URL
+
+    Reading the source's metadata needs ``pip install "golit[gis-tiles]"`` (rio-tiler). The
+    tile route is part of every Golit server; tiles for a session are served by the worker
+    that rendered the view (the usual session affinity)."""
+    from rasterio.crs import CRS
+    from rio_tiler.colormap import cmap as _cmaps
+    from rio_tiler.io import Reader
+
+    from .server.tiles import register_source
+
+    path = os.fspath(source) if isinstance(source, os.PathLike) else str(source)
+    indexes = tuple(int(b) for b in bands) if bands is not None else (1,)
+    is_rgb = len(indexes) >= 3
+    cmap_name = None if is_rgb else cmap
+    if cmap_name is not None and cmap_name not in _cmaps.list():
+        raise ValueError(f"unknown cmap {cmap_name!r}; see rio_tiler.colormap.cmap.list()")
+
+    with Reader(path) as src:
+        west, south, east, north = src.get_geographic_bounds(CRS.from_epsg(4326))
+        lo_zoom = src.minzoom if min_zoom is None else min_zoom
+        hi_zoom = src.maxzoom if max_zoom is None else max_zoom
+        if rescale is None:
+            stats = src.statistics(indexes=indexes)
+            rescale = [[float(b.percentile_2), float(b.percentile_98)] for b in stats.values()]
+        elif rescale and not isinstance(rescale[0], (list, tuple)):
+            rescale = [list(rescale)]  # a single (min, max) -> one band
+
+    token = _tile_token(path, indexes, cmap_name, rescale)
+    register_source(token, {"path": path, "indexes": indexes, "cmap": cmap_name,
+                            "rescale": rescale})
+
+    raster_source = {
+        "type": "raster",
+        "tiles": [f"/gis/tiles/{token}/{{z}}/{{x}}/{{y}}"],
+        "tileSize": tile_size,
+        "minzoom": lo_zoom,
+        "maxzoom": hi_zoom,
+        "bounds": [west, south, east, north],
+    }
+    layer = {"id": _RASTER, "type": "raster", "source": _RASTER,
+             "paint": {"raster-opacity": opacity}}
+
+    base = _base_style(basemap)
+    spec: dict[str, Any] = {"height": height}
+    if isinstance(base, str):
+        spec["style"] = base
+        spec["overlay"] = {"sources": {_RASTER: raster_source}, "layers": [layer]}
+    else:
+        base["sources"][_RASTER] = raster_source
+        base["layers"].append(layer)
+        spec["style"] = base
+
+    if fit and "bounds" not in opts:
+        spec["bounds"] = [[west, south], [east, north]]
+        if fit_padding != 24:
+            spec["fitPadding"] = fit_padding
+
+    spec.update(opts)
+    return chart_spec("maplibre", spec)
