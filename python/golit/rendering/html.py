@@ -145,7 +145,32 @@ CHART_BOOTSTRAP = """
     if (spec.bearing) opts.bearing = spec.bearing;
     if (spec.minZoom != null) opts.minZoom = spec.minZoom;
     if (spec.maxZoom != null) opts.maxZoom = spec.maxZoom;
-    el._golitMap = new maplibregl.Map(opts);
+    var map = new maplibregl.Map(opts);
+    el._golitMap = map;
+    // geo_map can request click popups over its data layer: spec.tooltip lists the
+    // feature properties to show, spec.tooltipLayer is the layer to bind. Values are
+    // escaped — the GeoDataFrame is developer data, but treat it as untrusted anyway.
+    if (spec.tooltip && spec.tooltipLayer) {
+      var esc = function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c];
+        });
+      };
+      var fields = spec.tooltip, layer = spec.tooltipLayer;
+      var popup = new maplibregl.Popup({closeButton: false});
+      map.on('click', layer, function (e) {
+        var f = e.features && e.features[0];
+        if (!f) return;
+        var rows = fields.map(function (k) {
+          return '<div><span style="color:#727783">' + esc(k) + '</span> ' +
+                 esc(f.properties[k]) + '</div>';
+        }).join('');
+        popup.setLngLat(e.lngLat).setHTML('<div style="font:12px Inter,sans-serif">' +
+          rows + '</div>').addTo(map);
+      });
+      map.on('mouseenter', layer, function () { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', layer, function () { map.getCanvas().style.cursor = ''; });
+    }
   }
   function draw(el, lib, spec) {
     if (lib === 'plotly') {
