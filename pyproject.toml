@@ -52,6 +52,10 @@ gis-raster = ["rasterio>=1.3", "rioxarray>=0.15", "xarray>=2024.1"]
 # so a multi-gigabyte COG renders without shipping the whole array. (rio-tiler pulls in
 # rasterio/GDAL via its wheels.)
 gis-tiles = ["rio-tiler>=6.0"]
+# GIS phase 3 — terrain analysis via golit.gis.terrain: WhiteboxTools (hillshade, slope,
+# flow accumulation, …) over a DEM, returning a DataArray that feeds raster()/tiles().
+# whitebox downloads its compiled binary on first use; rioxarray reads the result back.
+gis-terrain = ["whitebox>=2.3", "rioxarray>=0.15"]
 
 [project.scripts]
 golit = "golit.cli:main"
