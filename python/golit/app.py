@@ -26,6 +26,7 @@ class App:
         self._order: list[str] = []
         self._widgets: dict[str, Widget] = {}
         self._chat_handlers: dict[str | None, NodeFn] = {}
+        self._streams: dict[str, NodeFn] = {}
         self._built = False
         #: Optional page layout tree (see :mod:`golit.layout`); ``None`` stacks
         #: every view under one controls panel.
@@ -82,6 +83,35 @@ class App:
 
         def deco(fn: NodeFn) -> NodeFn:
             self._chat_handlers[channel] = fn
+            return fn
+
+        return deco
+
+    def stream(self, name: str) -> Callable[[NodeFn], NodeFn]:
+        """Register a video **frame producer** named ``name``, shown by
+        :func:`golit.ui.webcam`. The decorated function returns an iterator of frames —
+        JPEG ``bytes`` (e.g. from ``cv2.imencode``) or ``(H, W, 3)`` uint8 RGB arrays
+        (encoded for you) — and each request starts a fresh stream that Golit pushes as an
+        MJPEG (``multipart/x-mixed-replace``) response off the event loop::
+
+            @app.stream("camera")
+            def camera():
+                cap = cv2.VideoCapture(0)
+                try:
+                    while True:
+                        ok, frame = cap.read()
+                        if not ok:
+                            break
+                        # ... run your detector and draw on `frame` ...
+                        yield cv2.imencode(".jpg", frame)[1].tobytes()
+                finally:
+                    cap.release()
+
+        Sync or async (``async def`` + ``yield``) producers both work; sync frames are
+        pulled in a worker thread so a blocking camera read or model never stalls the loop."""
+
+        def deco(fn: NodeFn) -> NodeFn:
+            self._streams[name] = fn
             return fn
 
         return deco
@@ -146,6 +176,11 @@ class App:
     def chat_handlers(self) -> dict[str | None, NodeFn]:
         """Registered chat message handlers, keyed by channel (``None`` = all)."""
         return self._chat_handlers
+
+    @property
+    def streams(self) -> dict[str, NodeFn]:
+        """Registered video frame producers, keyed by stream name."""
+        return self._streams
 
     def node_def(self, node_id: str) -> NodeDef:
         return self._defs[node_id]

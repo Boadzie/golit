@@ -64,6 +64,10 @@ gis-terrain = ["whitebox>=2.3", "rioxarray>=0.15"]
 # on its own servers and Golit points a MapLibre raster source at the tile URL. Needs the
 # earthengine-api client and a one-time `earthengine authenticate` + ee.Initialize(project=).
 gis-ee = ["earthengine-api>=0.1"]
+# Computer-vision webcam streams via golit.ui.webcam + @app.stream: producers that yield
+# (H, W, 3) uint8 RGB arrays are JPEG-encoded with Pillow before being pushed as MJPEG.
+# Producers that yield pre-encoded JPEG bytes (e.g. cv2.imencode) need no extra at all.
+vision = ["pillow>=10", "numpy>=1.26"]
 
 [project.scripts]
 golit = "golit.cli:main"
