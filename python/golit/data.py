@@ -41,7 +41,23 @@ def _connection() -> Any:
 
         con = duckdb.connect()  # in-process, in-memory
         _local.con = con
+        _local.loaded = set()  # extensions loaded on this connection (see load_extension)
     return con
+
+
+def load_extension(name: str) -> None:
+    """Install and load a DuckDB extension on this thread's connection, once.
+
+    DuckDB downloads an extension on first ``INSTALL`` (e.g. ``spatial`` for ``ST_*``
+    functions); we track what's already loaded per connection so repeated calls on the
+    hot path are a no-op. Used by :func:`golit.gis.spatial_sql`."""
+    con = _connection()
+    loaded = _local.loaded
+    if name in loaded:
+        return
+    con.install_extension(name)
+    con.load_extension(name)
+    loaded.add(name)
 
 
 def is_duckdb_relation(value: Any) -> bool:
