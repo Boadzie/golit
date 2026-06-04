@@ -17,6 +17,11 @@ Raster (phases 2 / 2.5) overlays a georeferenced array as a native MapLibre imag
 * :func:`tiles` — a very large COG streamed as on-demand ``z/x/y`` tiles via rio-tiler
   (a server-side tile route; only the visible window crosses the wire).
 
+Analysis (phase 3):
+
+* :func:`terrain` — a WhiteboxTools terrain operation (hillshade/slope/flow…) on a DEM,
+  returning a ``DataArray`` that feeds :func:`raster`/:func:`tiles`.
+
 Everything heavy (GeoPandas, pyproj, folium, DuckDB) is imported lazily *inside* the
 functions, so ``import golit`` — and therefore ``import golit.gis`` — never pulls them
 in. Install the extra with ``pip install "golit[gis]"`` (DuckDB spatial rides on the
@@ -866,3 +871,100 @@ def tiles(
 
     spec.update(opts)
     return chart_spec("maplibre", spec)
+
+
+# Curated WhiteboxTools terrain operations: alias -> (tool method name, default params).
+# `op` may also be any other WhiteboxTools tool name, with params passed straight through.
+_TERRAIN_TOOLS: dict[str, tuple[str, dict[str, Any]]] = {
+    "hillshade": ("hillshade", {"azimuth": 315.0, "altitude": 30.0}),
+    "slope": ("slope", {"units": "degrees"}),
+    "aspect": ("aspect", {}),
+    "fill": ("fill_depressions", {}),
+    "flow_accumulation": ("d8_flow_accumulation", {"out_type": "cells"}),
+}
+
+_WBT: Any = None
+
+
+def _wbt() -> Any:
+    """A process-cached WhiteboxTools runner (downloads its binary on first use)."""
+    global _WBT
+    if _WBT is None:
+        import whitebox
+
+        _WBT = whitebox.WhiteboxTools()
+        _WBT.set_verbose_mode(False)
+    return _WBT
+
+
+def _materialize_dem(dem: Any, tmp: str, crs: Any) -> str:
+    """Resolve ``dem`` to a GeoTIFF path WhiteboxTools can read: a path is used as-is; a
+    georeferenced ``DataArray`` is written to a temp GeoTIFF (needs a CRS, which carries the
+    transform/cell size terrain analysis depends on)."""
+    if isinstance(dem, (str, os.PathLike)):
+        return os.fspath(dem)
+    if is_dataarray(dem):
+        import rioxarray  # noqa: F401  (registers .rio)
+
+        da = dem.rio.write_crs(crs) if crs is not None else dem
+        if getattr(da.rio, "crs", None) is None:
+            raise ValueError(
+                "terrain: a DataArray DEM needs a CRS — set it with .rio.write_crs(...) "
+                "or pass crs=. Terrain works in projected metres (e.g. a UTM CRS)."
+            )
+        path = os.path.join(tmp, "dem.tif")
+        da.rio.to_raster(path)
+        return path
+    raise TypeError("terrain: dem must be a GeoTIFF path or a georeferenced DataArray")
+
+
+def terrain(dem: Any, op: str = "hillshade", *, crs: Any = None, **params: Any) -> Any:
+    """Run a **WhiteboxTools** terrain analysis on a DEM, returning the result as a
+    georeferenced ``DataArray`` — feed it to :func:`raster`/:func:`tiles`, or just return it.
+
+    ``dem`` is a DEM as a **GeoTIFF path** or a georeferenced rioxarray/xarray ``DataArray``
+    (terrain analysis needs the cell size, so a bare NumPy array won't do; use a **projected**
+    CRS in metres — e.g. a UTM zone — for meaningful slopes). ``op`` is one of the curated
+    operations — ``"hillshade"``, ``"slope"``, ``"aspect"``, ``"fill"`` (fill depressions),
+    ``"flow_accumulation"`` — or any other WhiteboxTools tool name; extra keyword args pass
+    straight to the tool (e.g. ``azimuth=``/``altitude=`` for hillshade)::
+
+        @app.reactive
+        def shaded(dem, azimuth=slider(0, 360, default=315)):
+            return gis.terrain(dem, "hillshade", azimuth=azimuth)   # -> a DataArray
+
+        @app.view
+        def relief(shaded):
+            return gis.raster(shaded, cmap="greys", label="Hillshade")
+
+    The DEM is run through the WhiteboxTools binary (downloaded once on first use) in a temp
+    workspace, and the output is read back into memory. Requires
+    ``pip install "golit[gis-terrain]"``."""
+    import shutil
+    import tempfile
+
+    tool, defaults = _TERRAIN_TOOLS.get(op, (op, {}))
+    merged = {**defaults, **params}
+    tmp = tempfile.mkdtemp(prefix="golit_wbt_")
+    try:
+        dem_path = _materialize_dem(dem, tmp, crs)  # validates CRS before touching the binary
+        out_path = os.path.join(tmp, f"{op}.tif")
+        method = getattr(_wbt(), tool, None)
+        if method is None or not callable(method):
+            raise ValueError(
+                f"unknown WhiteboxTools tool {op!r}; curated: {sorted(_TERRAIN_TOOLS)}, "
+                "or any tool name from the WhiteboxTools manual"
+            )
+        rc = method(dem_path, out_path, **merged)
+        if rc != 0 or not os.path.exists(out_path):
+            raise RuntimeError(f"WhiteboxTools {tool} failed (return code {rc})")
+
+        import rioxarray
+
+        # open_rasterio on a single GeoTIFF returns a DataArray (its type is a broad union).
+        with rioxarray.open_rasterio(out_path, masked=True) as src:  # type: ignore[union-attr]
+            result = src.squeeze(drop=True).load()  # read fully so the temp file can be removed
+            result_crs = src.rio.crs
+        return result.rio.write_crs(result_crs)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
