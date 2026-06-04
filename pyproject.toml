@@ -43,6 +43,10 @@ sql = ["duckdb>=1.0", "pyarrow>=14.0"]
 # package). DuckDB spatial SQL (golit.gis.spatial_sql) needs only the `sql` extra.
 # Raster (rasterio/rioxarray/xarray) is the separate `gis-raster` extra below.
 gis = ["geopandas>=1.0", "shapely>=2.0", "pyproj>=3.6", "folium>=0.16", "leafmap>=0.30"]
+# GIS phase 2.5 — vector tiles via golit.gis.vector_tiles: a large GeoDataFrame served as
+# on-demand MVT tiles by Golit's /gis/vector route (mapbox-vector-tile encodes; the data
+# stays server-side). Rides on the `gis` extra for geopandas/shapely/pyproj.
+gis-vector-tiles = ["mapbox-vector-tile>=2.0"]
 # GIS phase 2 — raster maps via golit.gis.raster: rioxarray/rasterio read + reproject a
 # georeferenced array, xarray for the array model. Renders an array -> colormapped PNG
 # image layer on a MapLibre map. (rasterio ships GDAL in its wheels — no system GDAL.)
