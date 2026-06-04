@@ -9,9 +9,10 @@ serialize to markup. Resolution order (first match wins):
 4. a Plotly/Altair/Bokeh figure → an interactive client-side chart mount;
 5. anything exposing ``to_svg()`` (other static-SVG sources);
 6. a Polars ``DataFrame`` → an HTML table;
-7. anything exposing ``_repr_html_()`` (pandas, …);
-8. a Matplotlib figure → SVG;
-9. fallback: escaped ``repr`` in a ``<pre>``.
+7. a GeoPandas ``GeoDataFrame`` → a native MapLibre map (``golit.gis.geo_map``);
+8. anything exposing ``_repr_html_()`` (pandas, …);
+9. a Matplotlib figure → SVG;
+10. fallback: escaped ``repr`` in a ``<pre>``.
 """
 
 from __future__ import annotations
@@ -77,6 +78,11 @@ def _is_mpl_figure(value: Any) -> bool:
     return module.startswith("matplotlib") and callable(getattr(value, "savefig", None))
 
 
+def _is_geodataframe(value: Any) -> bool:
+    cls = type(value)
+    return cls.__name__ == "GeoDataFrame" and (cls.__module__ or "").startswith("geopandas")
+
+
 def _mpl_svg(fig: Any) -> str:
     buffer = io.StringIO()
     fig.savefig(buffer, format="svg")
@@ -105,6 +111,11 @@ def render_value(value: Any) -> str:
         return _dataframe_table(value)
     if is_duckdb_relation(value):
         return _dataframe_table(relation_to_polars(value))
+    if _is_geodataframe(value):
+        # A GeoDataFrame also has _repr_html_ (a table) — route it to a map first.
+        from ..gis import geo_map
+
+        return geo_map(value)
     repr_html = getattr(value, "_repr_html_", None)
     if callable(repr_html):
         return _to_text(repr_html())

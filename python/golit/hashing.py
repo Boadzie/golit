@@ -44,6 +44,25 @@ def _hash_series(s: pl.Series) -> int:
     return hash((s.name, str(s.dtype), len(s), content)) & _U64
 
 
+def _is_geodataframe(value: Any) -> bool:
+    cls = type(value)
+    return cls.__name__ == "GeoDataFrame" and (cls.__module__ or "").startswith("geopandas")
+
+
+def _hash_geodataframe(gdf: Any) -> int:
+    """Content-hash a GeoDataFrame: the geometry as WKB bytes plus the attribute
+    columns. Belt-and-suspenders for a geo-valued *widget default*; node outputs stay on
+    epochs (see the module docstring), so this is off the hot path."""
+    geom = gdf.geometry.name
+    wkb = b"".join(b if b is not None else b"" for b in gdf.geometry.to_wkb())
+    attributes = gdf.drop(columns=[geom])
+    try:
+        attrs = _hash_dataframe(pl.from_pandas(attributes))
+    except Exception:  # noqa: BLE001 - any exotic attribute dtype falls back to repr
+        attrs = hash(repr(attributes.values.tolist())) & _U64
+    return hash((hash(wkb) & _U64, attrs)) & _U64
+
+
 def hash_value(value: Any) -> int:
     """Hash a single value to a ``u64``."""
     if isinstance(value, pl.DataFrame):
@@ -52,6 +71,8 @@ def hash_value(value: Any) -> int:
         return _hash_series(value)
     if is_duckdb_relation(value):
         return _hash_dataframe(relation_to_polars(value))
+    if _is_geodataframe(value):
+        return _hash_geodataframe(value)
     if isinstance(value, (bytes, bytearray)):
         return hash(bytes(value)) & _U64
     if hasattr(value, "getvalue"):  # BytesIO and friends — hash the buffer
