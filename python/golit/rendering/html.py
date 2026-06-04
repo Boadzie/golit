@@ -29,9 +29,16 @@ CHART_CDN = {
         "https://cdn.jsdelivr.net/npm/vega-embed@6",
     ],
     "anychart": ["https://cdn.anychart.com/releases/8.13.0/js/anychart-bundle.min.js"],
+    # MapLibre GL JS — native, GPU vector maps (golit.gis). Its stylesheet is a
+    # hard requirement, linked unconditionally in the shell head (see MAPLIBRE_CSS).
+    "maplibre": ["https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"],
 }
 BOKEH_CDN_BASE = "https://cdn.bokeh.org/bokeh/release/bokeh"
 BOKEH_DEFAULT_VERSION = "3.6.0"
+# MapLibre needs its CSS for controls/canvas positioning; unlike the chart runtimes
+# (lazy-loaded by the bootstrap) a stylesheet must be in <head>, so it is linked
+# there always. It's small and cached; the JS still loads lazily only when a map mounts.
+MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css"
 FONTS_HREF = (
     "https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&"
     "family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
@@ -103,6 +110,9 @@ CHART_BOOTSTRAP = """
     if (lib === 'anychart') {
       return window.anychart ? Promise.resolve() : loadSeq(cdn.anychart || []);
     }
+    if (lib === 'maplibre') {
+      return window.maplibregl ? Promise.resolve() : loadSeq(cdn.maplibre || []);
+    }
     if (lib === 'bokeh') {
       if (window.Bokeh && window.Bokeh.embed) return Promise.resolve();
       var v = version || window.GOLIT_BOKEH_VERSION, b = window.GOLIT_BOKEH_BASE;
@@ -119,6 +129,24 @@ CHART_BOOTSTRAP = """
     if (spec.title) chart.title(spec.title);
     chart.container(el); chart.draw();
   }
+  function drawMap(el, spec) {
+    // A maplibre spec carries a full style (URL or dict) plus camera. geo_map's
+    // GeoJSON source + layers live inside `style`, so the map is fully declarative
+    // and redraws identically on a swap — each swap is a fresh element, and the old
+    // map's WebGL context is freed by the htmx:beforeCleanupElement hook below.
+    if (el.style && spec.height) el.style.height = spec.height;
+    var opts = {container: el, style: spec.style};
+    if (spec.bounds) { opts.bounds = spec.bounds; opts.fitBoundsOptions = {padding: 24}; }
+    else {
+      opts.center = spec.center || [0, 0];
+      opts.zoom = (spec.zoom != null) ? spec.zoom : 1;
+    }
+    if (spec.pitch) opts.pitch = spec.pitch;
+    if (spec.bearing) opts.bearing = spec.bearing;
+    if (spec.minZoom != null) opts.minZoom = spec.minZoom;
+    if (spec.maxZoom != null) opts.maxZoom = spec.maxZoom;
+    el._golitMap = new maplibregl.Map(opts);
+  }
   function draw(el, lib, spec) {
     if (lib === 'plotly') {
       Plotly.newPlot(el, spec.data || [], spec.layout || {},
@@ -130,6 +158,22 @@ CHART_BOOTSTRAP = """
       Bokeh.embed.embed_item(spec, el.id);
     } else if (lib === 'anychart') {
       drawAnyChart(el, spec);
+    } else if (lib === 'maplibre') {
+      drawMap(el, spec);
+    }
+  }
+  // A swap replaces a view's <section>, detaching any map it held. A MapLibre map
+  // owns a WebGL context (browsers cap how many can be live), so free it explicitly
+  // when htmx cleans up the element rather than leaking the context on every update.
+  function disposeMaps(node) {
+    if (node && node._golitMap) {
+      try { node._golitMap.remove(); } catch (e) {}
+      node._golitMap = null;
+    }
+    if (node && node.querySelectorAll) {
+      Array.prototype.forEach.call(node.querySelectorAll('.golit-chart'), function (el) {
+        if (el._golitMap) { try { el._golitMap.remove(); } catch (e) {} el._golitMap = null; }
+      });
     }
   }
   function initCharts(root) {
@@ -152,6 +196,10 @@ CHART_BOOTSTRAP = """
   window.golitInitCharts = initCharts;
   function start() {
     if (window.htmx && window.htmx.onLoad) window.htmx.onLoad(initCharts);
+    // htmx fires this per element it removes during a swap (POST/OOB and SSE alike).
+    document.body.addEventListener('htmx:beforeCleanupElement', function (e) {
+      disposeMaps(e.target);
+    });
     initCharts(document);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
@@ -244,6 +292,7 @@ def page(title: str, body: str) -> str:
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{FONTS_HREF}">
 <link rel="stylesheet" href="{SYMBOLS_HREF}">
+<link rel="stylesheet" href="{MAPLIBRE_CSS}">
 <script src="{TAILWIND_SRC}"></script>
 <script>{TAILWIND_CONFIG}</script>
 <style>{GOLIT_CSS}</style>
