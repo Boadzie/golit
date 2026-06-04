@@ -22,6 +22,20 @@ Golit lives in the same neighborhood as Streamlit and Dash — write Python, get
 
 **Golit** infers the dependency graph from your function signatures and recomputes the **exact** set of downstream nodes a change affects — then memoizes within that set so unchanged values don't propagate. You don't wire callbacks, and you don't re-run the program. Cost tracks the change. ([How it works](../concepts/reactivity.md).)
 
+## Where the difference actually shows up
+
+Be honest about where it *doesn't*: on a **single** filter → aggregate → chart chain, Golit and Dash do the same work and finish in about the same time (~2 ms per update for the same chart on a dev laptop). One callback, one dirty subgraph — there's no slack to exploit.
+
+The gap opens on the shape real dashboards actually have: **shared upstream work**. One expensive step — a load, a join, a sort — feeds several views. Move a control that affects only one view and the engines diverge:
+
+- **Golit** re-runs only that view. The shared upstream is unchanged, so its memoized value is reused — it executes **zero** times.
+- **Dash** re-runs the whole callback body, recomputing the shared upstream **every** interaction (it has no cross-callback memo; `dcc.Store` avoids the recompute only by serializing the intermediate to the browser and back — usually a worse trade).
+
+In the [benchmark](benchmarks.md) (shared upstream feeding two views, move one slider, over real HTTP on a dev laptop), Golit's per-update latency stays roughly flat as the shared step grows while Dash's climbs with it — **~1.6× faster at 100K rows, ~5.5× at 1M, ~8.3× at 2M**. The win isn't a faster stopwatch on one chart; it's *not repeating work the change didn't touch*, and it widens as the app gets richer.
+
+!!! note "The data engine is a separate axis"
+    These numbers hold the data work constant (Polars on both sides) to isolate the *engine*. Against a typical Pandas-based Dash app, Golit's Polars compute is a further, independent advantage — but that's a Polars-vs-Pandas story, not a reactivity one.
+
 ## Where each shines
 
 - **Reach for Streamlit** for a quick exploratory script, a notebook-style narrative, or a demo where the dataset is small and rerun cost is irrelevant. Its ecosystem and component breadth are large.
