@@ -20,7 +20,9 @@ Raster (phases 2 / 2.5) overlays a georeferenced array as a native MapLibre imag
 Analysis (phase 3):
 
 * :func:`terrain` — a WhiteboxTools terrain operation (hillshade/slope/flow…) on a DEM,
-  returning a ``DataArray`` that feeds :func:`raster`/:func:`tiles`.
+  returning a ``DataArray`` that feeds :func:`raster`/:func:`tiles`;
+* :func:`ee_layer` — a Google Earth Engine image overlaid as live XYZ tiles (EE renders;
+  Golit points a MapLibre raster source at the tile URL).
 
 Everything heavy (GeoPandas, pyproj, folium, DuckDB) is imported lazily *inside* the
 functions, so ``import golit`` — and therefore ``import golit.gis`` — never pulls them
@@ -968,3 +970,85 @@ def terrain(dem: Any, op: str = "hillshade", *, crs: Any = None, **params: Any) 
         return result.rio.write_crs(result_crs)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _ee_tile_url(map_id: Any) -> str:
+    """Pull the ``{z}/{x}/{y}`` XYZ tile-URL template out of an Earth Engine ``getMapId()``
+    result. Modern earthengine-api returns a ``tile_fetcher`` with a ``url_format``; very old
+    versions only a ``mapid`` (+ optional ``token``), handled as a fallback."""
+    getter = map_id.get if hasattr(map_id, "get") else lambda k, d=None: getattr(map_id, k, d)
+    fetcher = getter("tile_fetcher")
+    url = getattr(fetcher, "url_format", None)
+    if url:
+        return str(url)
+    mapid = getter("mapid")
+    if not mapid:
+        raise ValueError("ee_layer: getMapId() returned no tile_fetcher or mapid")
+    token = getter("token") or ""
+    url = f"https://earthengine.googleapis.com/map/{mapid}/{{z}}/{{x}}/{{y}}"
+    return url + (f"?token={token}" if token else "")
+
+
+def ee_layer(
+    image: Any,
+    *,
+    vis: Any = None,
+    opacity: float = 1.0,
+    basemap: Any = "default",
+    center: Any = None,
+    zoom: float | None = None,
+    attribution: str = "Map data © Google Earth Engine",
+    height: str = "420px",
+    **opts: Any,
+) -> str:
+    """Overlay a **Google Earth Engine** image as live XYZ tiles (GIS phase 3).
+
+    ``image`` is anything with a ``getMapId(vis)`` method — an ``ee.Image`` (reduce a
+    collection first with ``.median()``/``.mosaic()``). Earth Engine renders the tiles on its
+    own servers; this asks for a tile-URL template (``image.getMapId(vis)``) and points a
+    MapLibre **raster source** at it, overlaid on ``basemap``. ``vis`` is the usual Earth
+    Engine visualization dict (``{"min", "max", "bands"}`` or ``"palette"``); ``center`` /
+    ``zoom`` frame the camera (an EE image can be global, so there's no data extent to fit)::
+
+        import ee
+        ee.Initialize(project="my-cloud-project")        # after `earthengine authenticate`
+
+        @app.view
+        def scene(cloud=slider(5, 80, default=30)):
+            s2 = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+                  .filterBounds(aoi)
+                  .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", cloud))
+                  .median())
+            return gis.ee_layer(s2, vis={"bands": ["B4", "B3", "B2"], "min": 0, "max": 3000},
+                                center=[-0.15, 5.62], zoom=10)
+
+    This function imports nothing itself — Earth Engine authentication and the ``ee`` objects
+    are the caller's. Install the client with ``pip install "golit[gis-ee]"`` and authenticate
+    once (``earthengine authenticate`` + ``ee.Initialize(project=…)``)."""
+    map_id = image.getMapId(vis or {})
+    source = {
+        "type": "raster",
+        "tiles": [_ee_tile_url(map_id)],
+        "tileSize": 256,
+        "attribution": attribution,
+    }
+    layer = {"id": _RASTER, "type": "raster", "source": _RASTER,
+             "paint": {"raster-opacity": opacity}}
+
+    base = _base_style(basemap)
+    spec: dict[str, Any] = {"height": height}
+    if isinstance(base, str):
+        spec["style"] = base
+        spec["overlay"] = {"sources": {_RASTER: source}, "layers": [layer]}
+    else:
+        base["sources"][_RASTER] = source
+        base["layers"].append(layer)
+        spec["style"] = base
+
+    if center is not None:
+        spec["center"] = list(center)
+    if zoom is not None:
+        spec["zoom"] = zoom
+
+    spec.update(opts)
+    return chart_spec("maplibre", spec)
