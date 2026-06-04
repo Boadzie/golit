@@ -18,6 +18,7 @@ from .routes import chat_ws, events, index, update_node
 from .session import SessionManager
 from .session_store import InMemorySessionStore, SessionStore
 from .sse import SSEManager
+from .tiles import tile
 
 LifecycleHook = Callable[..., Any]
 
@@ -86,7 +87,7 @@ def create_app(
     sse = SSEManager(sessions, pubsub)
     chat = ChatHub(app)
     return Litestar(
-        route_handlers=[index, update_node, events, chat_ws],
+        route_handlers=[index, update_node, events, chat_ws, tile],
         state=State({"sessions": sessions, "pubsub": pubsub, "sse": sse, "chat": chat}),
         on_startup=[_start_sse, *(on_startup or [])],
         on_shutdown=[_stop_sse, *(on_shutdown or [])],
