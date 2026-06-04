@@ -41,6 +41,34 @@ def _mount(lib: str, spec_json: str, *, version: str | None = None) -> str:
     )
 
 
+def chart_spec(lib: str, spec: Any, *, version: str | None = None) -> str:
+    """Mount a chart from a *raw spec* already in the JS runtime's wire format — a
+    plain ``dict`` (or pre-serialized JSON string) — skipping the heavy Python figure
+    object.
+
+    Returning a ``plotly.graph_objects.Figure`` (or an Altair chart) is convenient, but
+    constructing and ``to_json``-ing it costs hundreds of microseconds and ships
+    kilobytes of default template on *every* interaction — a tax a view that rebuilds
+    its chart each update pays in full. Handing Golit the spec directly is the same JSON
+    the runtime draws, far cheaper to produce and far smaller on the wire::
+
+        @app.view
+        def revenue(by_region: pl.DataFrame):
+            return chart_spec("plotly", {
+                "data": [{"type": "bar", "x": by_region["region"].to_list(),
+                          "y": by_region["revenue"].to_list()}],
+                "layout": {"margin": {"t": 10}},
+            })
+
+    ``lib`` is any runtime the shell bootstrap knows (``plotly``, ``vega``, ``bokeh``,
+    ``anychart``); the spec must be in that runtime's own format (e.g. a Plotly
+    ``{"data": [...], "layout": {...}}``). ``version`` pins the runtime where it matters
+    (Bokeh). For the convenient path, just return the figure object — :func:`try_interactive`
+    serializes it; for the hot path, build the spec and use this."""
+    spec_json = spec if isinstance(spec, str) else json.dumps(spec)
+    return _mount(lib, spec_json, version=version)
+
+
 def try_interactive(value: Any) -> str | None:
     """Render a Plotly/Altair/Bokeh figure to a mount fragment, else ``None``.
 
