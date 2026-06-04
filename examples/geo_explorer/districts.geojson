@@ -1,0 +1,1085 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 01",
+    "zone": "West",
+    "population": 8900,
+    "revenue": 7120
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.3,
+       5.5
+      ],
+      [
+       -0.24,
+       5.5
+      ],
+      [
+       -0.24,
+       5.55
+      ],
+      [
+       -0.3,
+       5.55
+      ],
+      [
+       -0.3,
+       5.5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 02",
+    "zone": "West",
+    "population": 13300,
+    "revenue": 11970
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.24,
+       5.5
+      ],
+      [
+       -0.18,
+       5.5
+      ],
+      [
+       -0.18,
+       5.55
+      ],
+      [
+       -0.24,
+       5.55
+      ],
+      [
+       -0.24,
+       5.5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 03",
+    "zone": "Central",
+    "population": 12200,
+    "revenue": 12200
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.18,
+       5.5
+      ],
+      [
+       -0.12,
+       5.5
+      ],
+      [
+       -0.12,
+       5.55
+      ],
+      [
+       -0.18,
+       5.55
+      ],
+      [
+       -0.18,
+       5.5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 04",
+    "zone": "Central",
+    "population": 16600,
+    "revenue": 18260
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.12,
+       5.5
+      ],
+      [
+       -0.06,
+       5.5
+      ],
+      [
+       -0.06,
+       5.55
+      ],
+      [
+       -0.12,
+       5.55
+      ],
+      [
+       -0.12,
+       5.5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 05",
+    "zone": "East",
+    "population": 15500,
+    "revenue": 18600
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.06,
+       5.5
+      ],
+      [
+       0.0,
+       5.5
+      ],
+      [
+       0.0,
+       5.55
+      ],
+      [
+       -0.06,
+       5.55
+      ],
+      [
+       -0.06,
+       5.5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 06",
+    "zone": "East",
+    "population": 14400,
+    "revenue": 11520
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       0.0,
+       5.5
+      ],
+      [
+       0.06,
+       5.5
+      ],
+      [
+       0.06,
+       5.55
+      ],
+      [
+       0.0,
+       5.55
+      ],
+      [
+       0.0,
+       5.5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 07",
+    "zone": "West",
+    "population": 10800,
+    "revenue": 9720
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.3,
+       5.55
+      ],
+      [
+       -0.24,
+       5.55
+      ],
+      [
+       -0.24,
+       5.6
+      ],
+      [
+       -0.3,
+       5.6
+      ],
+      [
+       -0.3,
+       5.55
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 08",
+    "zone": "West",
+    "population": 16100,
+    "revenue": 16100
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.24,
+       5.55
+      ],
+      [
+       -0.18,
+       5.55
+      ],
+      [
+       -0.18,
+       5.6
+      ],
+      [
+       -0.24,
+       5.6
+      ],
+      [
+       -0.24,
+       5.55
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 09",
+    "zone": "Central",
+    "population": 15900,
+    "revenue": 17490
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.18,
+       5.55
+      ],
+      [
+       -0.12,
+       5.55
+      ],
+      [
+       -0.12,
+       5.6
+      ],
+      [
+       -0.18,
+       5.6
+      ],
+      [
+       -0.18,
+       5.55
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 10",
+    "zone": "Central",
+    "population": 15700,
+    "revenue": 18840
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.12,
+       5.55
+      ],
+      [
+       -0.06,
+       5.55
+      ],
+      [
+       -0.06,
+       5.6
+      ],
+      [
+       -0.12,
+       5.6
+      ],
+      [
+       -0.12,
+       5.55
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 11",
+    "zone": "East",
+    "population": 21000,
+    "revenue": 16800
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.06,
+       5.55
+      ],
+      [
+       0.0,
+       5.55
+      ],
+      [
+       0.0,
+       5.6
+      ],
+      [
+       -0.06,
+       5.6
+      ],
+      [
+       -0.06,
+       5.55
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 12",
+    "zone": "East",
+    "population": 20800,
+    "revenue": 18720
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       0.0,
+       5.55
+      ],
+      [
+       0.06,
+       5.55
+      ],
+      [
+       0.06,
+       5.6
+      ],
+      [
+       0.0,
+       5.6
+      ],
+      [
+       0.0,
+       5.55
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 13",
+    "zone": "West",
+    "population": 12700,
+    "revenue": 12700
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.3,
+       5.6
+      ],
+      [
+       -0.24,
+       5.6
+      ],
+      [
+       -0.24,
+       5.6499999999999995
+      ],
+      [
+       -0.3,
+       5.6499999999999995
+      ],
+      [
+       -0.3,
+       5.6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 14",
+    "zone": "West",
+    "population": 13400,
+    "revenue": 14740
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.24,
+       5.6
+      ],
+      [
+       -0.18,
+       5.6
+      ],
+      [
+       -0.18,
+       5.6499999999999995
+      ],
+      [
+       -0.24,
+       5.6499999999999995
+      ],
+      [
+       -0.24,
+       5.6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 15",
+    "zone": "Central",
+    "population": 19600,
+    "revenue": 23520
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.18,
+       5.6
+      ],
+      [
+       -0.12,
+       5.6
+      ],
+      [
+       -0.12,
+       5.6499999999999995
+      ],
+      [
+       -0.18,
+       5.6499999999999995
+      ],
+      [
+       -0.18,
+       5.6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 16",
+    "zone": "Central",
+    "population": 20300,
+    "revenue": 16240
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.12,
+       5.6
+      ],
+      [
+       -0.06,
+       5.6
+      ],
+      [
+       -0.06,
+       5.6499999999999995
+      ],
+      [
+       -0.12,
+       5.6499999999999995
+      ],
+      [
+       -0.12,
+       5.6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 17",
+    "zone": "East",
+    "population": 26500,
+    "revenue": 23850
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.06,
+       5.6
+      ],
+      [
+       0.0,
+       5.6
+      ],
+      [
+       0.0,
+       5.6499999999999995
+      ],
+      [
+       -0.06,
+       5.6499999999999995
+      ],
+      [
+       -0.06,
+       5.6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 18",
+    "zone": "East",
+    "population": 27200,
+    "revenue": 27200
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       0.0,
+       5.6
+      ],
+      [
+       0.06,
+       5.6
+      ],
+      [
+       0.06,
+       5.6499999999999995
+      ],
+      [
+       0.0,
+       5.6499999999999995
+      ],
+      [
+       0.0,
+       5.6
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 19",
+    "zone": "West",
+    "population": 14600,
+    "revenue": 16060
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.3,
+       5.65
+      ],
+      [
+       -0.24,
+       5.65
+      ],
+      [
+       -0.24,
+       5.7
+      ],
+      [
+       -0.3,
+       5.7
+      ],
+      [
+       -0.3,
+       5.65
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 20",
+    "zone": "West",
+    "population": 16200,
+    "revenue": 19440
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.24,
+       5.65
+      ],
+      [
+       -0.18,
+       5.65
+      ],
+      [
+       -0.18,
+       5.7
+      ],
+      [
+       -0.24,
+       5.7
+      ],
+      [
+       -0.24,
+       5.65
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 21",
+    "zone": "Central",
+    "population": 23300,
+    "revenue": 18640
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.18,
+       5.65
+      ],
+      [
+       -0.12,
+       5.65
+      ],
+      [
+       -0.12,
+       5.7
+      ],
+      [
+       -0.18,
+       5.7
+      ],
+      [
+       -0.18,
+       5.65
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 22",
+    "zone": "Central",
+    "population": 24900,
+    "revenue": 22410
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.12,
+       5.65
+      ],
+      [
+       -0.06,
+       5.65
+      ],
+      [
+       -0.06,
+       5.7
+      ],
+      [
+       -0.12,
+       5.7
+      ],
+      [
+       -0.12,
+       5.65
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 23",
+    "zone": "East",
+    "population": 26500,
+    "revenue": 26500
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.06,
+       5.65
+      ],
+      [
+       0.0,
+       5.65
+      ],
+      [
+       0.0,
+       5.7
+      ],
+      [
+       -0.06,
+       5.7
+      ],
+      [
+       -0.06,
+       5.65
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 24",
+    "zone": "East",
+    "population": 33600,
+    "revenue": 36960
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       0.0,
+       5.65
+      ],
+      [
+       0.06,
+       5.65
+      ],
+      [
+       0.06,
+       5.7
+      ],
+      [
+       0.0,
+       5.7
+      ],
+      [
+       0.0,
+       5.65
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 25",
+    "zone": "West",
+    "population": 16500,
+    "revenue": 19800
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.3,
+       5.7
+      ],
+      [
+       -0.24,
+       5.7
+      ],
+      [
+       -0.24,
+       5.75
+      ],
+      [
+       -0.3,
+       5.75
+      ],
+      [
+       -0.3,
+       5.7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 26",
+    "zone": "West",
+    "population": 19000,
+    "revenue": 15200
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.24,
+       5.7
+      ],
+      [
+       -0.18,
+       5.7
+      ],
+      [
+       -0.18,
+       5.75
+      ],
+      [
+       -0.24,
+       5.75
+      ],
+      [
+       -0.24,
+       5.7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 27",
+    "zone": "Central",
+    "population": 21500,
+    "revenue": 19350
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.18,
+       5.7
+      ],
+      [
+       -0.12,
+       5.7
+      ],
+      [
+       -0.12,
+       5.75
+      ],
+      [
+       -0.18,
+       5.75
+      ],
+      [
+       -0.18,
+       5.7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 28",
+    "zone": "Central",
+    "population": 29500,
+    "revenue": 29500
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.12,
+       5.7
+      ],
+      [
+       -0.06,
+       5.7
+      ],
+      [
+       -0.06,
+       5.75
+      ],
+      [
+       -0.12,
+       5.75
+      ],
+      [
+       -0.12,
+       5.7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 29",
+    "zone": "East",
+    "population": 32000,
+    "revenue": 35200
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -0.06,
+       5.7
+      ],
+      [
+       0.0,
+       5.7
+      ],
+      [
+       0.0,
+       5.75
+      ],
+      [
+       -0.06,
+       5.75
+      ],
+      [
+       -0.06,
+       5.7
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "District 30",
+    "zone": "East",
+    "population": 40000,
+    "revenue": 48000
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       0.0,
+       5.7
+      ],
+      [
+       0.06,
+       5.7
+      ],
+      [
+       0.06,
+       5.75
+      ],
+      [
+       0.0,
+       5.75
+      ],
+      [
+       0.0,
+       5.7
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}
