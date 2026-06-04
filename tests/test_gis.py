@@ -28,8 +28,18 @@ def _spec_of(fragment: str) -> dict:
     return json.loads(html.unescape(fragment[start:end]))
 
 
+def _geo_container(spec: dict) -> dict:
+    """The data lives in spec['overlay'] for a vector style-URL basemap, or baked into
+    spec['style'] for a raster/dict basemap. Return whichever holds the GeoJSON layers."""
+    return spec.get("overlay") or spec["style"]
+
+
+def _geo_source(spec: dict) -> dict:
+    return _geo_container(spec)["sources"]["golit-geo"]
+
+
 def _geo_layer(spec: dict) -> dict:
-    return next(layer for layer in spec["style"]["layers"] if layer["id"] == "golit-geo")
+    return next(layer for layer in _geo_container(spec)["layers"] if layer["id"] == "golit-geo")
 
 
 def _squares() -> gpd.GeoDataFrame:
@@ -73,7 +83,7 @@ def test_maplibre_accepts_a_style_dict_and_passthrough_opts() -> None:
 
 def test_geo_map_polygon_builds_geojson_fill_layer_and_bounds() -> None:
     spec = _spec_of(gis.geo_map(_squares()))
-    source = spec["style"]["sources"]["golit-geo"]
+    source = _geo_source(spec)
     assert source["type"] == "geojson"
     assert source["data"]["type"] == "FeatureCollection"
     assert len(source["data"]["features"]) == 2
@@ -121,8 +131,28 @@ def test_geo_map_reprojects_to_4326() -> None:
     assert bounds[1][0] == pytest.approx(2.0, abs=1e-6)
 
 
-def test_geo_map_basemap_presets_and_none() -> None:
-    assert _spec_of(gis.geo_map(_squares(), basemap="dark"))["style"]["sources"]["basemap"]
+def test_geo_map_default_basemap_is_an_openfreemap_vector_style() -> None:
+    # Default is the light positron OpenFreeMap vector style; data rides in the overlay.
+    spec = _spec_of(gis.geo_map(_squares()))
+    assert spec["style"] == "https://tiles.openfreemap.org/styles/positron"
+    assert spec["overlay"]["sources"]["golit-geo"]["type"] == "geojson"
+
+
+def test_geo_map_vector_basemap_presets() -> None:
+    for name, style in {
+        "liberty": "liberty",
+        "bright": "bright",
+        "dark": "dark",
+        "positron": "positron",
+    }.items():
+        spec = _spec_of(gis.geo_map(_squares(), basemap=name))
+        assert spec["style"] == f"https://tiles.openfreemap.org/styles/{style}"
+        assert spec["overlay"]["sources"]["golit-geo"]["type"] == "geojson"
+
+
+def test_geo_map_raster_presets_and_none() -> None:
+    assert _spec_of(gis.geo_map(_squares(), basemap="osm"))["style"]["sources"]["basemap"]
+    assert _spec_of(gis.geo_map(_squares(), basemap="carto-dark"))["style"]["sources"]["basemap"]
     no_base = _spec_of(gis.geo_map(_squares(), basemap="none"))
     assert no_base["style"]["layers"][0]["type"] == "background"
     with pytest.raises(ValueError):
@@ -138,8 +168,8 @@ def test_geo_map_style_url_basemap_overlays_the_data() -> None:
     assert any(layer["id"] == "golit-geo" for layer in spec["overlay"]["layers"])
 
 
-def test_geo_map_preset_basemap_still_bakes_data_into_the_style() -> None:
-    spec = _spec_of(gis.geo_map(_squares(), basemap="light"))
+def test_geo_map_raster_preset_bakes_data_into_the_style() -> None:
+    spec = _spec_of(gis.geo_map(_squares(), basemap="osm"))
     assert spec["style"]["sources"]["golit-geo"]["type"] == "geojson"
     assert "overlay" not in spec
 
@@ -248,5 +278,4 @@ def test_spatial_sql_to_geo_to_map_seam() -> None:
         pytest.skip(f"DuckDB spatial extension unavailable: {exc}")
     # spatial_sql returns a Polars frame with a WKB geometry column; geometry= bridges it.
     out = gis.geo_map(frame, geometry="geom", color="v")
-    spec = _spec_of(out)
-    assert spec["style"]["sources"]["golit-geo"]["data"]["type"] == "FeatureCollection"
+    assert _geo_source(_spec_of(out))["data"]["type"] == "FeatureCollection"

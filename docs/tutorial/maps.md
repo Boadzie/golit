@@ -63,7 +63,7 @@ def map(selected):
         selected,
         color="population",                 # numeric → choropleth ramp
         tooltip=["name", "population"],      # click a feature to see these
-        basemap="light",                    # "default" | "light" | "dark" | "osm" | "none"
+        basemap="positron",                  # vector preset (the default); see below
         height="460px",
     )
 ```
@@ -76,9 +76,21 @@ When `color` is set, a **legend** is overlaid automatically — a gradient bar f
 choropleth, swatches for a categorical one. It's plain server-rendered markup (no client
 runtime); pass `legend=False` to hide it.
 
-`basemap` also accepts a **vector style-URL** (`basemap="https://…/style.json"`) — the data
-is overlaid once the remote style loads — and `tooltip_trigger="hover"` shows the popup on
-hover instead of click. `fit_padding` controls the bounds-fit inset.
+### Basemaps
+
+The default basemap is a free **[OpenFreeMap](https://openfreemap.org/)** vector style
+(`positron`) — OpenStreetMap-based, **no API key, no rate limits**, and self-hostable.
+`basemap` accepts:
+
+- a **vector preset** — `"positron"` (the default, light/neutral — best under data),
+  `"liberty"`, `"bright"`, `"dark"`;
+- a **raster preset** — `"osm"`, `"carto-light"`, `"carto-dark"`;
+- `"none"` (flat background), a full MapLibre **style `dict`**, or any **style-URL**
+  string (`basemap="https://…/style.json"` — the data is overlaid once it loads).
+
+For production, self-host the tiles rather than leaning on the public instance.
+`tooltip_trigger="hover"` shows the popup on hover instead of click, and `fit_padding`
+controls the bounds-fit inset.
 
 ## `maplibre` — a native map from a style
 

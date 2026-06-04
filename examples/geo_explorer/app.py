@@ -50,7 +50,7 @@ def map(filtered: gpd.GeoDataFrame):
         filtered,
         color="population",
         tooltip=["name", "zone", "population", "revenue"],
-        basemap="light",
+        basemap="positron",  # free OpenFreeMap vector style (the default)
         height="460px",
     )
 

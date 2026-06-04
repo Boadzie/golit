@@ -34,17 +34,27 @@ _CATEGORICAL = [
     "#00838f", "#9e9d24", "#4527a0", "#ad1457", "#5d4037",
 ]
 
-# Raster basemap presets — all key-free. A dict basemap is used as a full style;
-# "none" draws just a flat background so the data carries the map.
+# Basemap presets. Vector presets resolve to an OpenFreeMap style URL — free, no API
+# key, OSM-based, weekly updates, self-hostable (https://openfreemap.org) — which geo_map
+# overlays the data onto; the hosted style carries its own attribution. Raster presets
+# (CARTO/OSM tile layers) stay available as an opt-in fallback. A dict basemap is used as
+# a full style; "none" draws just a flat background so the data carries the map.
+_OPENFREEMAP = "https://tiles.openfreemap.org/styles"
+_VECTOR_BASEMAPS = {
+    "default": "positron",  # light + neutral — the best backdrop under choropleth colors
+    "positron": "positron",
+    "light": "positron",
+    "liberty": "liberty",
+    "bright": "bright",
+    "dark": "dark",
+}
 _CARTO_ATTR = "© OpenStreetMap, © CARTO"
 _CARTO_LIGHT = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 _CARTO_DARK = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-_BASEMAPS = {
-    "default": (_CARTO_LIGHT, _CARTO_ATTR),
-    "light": (_CARTO_LIGHT, _CARTO_ATTR),
-    "positron": (_CARTO_LIGHT, _CARTO_ATTR),
-    "dark": (_CARTO_DARK, _CARTO_ATTR),
+_RASTER_BASEMAPS = {
     "osm": ("https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors"),
+    "carto-light": (_CARTO_LIGHT, _CARTO_ATTR),
+    "carto-dark": (_CARTO_DARK, _CARTO_ATTR),
 }
 
 _SOURCE = "golit-geo"  # the GeoJSON source/layer id geo_map injects into the style
@@ -115,20 +125,24 @@ def _base_style(basemap: Any) -> dict[str, Any] | str:
     if basemap in (None, "none"):
         background = {"id": "bg", "type": "background", "paint": {"background-color": "#eaeef2"}}
         return {"version": 8, "sources": {}, "layers": [background]}
-    if isinstance(basemap, str) and basemap.startswith(("http://", "https://", "mapbox://")):
-        return basemap  # a vector style URL — the data is overlaid after the style loads
-    try:
-        tiles, attribution = _BASEMAPS[basemap]
-    except KeyError:
-        raise ValueError(
-            f"unknown basemap {basemap!r}; use one of {sorted(_BASEMAPS)}, 'none', or a style dict"
-        ) from None
-    source = {"type": "raster", "tiles": [tiles], "tileSize": 256, "attribution": attribution}
-    return {
-        "version": 8,
-        "sources": {"basemap": source},
-        "layers": [{"id": "basemap", "type": "raster", "source": "basemap"}],
-    }
+    if isinstance(basemap, str):
+        if basemap in _VECTOR_BASEMAPS:  # OpenFreeMap vector style → overlay path
+            return f"{_OPENFREEMAP}/{_VECTOR_BASEMAPS[basemap]}"
+        if basemap.startswith(("http://", "https://", "mapbox://")):
+            return basemap  # a vector style URL — data overlaid after the style loads
+        if basemap in _RASTER_BASEMAPS:
+            tiles, attribution = _RASTER_BASEMAPS[basemap]
+            source = {"type": "raster", "tiles": [tiles], "tileSize": 256,
+                      "attribution": attribution}
+            return {
+                "version": 8,
+                "sources": {"basemap": source},
+                "layers": [{"id": "basemap", "type": "raster", "source": "basemap"}],
+            }
+    raise ValueError(
+        f"unknown basemap {basemap!r}; vector: {sorted(_VECTOR_BASEMAPS)}, "
+        f"raster: {sorted(_RASTER_BASEMAPS)}, or 'none' / a style dict / a style URL"
+    )
 
 
 def _color_mapping(gdf: Any, column: str) -> dict[str, Any]:
@@ -267,9 +281,10 @@ def geo_map(
     when ``color`` is set, a ``legend`` is overlaid (gradient bar or swatches) unless
     turned off. ``tooltip`` shows feature properties: ``True`` for every attribute, or a
     column name / list of names — on click, or on hover with ``tooltip_trigger="hover"``.
-    ``basemap`` is a preset (``"default"``, ``"light"``, ``"dark"``, ``"osm"``,
-    ``"none"``), a full style ``dict``, or a vector **style-URL** string (the data is
-    overlaid on it). With ``fit`` the camera frames the data's bounds (``fit_padding`` px)::
+    ``basemap`` is a vector preset (``"default"``/``"positron"``, ``"liberty"``,
+    ``"bright"``, ``"dark"`` — free OpenFreeMap styles, no API key), a raster preset
+    (``"osm"``, ``"carto-light"``, ``"carto-dark"``), ``"none"``, a full style ``dict``,
+    or any style-**URL** string. With ``fit`` the camera frames the data (``fit_padding`` px)::
 
         @app.view
         def map(regions):                  # regions is a filtered GeoDataFrame
