@@ -136,9 +136,36 @@ matplotlib); `vmin`/`vmax` set the range and NaN nodata is transparent. Large ra
 downsampled to `max_size` px on the long edge to keep the fragment small. A view may also
 just `return` a georeferenced `DataArray`. Needs `pip install "golit[gis-raster]"`.
 
-!!! note "Phase 1 vs 2"
-    Phase 1 is vector (GeoDataFrames, spatial SQL); phase 2 adds this single-array raster
-    overlay. Tiled rasters (rio-tiler/titiler) and RGB composites are a later step.
+## `rgb` — true/false-color satellite composites
+
+`gis.rgb` renders a **multiband** raster as an RGB composite — the natural shape of
+satellite imagery. It takes the same inputs as `raster` (a multiband `DataArray`, a
+multiband GeoTIFF path, or a NumPy array + `bounds`), plus a `bands` triple naming the
+three source bands to map to red, green, blue:
+
+```python
+from golit import select, slider
+
+
+@app.view
+def scene(stack,                                         # a multiband DataArray
+          combo: str = select(["natural", "false-color"], default="natural"),
+          gamma: int = slider(50, 200, default=100, step=10)):
+    bands = (0, 1, 2) if combo == "natural" else (3, 0, 1)   # NIR·R·G highlights vegetation
+    return gis.rgb(stack, bands=bands, gamma=gamma / 100)
+```
+
+Each band is contrast-stretched **independently** — by default to its 2nd–98th percentiles
+(robust to outliers), or to an explicit `vmin`/`vmax` (a scalar for all three, or a
+3-sequence per band). `gamma` brightens (`>1`) or darkens (`<1`) the midtones; pixels that
+are nodata in any band are transparent. Band-first `(band, y, x)` (the rasterio/rioxarray
+layout) and channel-last `(y, x, band)` arrays are both accepted. Like `raster`, the
+composite is a single PNG image layer over the basemap — no client charting runtime.
+
+!!! note "GIS phases"
+    Phase 1 is vector (GeoDataFrames, spatial SQL); phase 2 is the single-array `raster`
+    overlay; phase 2.5 adds these multiband `rgb` composites. Tiled rasters
+    (rio-tiler/titiler) for very large data are a later step.
 
 ## DuckDB spatial SQL
 

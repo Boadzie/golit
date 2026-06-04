@@ -25,6 +25,12 @@ Render a georeferenced raster (rioxarray/xarray `DataArray`, GeoTIFF path, or Nu
 
 ::: golit.gis.raster
 
+## rgb
+
+Render a multiband raster (satellite imagery) as a true/false-color RGB composite — three selected bands, each contrast-stretched independently, as a MapLibre image layer.
+
+::: golit.gis.rgb
+
 ## explore
 
 The folium/leafmap escape hatch — embed `gdf.explore()` as a swappable fragment.
