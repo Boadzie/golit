@@ -1,7 +1,7 @@
 """Components Gallery — the new input widgets + golit.ui components, reactively.
 
 A small sales dashboard: a slider and a region multiselect drive a filtered frame;
-KPIs (metric), a status callout (alert/badge), a tabbed detail (tabs/table/markdown),
+KPIs (scorecard), a status callout (alert/badge), a tabbed detail (tabs/table/markdown),
 and a progress bar all recompute from it. A switch toggles the table density and a
 button demonstrates "on click" reactivity — clicking it re-runs only its own view.
 
@@ -49,12 +49,16 @@ def filtered(
 def kpis(filtered: pl.DataFrame) -> str:
     total = int(filtered["revenue"].sum()) if filtered.height else 0
     share = f"+{round(total / TOTAL * 100)}%" if total else "0%"
-    return ui.columns(
+    regions = filtered["region"].n_unique() if filtered.height else 0
+    return ui.grid(
         [
-            ui.metric("Filtered revenue", f"${total:,}", delta=share, help="share of all revenue"),
-            ui.metric("Rows", str(filtered.height)),
-            ui.metric("Regions", str(filtered["region"].n_unique() if filtered.height else 0)),
-        ]
+            ui.scorecard("Filtered revenue", f"${total:,}", delta=share, icon="payments",
+                         kind="primary", caption="share of all revenue"),
+            ui.scorecard("Rows", str(filtered.height), icon="table_rows"),
+            ui.scorecard("Regions", str(regions), icon="public",
+                         kind="success" if regions else "default"),
+        ],
+        cols=3,
     )
 
 
