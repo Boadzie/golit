@@ -343,6 +343,118 @@ def test_is_dataarray_detects_without_false_positives() -> None:
     assert not gis.is_dataarray({"a": 1})
 
 
+def _rgb_source(spec: dict) -> dict:
+    return _geo_container(spec)["sources"]["golit-raster"]
+
+
+def _decode_first_pixel(uri: str) -> tuple:
+    """Decode the top-left RGBA pixel of a data-URI PNG produced by gis (filter-type-0
+    scanlines), without Pillow — to assert band ordering and nodata transparency."""
+    import base64
+    import struct
+    import zlib
+
+    png = base64.b64decode(uri.split(",", 1)[1])
+    pos, width, idat = 8, 0, b""
+    while pos < len(png):
+        length = struct.unpack(">I", png[pos : pos + 4])[0]
+        tag = png[pos + 4 : pos + 8]
+        data = png[pos + 8 : pos + 8 + length]
+        if tag == b"IHDR":
+            width = struct.unpack(">I", data[:4])[0]
+        elif tag == b"IDAT":
+            idat += data
+        pos += 12 + length
+    raw = zlib.decompress(idat)  # row 0: a filter byte then width*4 RGBA bytes
+    assert width and raw[0] == 0
+    return tuple(raw[1:5])
+
+
+def test_rgb_band_first_numpy_is_a_png_image_overlay() -> None:
+    np = pytest.importorskip("numpy")
+    arr = np.stack([np.full((4, 5), i * 50.0) for i in range(3)])  # (band, y, x)
+    out = gis.rgb(arr, bounds=[-1, -1, 1, 1])
+    spec = _spec_of(out)
+    source = _rgb_source(spec)
+    assert source["type"] == "image"
+    assert source["url"].startswith("data:image/png;base64,")
+    assert source["coordinates"] == [[-1.0, 1.0], [1.0, 1.0], [1.0, -1.0], [-1.0, -1.0]]
+    assert spec["bounds"] == [[-1.0, -1.0], [1.0, 1.0]]
+    assert "golit-map-legend" not in out  # an RGB composite carries no colorbar
+
+
+def test_rgb_emits_a_valid_rgba_png() -> None:
+    import base64
+    import struct
+
+    np = pytest.importorskip("numpy")
+    uri = _rgb_source(_spec_of(gis.rgb(np.random.rand(3, 6, 7), bounds=[0, 0, 1, 1])))["url"]
+    png = base64.b64decode(uri.split(",", 1)[1])
+    assert png[:8] == b"\x89PNG\r\n\x1a\n"
+    width, height, depth, color = struct.unpack(">IIBB", png[16:26])  # IHDR
+    assert (width, height, depth, color) == (7, 6, 8, 6)  # 8-bit RGBA
+
+
+def test_rgb_accepts_channel_last_layout() -> None:
+    np = pytest.importorskip("numpy")
+    assert "golit-raster" in gis.rgb(np.random.rand(5, 6, 3), bounds=[0, 0, 1, 1])  # (y, x, band)
+
+
+def test_rgb_band_selection_picks_the_requested_bands() -> None:
+    # Distinct constant bands + an explicit full-range stretch make the chosen ordering
+    # observable in the encoded pixels: R<-band3, G<-band0, B<-band1.
+    np = pytest.importorskip("numpy")
+    four = np.stack([np.full((2, 2), v) for v in (0.0, 0.25, 0.5, 1.0)])
+    out = gis.rgb(four, bands=(3, 0, 1), vmin=0.0, vmax=1.0, bounds=[0, 0, 1, 1])
+    r, g, b, a = _decode_first_pixel(_rgb_source(_spec_of(out))["url"])
+    assert r == 255  # band 3 -> 1.0
+    assert g == 0  # band 0 -> 0.0
+    assert b == pytest.approx(63, abs=2)  # band 1 -> 0.25
+    assert a == 255
+
+
+def test_rgb_nodata_pixels_are_transparent() -> None:
+    np = pytest.importorskip("numpy")
+    arr = np.ones((3, 2, 2))
+    arr[:, 0, 0] = np.nan  # the top-left pixel is nodata across all bands
+    out = gis.rgb(arr, bounds=[0, 0, 1, 1])
+    assert _decode_first_pixel(_rgb_source(_spec_of(out))["url"])[3] == 0  # transparent
+
+
+def test_rgb_out_of_range_bands_raise() -> None:
+    np = pytest.importorskip("numpy")
+    with pytest.raises(ValueError):
+        gis.rgb(np.random.rand(3, 2, 2), bands=(0, 1, 5), bounds=[0, 0, 1, 1])
+
+
+def test_rgb_single_band_2d_raises() -> None:
+    np = pytest.importorskip("numpy")
+    with pytest.raises(ValueError):
+        gis.rgb(np.zeros((3, 3)), bounds=[0, 0, 1, 1])
+
+
+def test_rgb_numpy_requires_bounds() -> None:
+    np = pytest.importorskip("numpy")
+    with pytest.raises(ValueError):
+        gis.rgb(np.random.rand(3, 2, 2))
+
+
+def test_rgb_from_georeferenced_multiband_dataarray() -> None:
+    xr = pytest.importorskip("xarray")
+    pytest.importorskip("rioxarray")
+    np = pytest.importorskip("numpy")
+    import rioxarray  # noqa: F401
+
+    da = xr.DataArray(
+        np.random.rand(3, 3, 4),
+        dims=("band", "y", "x"),
+        coords={"band": [1, 2, 3], "y": [2.0, 1.0, 0.0], "x": [0.0, 1.0, 2.0, 3.0]},
+    ).rio.write_crs("EPSG:4326")
+    spec = _spec_of(gis.rgb(da))
+    assert _rgb_source(spec)["type"] == "image"
+    assert spec["bounds"] == [[-0.5, -0.5], [3.5, 2.5]]  # cell-edge bounds
+
+
 def test_spatial_sql_runs_st_functions() -> None:
     pytest.importorskip("duckdb")
     import polars as pl
