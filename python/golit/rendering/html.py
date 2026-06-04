@@ -295,6 +295,105 @@ CHAT_BOOTSTRAP = """
 })();
 """
 
+# Drives golit.ui.camera: grab the visitor's webcam (getUserMedia), and over a WebSocket to
+# /golit/camera/<name> send each captured frame as a JPEG and paint the annotated frame the
+# server (its @app.on_frame handler) sends back. One frame is kept in flight — the next is
+# captured only once the previous result arrives, then paced to the target fps — so a slow
+# handler lowers the rate instead of flooding the socket. Registered on htmx:load like the others.
+CAMERA_BOOTSTRAP = """
+(function () {
+  function initCamera(el) {
+    if (el.__golitCamera) return;
+    el.__golitCamera = true;
+    var name = el.getAttribute('data-golit-camera');
+    var maxw = parseInt(el.getAttribute('data-width'), 10) || 640;
+    var fps = parseFloat(el.getAttribute('data-fps')) || 12;
+    var quality = parseFloat(el.getAttribute('data-quality')) || 0.6;
+    var video = el.querySelector('.golit-camera-src');
+    var out = el.querySelector('.golit-camera-out');
+    var status = el.querySelector('.golit-camera-status');
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var ws, stream, lastUrl, sentAt = 0, closed = false, minGap = 1000 / fps;
+
+    function note(msg) { if (status) { status.textContent = msg; status.style.display = ''; } }
+    function hideNote() { if (status) status.style.display = 'none'; }
+    function cleanup() {
+      closed = true;
+      if (ws) { try { ws.close(); } catch (e) {} }
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+    }
+    el.__golitCameraCleanup = cleanup;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      note('Camera needs a secure context (https or localhost).'); return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { width: maxw }, audio: false })
+      .then(function (s) {
+        if (closed) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+        stream = s; video.srcObject = s; return video.play();
+      })
+      .then(function () { if (!closed) connect(); })
+      .catch(function (e) { note('Could not access camera: ' + ((e && e.name) || e)); });
+
+    function connect() {
+      var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      var url = proto + '://' + location.host + '/golit/camera/' + encodeURIComponent(name);
+      ws = new WebSocket(url);
+      ws.binaryType = 'blob';
+      ws.onopen = function () { hideNote(); capture(); };
+      ws.onmessage = function (ev) { show(ev.data); };
+      ws.onerror = function () { note('Stream error.'); };
+      ws.onclose = function (ev) {
+        if (closed) return;
+        note(ev && ev.code === 4404 ? 'No camera handler named "' + name + '".' : 'Stream closed.');
+      };
+    }
+
+    function capture() {
+      if (closed || !ws || ws.readyState !== 1) return;
+      var vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw) { setTimeout(capture, 60); return; }  // metadata not ready yet
+      var scale = Math.min(1, maxw / vw);
+      canvas.width = Math.round(vw * scale);
+      canvas.height = Math.round(vh * scale);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      sentAt = (window.performance || Date).now();
+      canvas.toBlob(function (b) {
+        if (b && ws && ws.readyState === 1) ws.send(b);
+      }, 'image/jpeg', quality);
+    }
+
+    function show(blob) {
+      var url = URL.createObjectURL(blob);
+      var prev = lastUrl; lastUrl = url;
+      out.onload = function () { if (prev) URL.revokeObjectURL(prev); };
+      out.src = url;
+      var elapsed = (window.performance || Date).now() - sentAt;
+      setTimeout(capture, Math.max(0, minGap - elapsed));
+    }
+  }
+  function scan(root) {
+    root = root || document;
+    if (!root.querySelectorAll) return;
+    Array.prototype.forEach.call(
+      root.querySelectorAll('.golit-camera[data-golit-camera]'), initCamera);
+  }
+  function start() {
+    document.addEventListener('htmx:load', function (e) {
+      scan((e.detail && e.detail.elt) || e.target);
+    });
+    document.addEventListener('htmx:beforeCleanupElement', function (e) {
+      if (e.target && e.target.__golitCameraCleanup) e.target.__golitCameraCleanup();
+    });
+    scan(document);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+"""
+
 # Reactive-update flash: HTMX adds .htmx-settling to swapped fragments.
 GOLIT_CSS = """
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
@@ -366,6 +465,7 @@ def page(title: str, body: str) -> str:
 <script>{chart_cdn}</script>
 <script>{CHART_BOOTSTRAP}</script>
 <script>{CHAT_BOOTSTRAP}</script>
+<script>{CAMERA_BOOTSTRAP}</script>
 </head>
 <body class="bg-surface text-on-surface font-body antialiased" hx-ext="sse" sse-connect="/events">
 <div class="max-w-6xl mx-auto px-6 py-10">

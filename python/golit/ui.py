@@ -51,6 +51,7 @@ __all__ = [
     "caption",
     "chat",
     "webcam",
+    "camera",
 ]
 
 
@@ -509,6 +510,58 @@ def webcam(
         f'style="{style}">'
         f'<img src="/golit/stream/{esc(name)}" alt="{esc(title or name)}" '
         'class="golit-webcam-img w-full h-full object-contain"></div></div>'
+    )
+
+
+def camera(
+    name: str,
+    *,
+    title: str | None = None,
+    height: int = 384,
+    width: int = 640,
+    fps: int = 12,
+    quality: float = 0.6,
+) -> str:
+    """A live panel that streams the **visitor's own webcam** up to the server, runs the
+    processor registered with ``@app.on_frame(name)`` on each frame, and shows the result.
+
+    The browser grabs the camera with ``getUserMedia``, sends JPEG frames over a WebSocket
+    (``/golit/camera/<name>``), and paints each annotated frame the server sends back — keeping
+    one frame in flight, so a slow processor just lowers the rate. Use this when the camera is on
+    the *client*; for a feed produced on the server use :func:`webcam` instead. Example::
+
+        @app.on_frame("detector")
+        def detect(frame):
+            ...                       # return an annotated RGB array or JPEG bytes
+
+        @app.view
+        def live() -> str:
+            return ui.camera("detector", title="Your camera")
+
+    ``width`` caps the captured/sent frame width in pixels (smaller = faster); ``height`` is the
+    display height; ``fps`` is the target capture rate; ``quality`` is the JPEG quality (0–1) of
+    the uploaded frames. Needs a **secure context** — ``https`` or ``localhost`` — for camera
+    access; on insecure origins it shows a notice instead."""
+    head = (
+        f'<div class="px-1 pb-3 font-headline text-lg font-bold tracking-tight">{esc(title)}</div>'
+        if title
+        else ""
+    )
+    return (
+        '<div class="golit-camera flex flex-col bg-surface-container-low rounded-xl p-4" '
+        f'data-golit-camera="{esc(name)}" data-width="{int(width)}" data-fps="{int(fps)}" '
+        f'data-quality="{float(quality):g}">'
+        f"{head}"
+        '<div class="golit-camera-frame relative overflow-hidden rounded-lg bg-black" '
+        f'style="height: {int(height)}px">'
+        # off-screen (not display:none, so frames keep decoding) capture source
+        '<video class="golit-camera-src" autoplay playsinline muted '
+        'style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></video>'
+        f'<img alt="{esc(title or name)}" '
+        'class="golit-camera-out w-full h-full object-contain">'
+        '<div class="golit-camera-status absolute inset-0 flex items-center justify-center '
+        'text-center text-sm text-on-surface-variant px-4">Starting camera…</div>'
+        "</div></div>"
     )
 
 
