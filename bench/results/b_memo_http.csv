@@ -1,0 +1,9 @@
+framework,transport,rows,p50_us,p95_us,p99_us,mean_us,bytes,n,speedup
+Golit (memo),uvicorn + dirty subgraph,100000,1257.624,1470.183,1681.557,1286.453,637.2,100,1.65
+Dash (recompute),waitress + callback,100000,2070.124,2729.215,2772.052,2134.872,264.2,100,1.0
+Golit (memo),uvicorn + dirty subgraph,500000,1583.062,1794.767,1884.314,1581.902,650.4,100,3.09
+Dash (recompute),waitress + callback,500000,4887.479,5183.175,5290.973,4890.004,277.4,100,1.0
+Golit (memo),uvicorn + dirty subgraph,1000000,1518.104,1778.921,1973.907,1535.156,653.2,100,5.53
+Dash (recompute),waitress + callback,1000000,8401.771,9480.198,10600.924,8803.638,280.2,100,1.0
+Golit (memo),uvicorn + dirty subgraph,2000000,1817.438,2287.165,2376.923,1812.057,654.0,100,8.32
+Dash (recompute),waitress + callback,2000000,15121.0,15824.013,16364.818,15163.392,281.0,100,1.0
