@@ -67,8 +67,9 @@ That uniformity is the point: a `card` doesn't care whether you hand it a string
 | --- | --- |
 | `chat(channel, *, author="You", title=None, …)` | A live, WebSocket-backed chat panel. |
 | `webcam(name, *, title=None, height=384, width=None)` | A live video panel showing a server-side MJPEG stream. |
+| `camera(name, *, title=None, height=384, width=640, fps=12, quality=0.6)` | The visitor's own webcam, processed server-side and painted back. |
 
-These two are different from the others: rather than rendering once, they hold a live connection and update on their own. `chat` opens a bidirectional WebSocket and appends messages as they arrive — see [WebSocket chat](../advanced/websockets.md). `webcam` shows a frame producer registered with `@app.stream(name)` as native MJPEG in a plain `<img>` — see [Video streams](../advanced/video-streams.md).
+These are different from the others: rather than rendering once, they hold a live connection and update on their own. `chat` opens a bidirectional WebSocket and appends messages as they arrive — see [WebSocket chat](../advanced/websockets.md). `webcam` shows a server-side frame producer (`@app.stream(name)`) as native MJPEG; `camera` streams the visitor's webcam up to an `@app.on_frame(name)` handler and displays the result — both under [Video streams](../advanced/video-streams.md).
 
 ## A worked example
 

@@ -4,6 +4,8 @@ Some views aren't a fragment that re-renders on a change — they're a **continu
 
 This stays on-brand with the rest of Golit — no client framework, no canvas glue, no JSON-to-pixels code. The browser plays `multipart/x-mixed-replace` natively, and the stream lives **outside** the reactive graph, so the live view holds one stable connection and never re-renders mid-frame.
 
+Video flows **both directions**, and Golit covers each. Most of this page is *server → browser* — a feed produced on the server (`@app.stream` + `ui.webcam`). The mirror, *browser → server* — the visitor's own webcam streamed up for processing (`@app.on_frame` + `ui.camera`) — is [further down](#the-other-direction-the-visitors-own-camera).
+
 ## The two halves
 
 A video view is a producer plus a component, mirroring the [`@app.on_message` / `ui.chat`](websockets.md) split for chat:
@@ -117,20 +119,59 @@ The stream is **one long-lived HTTP response per viewer**, held open on the work
     }
     ```
 
-## Browser uploads (the other direction)
+## The other direction: the visitor's own camera
 
-This page is **server → browser**: the frames originate on the server (a camera attached to the host, or synthetic). Streaming the *user's own* webcam up to the server for processing — `getUserMedia` → upload → server-side CV → annotated frames back — is the mirror-image case and reuses this exact display path for the return leg. That's a planned follow-on; the server-side stream here is the foundation.
+Everything above is **server → browser** — frames originate on the server (a camera on the host, or synthetic). The mirror case is **browser → server**: stream the *visitor's own* webcam up, process each frame, and paint the result back. That's `@app.on_frame` + [`ui.camera`](../tutorial/ui-components.md):
 
-## Full example
+```python
+import numpy as np
+import golit.ui as ui
+from golit import App, create_app
 
-[`examples/webcam_stream/app.py`](https://github.com/boadzie/golit/tree/main/examples/webcam_stream) runs with **no camera** — it synthesizes frames with a box bouncing across the canvas and a fake `person 0.98` detection drawn on each one, the shape a real detector emits. It includes a commented OpenCV loop to swap in an actual webcam.
+app = App(title="Browser Camera")
+
+
+@app.on_frame("tracker")             # ① runs per uploaded frame
+def tracker(frame: np.ndarray):      # frame: (H, W, 3) uint8 RGB
+    # ... run your model and draw on a copy of `frame` ...
+    return frame                     # annotated RGB array (or JPEG bytes)
+
+
+@app.view
+def live() -> str:                   # ② capture + display
+    return ui.camera("tracker", title="Your camera")
+
+
+application = create_app(app)
+```
+
+The browser grabs the camera with `getUserMedia`, and over a WebSocket at `/golit/camera/<name>` it sends each captured frame as a JPEG; the server decodes it to an `(H, W, 3)` RGB array, runs your `@app.on_frame` handler, and sends the returned frame back as JPEG, which `ui.camera` paints. The handler is the inbound mirror of `@app.stream`: same array-or-bytes frames, same lazy Pillow encode, same threading — sync handlers (and every decode/encode) run in a worker thread, async handlers are awaited.
+
+```python
+ui.camera(name, *, title=None, height=384, width=640, fps=12, quality=0.6)
+```
+
+`width` caps the captured frame width in pixels (smaller = faster); `fps` is the target capture rate; `quality` is the uploaded JPEG quality (0–1). Tune these three to trade latency against fidelity.
+
+!!! note "One frame in flight"
+    The client captures the next frame only **after** the previous result comes back (then paces to `fps`). So there's never a backlog: a slow handler simply lowers the rate, and the displayed frame is always the most recent the server has finished. No queue to bound, no frames to drop.
+
+!!! warning "Camera access needs a secure context"
+    `getUserMedia` only works on **`https`** or **`localhost`**. `golit run` serves on `localhost`, so local dev is fine; in production the page must be HTTPS or the browser blocks the camera and `ui.camera` shows a notice instead of a feed. (The [nginx upgrade headers](websockets.md#scaling) chat needs apply here too — it's a WebSocket.)
+
+Unlike `@app.stream` (one shared producer, fanned out as MJPEG), each `ui.camera` viewer has its **own** camera and its **own** WebSocket, so the handler runs per viewer — size your CV accordingly.
+
+## Full examples
+
+- [`examples/webcam_stream/app.py`](https://github.com/boadzie/golit/tree/main/examples/webcam_stream) — **server → browser**. Runs with no camera: synthesizes frames with a box bouncing across the canvas and a fake `person 0.98` detection, the shape a real detector emits. Includes a commented OpenCV loop to swap in a real webcam.
+- [`examples/browser_camera/app.py`](https://github.com/boadzie/golit/tree/main/examples/browser_camera) — **browser → server**. Processes the visitor's own webcam: finds the brightest region of each frame and draws a labelled box that tracks it — a dependency-light stand-in for a detector.
 
 ```
 pip install "golit[vision]"
-golit run examples/webcam_stream/app.py
+golit run examples/webcam_stream/app.py      # or examples/browser_camera/app.py
 ```
 
 ## Reference
 
-- [`golit.ui.webcam`](../reference/ui.md) — the component.
-- [`App.stream`](../reference/app.md) — the producer decorator.
+- [`golit.ui.webcam`](../reference/ui.md) / [`golit.ui.camera`](../reference/ui.md) — the components.
+- [`App.stream`](../reference/app.md) / [`App.on_frame`](../reference/app.md) — the producer and processor decorators.
