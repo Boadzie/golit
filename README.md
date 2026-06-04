@@ -76,6 +76,26 @@ that selective recompute is the whole point. See
 3. **Memoization** — a node re-executes only when its inputs hash differently; an
    unchanged output cascades into memo hits downstream (nothing on the wire).
 
+## Performance
+
+The thesis is *update cost is proportional to the change, not the program* — and the
+[benchmark harness](bench/) measures it (dev laptop, loopback; reproducible, not yet the
+published cloud figure). The honest summary:
+
+- **A single filter → chart updates in ~2 ms over HTTP — the same as Dash.** Idiomatic
+  Dash is a hand-wired reactive DAG, so on one chain both do identical work and tie. Saying
+  otherwise would be a strawman.
+- **The gap opens on the shape real dashboards have: shared upstream work.** When one
+  expensive step (a load, a join, a sort) feeds several views, moving a control that touches
+  only one view makes Golit re-run *only* that view — the shared upstream is memoized and
+  executes **zero** times — while Dash recomputes it every callback. Over real HTTP that's
+  **~1.6× faster at 100K rows, ~5.5× at 1M, ~8.3× at 2M**, and the lead widens with the app.
+- **`chart_spec` skips the figure object.** Returning a raw spec dict instead of a
+  `go.Figure` cuts the per-update round-trip to ~1.5 ms and ~635 B (vs ~6.9 KB) — ~1.4×
+  faster than figure-returning Dash with a ~10× smaller payload, same chart.
+
+See [`bench/README.md`](bench/README.md) for the methodology and one-command repros.
+
 ## SQL nodes
 
 A reactive node can be written as SQL instead of Polars. `golit.sql(query, **frames)`
@@ -113,7 +133,10 @@ def chart(by_region):
     return px.bar(by_region, x="region", y="revenue")   # Polars frame in directly
 ```
 
-See [`examples/charts_gallery/app.py`](examples/charts_gallery/app.py).
+For a view that rebuilds its chart on every interaction, `chart_spec(lib, dict)` hands
+Golit the raw wire-format spec directly, skipping the figure-object build and `to_json`
+(see [Performance](#performance)). See
+[`examples/charts_gallery/app.py`](examples/charts_gallery/app.py).
 
 ## Components
 
@@ -188,11 +211,13 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**13** cargo + **73** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **91** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts), the
 `golit.ui` component library, page layout, DuckDB SQL nodes, Litestar server (POST +
-SSE), Redis pub/sub fan-out, multi-worker deployment, and the examples. **Deferred:** the
-benchmark harness and rival apps, and the wider design suite in `golit_pages/`.
+SSE), Redis pub/sub fan-out, multi-worker deployment, the benchmark harness
+([`bench/`](bench/), with measured Golit-vs-Dash results), and the examples.
+**Deferred:** a standard-cloud-instance benchmark publication, and the wider design
+suite in `golit_pages/`.
 
 ## Development
 
