@@ -27,6 +27,7 @@ class App:
         self._widgets: dict[str, Widget] = {}
         self._chat_handlers: dict[str | None, NodeFn] = {}
         self._streams: dict[str, NodeFn] = {}
+        self._frame_handlers: dict[str, NodeFn] = {}
         self._built = False
         #: Optional page layout tree (see :mod:`golit.layout`); ``None`` stacks
         #: every view under one controls panel.
@@ -116,6 +117,29 @@ class App:
 
         return deco
 
+    def on_frame(self, name: str) -> Callable[[NodeFn], NodeFn]:
+        """Register a per-frame **processor** for the browser-camera view named ``name``,
+        shown by :func:`golit.ui.camera`. Each frame the visitor's webcam captures is sent up
+        (over a WebSocket), decoded to an ``(H, W, 3)`` uint8 RGB array, passed to the handler,
+        and the value it returns — an RGB array or JPEG ``bytes`` — is sent back and displayed::
+
+            @app.on_frame("detector")
+            def detect(frame):           # frame: (H, W, 3) uint8 RGB
+                # ... run your model and draw on a copy of `frame` ...
+                return frame             # annotated RGB array (or JPEG bytes)
+
+        Sync or async (``async def``) handlers both work; sync ones (and every JPEG
+        decode/encode) run in a worker thread so a heavy model never stalls the loop. One frame
+        is in flight at a time — the client waits for each result — so a slow handler simply
+        lowers the frame rate instead of building a backlog. The mirror of :meth:`stream`, which
+        produces frames on the server; here the browser is the camera and the server transforms."""
+
+        def deco(fn: NodeFn) -> NodeFn:
+            self._frame_handlers[name] = fn
+            return fn
+
+        return deco
+
     # -- resolution --------------------------------------------------------
     def build(self) -> None:
         """Resolve every parameter to an input/dependency/constant. Raises if a
@@ -181,6 +205,11 @@ class App:
     def streams(self) -> dict[str, NodeFn]:
         """Registered video frame producers, keyed by stream name."""
         return self._streams
+
+    @property
+    def frame_handlers(self) -> dict[str, NodeFn]:
+        """Registered browser-camera frame processors, keyed by camera name."""
+        return self._frame_handlers
 
     def node_def(self, node_id: str) -> NodeDef:
         return self._defs[node_id]
