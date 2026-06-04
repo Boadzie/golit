@@ -304,19 +304,23 @@ client POSTs the real `/_dash-update-component` callback request. Architecture-m
 
 | over real HTTP, same chart | e2e p50 | response bytes |
 | --- | ---: | ---: |
-| **Golit (Plotly)** — uvicorn, spec mount | **1.81 ms** | 12.1 KB |
-| **Dash** — waitress, figure JSON | **1.78 ms** | 6.9 KB |
-| **Golit (SVG)** — uvicorn, server SVG | 2.92 ms | 18.4 KB |
+| **Golit (Plotly figure)** — uvicorn, figure JSON | 1.96 ms | 12.1 KB |
+| **Golit (spec)** — uvicorn, raw dict via `chart_spec` | **1.47 ms** | **635 B** |
+| **Dash** — waitress, figure JSON | 2.01 ms | 6.9 KB |
+| **Golit (SVG)** — uvicorn, server SVG | 3.04 ms | 18.4 KB |
 
-This is the clean answer to "is Dash really faster?": **no — matched on architecture, over
-real HTTP, Golit ≈ Dash (1.81 vs 1.78 ms p50).** Folding the real per-update work back in
-(Flask routing + `callback_context` + figure JSON on Dash's side; Litestar + dirty subgraph
-+ spec mount on Golit's) lands them together — the ~1.6 ms the direct-call floor omitted is
-what makes them equal, not what makes Dash quick. (p50 is the stable metric; single-client
-loopback p99 is noisy and swung run-to-run, so it isn't load-bearing.) Two honest footnotes:
-Golit's Plotly mount is *heavier on the wire* (12.1 vs 6.9 KB) because it HTML-escapes the
-spec into a data attribute; and Golit (SVG) is the slower-but-self-contained path (server
-render, no client runtime) as before.
+This is the clean answer to "is Dash really faster?": **no.** Returning a Plotly *figure*,
+Golit ≈ Dash (1.96 vs 2.01 ms p50) — both build a `go.Figure` and `to_json` it, so folding
+the real per-update work back in (Flask routing + `callback_context` on Dash's side; Litestar
++ dirty subgraph on Golit's) lands them together. But that figure object is ~540 µs of pure
+overhead, and Golit lets a view skip it: returning the **raw spec dict** with
+[`chart_spec`](../docs/tutorial/charts.md) drops the update to **1.47 ms and 635 B** —
+**~1.4× faster than figure-returning Dash with a ~10× smaller payload**, drawing the
+identical chart. (Honest caveat: a Dash callback that returns a raw dict instead of a figure
+narrows the latency gap; most Dash returns figures, and Golit's payload stays smaller because
+it ships no template defaults.) p50 is the stable metric; single-client loopback p99 is noisy
+run-to-run. Golit (SVG) remains the slower-but-self-contained path (server render, no client
+runtime).
 
 The qualitative axis no number shows: Golit infers the dependency DAG from function
 signatures; Dash makes you hand-wire every `Input`/`Output`. Same reactive result, wired by
@@ -331,6 +335,48 @@ uv run --no-sync python -m bench.run_b1_dash_http  # -> b1_dash_http.csv (real-t
 ```
 
 Needs the `bench` group: `uv pip install 'dash>=2.14' 'waitress>=3.0'`.
+
+## B-memo — shared-upstream memoization (`run_memo.py`, `run_memo_http.py`)
+
+The Dash head-to-head above is a *single chain*, and there Golit and Dash tie — they do
+identical work. That's the honest floor, not the story. Real dashboards aren't a single
+chain: they **share an expensive upstream** across several views. This benchmark builds that
+shape and moves a control that touches only one view:
+
+```
+data ── heavy(data) ──┬── view_a(heavy, threshold_a)   <- the slider moves only this
+                      └── view_b(heavy, threshold_b)
+```
+
+Move `threshold_a`. Golit schedules the dirty subgraph from that input: `heavy` depends only
+on `data` (clean), so the kernel's epoch memo **skips it** and reuses the cached frame — only
+`view_a` runs, and `heavy` executes **zero** times per update (read straight off the call
+counter). Idiomatic Dash has no cross-callback memo, so the `chart_a` callback re-runs its
+whole body — recomputing `heavy(data)` every move. Both engines run the *same*
+`memo_heavy`/`memo_payload` and both return a raw-dict spec, so the comparison isolates
+**recompute-vs-memoize**, nothing else.
+
+In-process (engine only, `run_memo.py`) and end-to-end over real HTTP (`run_memo_http.py`),
+sweeping the shared-upstream size:
+
+| shared upstream | Golit (memo) | Dash (recompute) | speedup | Dash `dcc.Store` (in-proc) |
+| ---: | ---: | ---: | ---: | ---: |
+| 100K rows | 1.26 ms | 2.07 ms | **1.6×** | 7.8 ms |
+| 500K rows | 1.58 ms | 4.89 ms | **3.1×** | 37.7 ms |
+| 1M rows | 1.52 ms | 8.40 ms | **5.5×** | 78.0 ms |
+| 2M rows | 1.82 ms | 15.1 ms | **8.3×** | 158.8 ms |
+
+(p50, HTTP figures; the `dcc.Store` column is the in-process deserialize tax.) Golit's
+per-update latency stays roughly **flat** as the shared step grows — it isn't doing that work
+— while Dash climbs linearly with it. The "fix" a Dash dev reaches for, `dcc.Store`, is
+*worse*: it avoids the recompute only by serializing the intermediate to the browser and
+back, a tax that hits 121× the Golit time at 2M rows. This is the one axis where the engines
+genuinely diverge, and it's the shape production dashboards actually have.
+
+```bash
+uv run --no-sync python -m bench.run_memo        # in-process -> results/b_memo.csv
+uv run --no-sync python -m bench.run_memo_http    # real HTTP  -> results/b_memo_http.csv
+```
 
 ## B2 — concurrency scaling (`bench/http/run_b2.py`)
 
@@ -359,10 +405,23 @@ flat). Two sweeps:
 
 Throughput rises with concurrency to a **~4000 req/s plateau** at C≈8, then holds
 flat while latency climbs *linearly* (C=64 p99 is 23× the C=1 floor). That knee is
-one core's worth of serial compute: the update handler calls `session.update()`
-**inline on the event loop** ([`routes.py`](../python/golit/server/routes.py)), so
-I/O overlaps but CPU does not — a single worker is compute-bound, not I/O-bound.
-The load curve (`b2_saturation.svg`) hooks up sharply at that throughput.
+one core's worth of serial compute: the update handler runs `session.update()` in a
+worker thread ([`routes.py`](../python/golit/server/routes.py)), so I/O overlaps but
+the CPU-bound Polars work doesn't parallelise past a core — a single worker is
+compute-bound, not I/O-bound. The load curve (`b2_saturation.svg`) hooks up sharply
+at that throughput.
+
+!!! note "Why the update runs in a thread (`run_b2_push.py`)"
+    The offload to a worker thread is **neutral on this homogeneous throughput sweep**
+    (A/B'd via `GOLIT_NO_OFFLOAD=1`: ~10% tax at low C, slight gain past saturation,
+    same knee) — every request here is an identical heavy update, so there's no quiet
+    co-located work to protect. Its payoff is *head-of-line isolation*: every session
+    also holds a long-lived SSE stream, and a heavy update running inline on the loop
+    would stall those pushes for **other** sessions on the worker.
+    [`run_b2_push.py`](http/run_b2_push.py) measures exactly that — a quiet subscriber's
+    SSE cadence under load. At a light update (~2 ms) it's a wash; at a heavy one
+    (~tens of ms) running inline more than doubles the quiet session's push-latency tail
+    while the thread offload holds it near the floor. That's the case the offload buys.
 
 **2. Horizontal scaling** — fixed saturating load (C=32), add **sticky instances**
 `N` ∈ {1,2,4}, each session pinned to one instance by cookie hash (Golit keeps
@@ -401,7 +460,10 @@ uv run --no-sync python -m bench.http.run_b2 --quick  # fast signal
   servers + driver on one box; put the instances on their own machines to measure
   clean linear scaling. The harness ([`run_b2.py`](http/run_b2.py)) already takes N
   sticky base URLs, so this is a deployment change, not a code one.
-- End-to-end numbers over each rival's *real* transport (Streamlit/Marimo websocket,
-  Dash's `/_dash-update-component` POST; these comparisons are server-compute only);
-  real network RTT; a **standard cloud instance** — everything here is loopback on a
-  dev laptop, suggestive not publishable.
+- End-to-end over each rival's *real* transport: **Dash is done** — both the single
+  chart (`run_b1_dash_http.py`) and the shared-upstream memoization (`run_memo_http.py`)
+  drive Dash's real `/_dash-update-component` POST. Still server-compute only:
+  Streamlit/Marimo (their websocket transport).
+- **A standard cloud instance with real network RTT.** Everything here is loopback on a
+  dev laptop — reproducible and the right *shape*, but suggestive, not the published
+  figure. This is the gate between "the curve is real" and "here is the launch number."
