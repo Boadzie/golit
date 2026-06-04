@@ -147,7 +147,9 @@ A map is a reactive view like any other — a control rebuilds it. Return a GeoP
 **`GeoDataFrame`** and Golit renders a native **MapLibre GL** map; `golit.gis.geo_map`
 adds choropleths, tooltips, and basemaps, and `golit.gis.spatial_sql` runs DuckDB `ST_*`
 queries that feed it. No client map framework — the server ships the GeoJSON and the
-style rules; the GPU draws.
+style rules; the GPU draws. For **large** vector data, `golit.gis.vector_tiles` keeps the
+GeoDataFrame server-side and streams **MVT vector tiles** (`pip install
+"golit[gis-vector-tiles]"`) so 100k+ features render without inlining the whole GeoJSON.
 
 ```python
 import golit.gis as gis
@@ -169,6 +171,7 @@ accumulation, …) into a renderable raster (`pip install "golit[gis-terrain]"`)
 spatial rides on the `sql` extra). Moving a control re-runs only the filter + map node — the
 fragment swaps in place on the initial load and after a POST/SSE. See
 [`examples/geo_explorer/app.py`](examples/geo_explorer/app.py) (vector),
+[`examples/vector_tiles/app.py`](examples/vector_tiles/app.py) (60k-feature vector tiles),
 [`examples/raster_explorer/app.py`](examples/raster_explorer/app.py) (raster),
 [`examples/rgb_composite/app.py`](examples/rgb_composite/app.py) (RGB composite),
 [`examples/tiled_raster/app.py`](examples/tiled_raster/app.py) (tiled COG),
@@ -248,11 +251,12 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **151** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **158** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
-maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps;
-single-band, RGB-composite, tiled-COG raster maps; WhiteboxTools terrain; Earth Engine
-overlays; spatial SQL — `golit.gis`), Litestar server (POST + SSE), Redis pub/sub fan-out,
+maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps +
+MVT vector tiles for large data; single-band, RGB-composite, tiled-COG raster maps;
+WhiteboxTools terrain; Earth Engine overlays; spatial SQL — `golit.gis`), Litestar server
+(POST + SSE), Redis pub/sub fan-out,
 multi-worker deployment, the benchmark harness ([`bench/`](bench/), with measured
 Golit-vs-Dash results), and the examples. **Deferred:** a standard-cloud-instance benchmark
 publication and the wider design suite in `golit_pages/`.

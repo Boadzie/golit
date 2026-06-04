@@ -12,6 +12,7 @@ Install the extras:
 
 ```bash
 pip install "golit[gis]"          # vector: geo_map, spatial_sql, explore
+pip install "golit[gis-vector-tiles]"  # large vector data: gis.vector_tiles (MVT tiles)
 pip install "golit[gis-raster]"   # raster: gis.raster / gis.rgb (rasterio / rioxarray / xarray)
 pip install "golit[gis-tiles]"    # tiled rasters: gis.tiles (rio-tiler, large COGs)
 pip install "golit[gis-terrain]"  # terrain analysis: gis.terrain (WhiteboxTools)
@@ -95,6 +96,33 @@ The default basemap is a free **[OpenFreeMap](https://openfreemap.org/)** vector
 For production, self-host the tiles rather than leaning on the public instance.
 `tooltip_trigger="hover"` shows the popup on hover instead of click, and `fit_padding`
 controls the bounds-fit inset.
+
+## `vector_tiles` — large vector data
+
+`geo_map` inlines the whole GeoJSON into the page — perfect for thousands of features, but a
+GeoDataFrame with **hundreds of thousands** of features would freeze the browser. `gis.vector_tiles`
+keeps the data **server-side** and streams only the features in each visible tile as a Mapbox
+Vector Tile (MVT) — the vector analog of `gis.tiles` for rasters. The map looks the same
+(choropleth `color`, `tooltip` popups, `legend`, `basemap`), but it scales:
+
+```python
+@app.view
+def map(parcels):                       # parcels: a big GeoDataFrame
+    return gis.vector_tiles(parcels, color="value", tooltip=["id", "value"])
+```
+
+The frame is reprojected to Web Mercator and registered under an opaque token; Golit's
+`/gis/vector/{token}/{z}/{x}/{y}` route encodes each tile on demand and the GPU styles the
+vector features client-side. `properties` limits which columns ride in the tiles (the `color`
+column and `tooltip` fields are always kept); `max_zoom` bounds the tile pyramid. A plain
+Polars/pandas frame works with `geometry=<column>`, same as `geo_map`. Like raster tiles, the
+data is worker-local, so tiles are served by the worker that rendered the view. Needs
+`pip install "golit[gis,gis-vector-tiles]"`.
+
+!!! tip "geo_map vs vector_tiles"
+    Reach for `geo_map` by default (simplest — one GeoJSON, no tile route). Switch to
+    `vector_tiles` when the feature count gets large enough that shipping the whole GeoJSON
+    is the bottleneck. Same styling API, so it's mostly a one-word change.
 
 ## `maplibre` — a native map from a style
 

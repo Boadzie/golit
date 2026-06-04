@@ -19,6 +19,12 @@ may also just *return* a `GeoDataFrame` — `render_value` routes it here with d
 
 ::: golit.gis.geo_map
 
+## vector_tiles
+
+Serve a *large* `GeoDataFrame` as on-demand MVT vector tiles — the data stays server-side, only the visible tiles cross the wire (the vector analog of `tiles`). Needs `pip install "golit[gis,gis-vector-tiles]"`.
+
+::: golit.gis.vector_tiles
+
 ## raster
 
 Render a georeferenced raster (rioxarray/xarray `DataArray`, GeoTIFF path, or NumPy array + bounds) as a native MapLibre image layer.
