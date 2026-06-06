@@ -1,5 +1,10 @@
 # Golit
 
+![version](https://img.shields.io/badge/version-1.0.0-blue)
+![python](https://img.shields.io/badge/python-3.11%2B-blue)
+![license](https://img.shields.io/badge/license-Apache--2.0-green)
+[![changelog](https://img.shields.io/badge/changelog-1.0.0-orange)](CHANGELOG.md)
+
 > A high-performance **Reactive Directed Acyclic Graph (DAG)** framework for building reactive data apps in Python. Golit maps your data dependencies, then on every interaction recomputes only the nodes that changed — not your whole script.
 
 - **Rust reactive kernel** (PyO3) — dirty tracking, topological scheduling, propagation
