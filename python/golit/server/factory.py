@@ -12,6 +12,7 @@ from litestar import Litestar
 from litestar.datastructures import State
 
 from ..app import App
+from .audio import audio
 from .chat import ChatHub
 from .processing import camera
 from .pubsub import InMemoryPubSub, PubSub
@@ -91,12 +92,13 @@ def create_app(
     chat = ChatHub(app)
     return Litestar(
         route_handlers=[
-            index, update_node, events, chat_ws, tile, vector_tile, stream, camera
+            index, update_node, events, chat_ws, tile, vector_tile, stream, camera, audio
         ],
         state=State(
             {"sessions": sessions, "pubsub": pubsub, "sse": sse, "chat": chat,
              "streams": app.streams, "shared_streams": app.shared_streams,
-             "stream_hubs": {}, "frame_handlers": app.frame_handlers}
+             "stream_hubs": {}, "frame_handlers": app.frame_handlers,
+             "audio_handlers": app.audio_handlers}
         ),
         on_startup=[_start_sse, *(on_startup or [])],
         on_shutdown=[_stop_sse, *(on_shutdown or [])],

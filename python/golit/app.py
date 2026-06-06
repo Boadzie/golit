@@ -29,6 +29,7 @@ class App:
         self._streams: dict[str, NodeFn] = {}
         self._shared_streams: set[str] = set()
         self._frame_handlers: dict[str, NodeFn] = {}
+        self._audio_handlers: dict[str, NodeFn] = {}
         self._built = False
         #: Optional page layout tree (see :mod:`golit.layout`); ``None`` stacks
         #: every view under one controls panel.
@@ -149,6 +150,31 @@ class App:
 
         return deco
 
+    def on_audio(self, name: str) -> Callable[[NodeFn], NodeFn]:
+        """Register a handler for clips recorded by the browser-mic view named ``name``,
+        shown by :func:`golit.ui.recorder`. When the visitor stops recording, the clip is
+        uploaded (over a WebSocket) as 16-bit PCM **WAV** ``bytes`` and passed to the handler.
+        Whatever it returns is shown back in the recorder::
+
+            import wave, io
+
+            @app.on_audio("note")
+            def transcribe(wav: bytes):              # 16-bit PCM WAV bytes
+                with wave.open(io.BytesIO(wav)) as w:  # stdlib — no ffmpeg needed
+                    seconds = w.getnframes() / w.getframerate()
+                return f"<p>{seconds:.1f}s recorded</p>"   # HTML/renderable, shown in place
+
+        A renderable return (string, DataFrame, a :mod:`golit.ui` component, …) is rendered and
+        displayed; returning **`bytes`** instead sends audio back for playback (an echo, a TTS
+        reply). Sync or async handlers both work — sync ones run in a worker thread so a heavy
+        transcribe never stalls the loop. The audio mirror of :meth:`on_frame`."""
+
+        def deco(fn: NodeFn) -> NodeFn:
+            self._audio_handlers[name] = fn
+            return fn
+
+        return deco
+
     # -- resolution --------------------------------------------------------
     def build(self) -> None:
         """Resolve every parameter to an input/dependency/constant. Raises if a
@@ -224,6 +250,11 @@ class App:
     def frame_handlers(self) -> dict[str, NodeFn]:
         """Registered browser-camera frame processors, keyed by camera name."""
         return self._frame_handlers
+
+    @property
+    def audio_handlers(self) -> dict[str, NodeFn]:
+        """Registered browser-mic clip handlers, keyed by recorder name."""
+        return self._audio_handlers
 
     def node_def(self, node_id: str) -> NodeDef:
         return self._defs[node_id]
