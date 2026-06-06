@@ -106,7 +106,29 @@ sequenceDiagram
 
 ## Scaling & deployment
 
-The stream is **one long-lived HTTP response per viewer**, held open on the worker that answered it — there's no fan-out and no session affinity to arrange (unlike [SSE](server-push.md) or [chat](websockets.md)). The cost model is different, though: a producer runs *per connection*, so N viewers of a camera means N producer runs. For a single shared source watched by many, have one producer read the device and publish frames to a queue that each request drains — the same hub shape chat uses.
+The stream is **one long-lived HTTP response per viewer**, held open on the worker that answered it — there's no fan-out and no session affinity to arrange (unlike [SSE](server-push.md) or [chat](websockets.md)). The cost model is different, though: by default a producer runs *per connection*, so N viewers of a camera means N producer runs — right for a synthetic feed or a per-session source, but wrong for one physical camera many people watch (you'd open the device N times).
+
+### One source, many viewers: `shared=True`
+
+For a single device fanned out to a crowd, pass `shared=True`:
+
+```python
+@app.stream("lobby", shared=True)    # one producer, however many viewers
+def lobby():
+    cap = cv2.VideoCapture(0)
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            yield cv2.imencode(".jpg", frame)[1].tobytes()
+    finally:
+        cap.release()
+```
+
+Golit runs the producer **once** behind a hub: a single background pull keeps the latest frame and pushes it to every viewer's `<img>`. The producer starts when the first viewer connects and its `finally` runs when the last one leaves (so the camera is released when nobody's watching, and re-opened when someone returns). A slow viewer simply drops intermediate frames — it's MJPEG, latest wins — so one laggy client can't back up the others.
+
+The hub is **per worker process**. Under multiple workers each opens the source once, so for a truly single hardware device pin the stream to one worker (or front it with a single capture process). For a synthetic or per-viewer feed, leave `shared` off — the default per-connection model is simpler and has nothing to share.
 
 !!! warning "Don't buffer the stream at your proxy"
     A reverse proxy that buffers responses will stall an MJPEG feed (it waits for an end that never comes). Disable buffering and raise the read timeout on the stream path. For nginx:
