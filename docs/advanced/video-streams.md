@@ -183,16 +183,20 @@ ui.camera(name, *, title=None, height=384, width=640, fps=12, quality=0.6)
 
     When the camera can't start — an insecure page, a denied permission, no device, or one already in use — `ui.camera` replaces the feed with a clear, icon-labelled notice (e.g. *"Camera blocked. Allow camera access in your browser, then reload."*) rather than a stuck spinner, so the visitor knows what to fix.
 
-Unlike `@app.stream` (one shared producer, fanned out as MJPEG), each `ui.camera` viewer has its **own** camera and its **own** WebSocket, so the handler runs per viewer — size your CV accordingly.
+Unlike a [`shared=True` `@app.stream`](#one-source-many-viewers-sharedtrue) (one producer fanned out to many), each `ui.camera` viewer has its **own** camera and its **own** WebSocket, so the handler always runs per viewer — size your CV accordingly.
 
 ## Full examples
 
 - [`examples/webcam_stream/app.py`](https://github.com/boadzie/golit/tree/main/examples/webcam_stream) — **server → browser**. Runs with no camera: synthesizes frames with a box bouncing across the canvas and a fake `person 0.98` detection, the shape a real detector emits. Includes a commented OpenCV loop to swap in a real webcam.
 - [`examples/browser_camera/app.py`](https://github.com/boadzie/golit/tree/main/examples/browser_camera) — **browser → server**. Processes the visitor's own webcam: finds the brightest region of each frame and draws a labelled box that tracks it — a dependency-light stand-in for a detector.
+- [`examples/face_detect/app.py`](https://github.com/boadzie/golit/tree/main/examples/face_detect) — **browser → server**, with a *real* model. Runs OpenCV's bundled Haar-cascade face detector on each frame and boxes every face — the same `@app.on_frame` shape, with a network swapped in for the stand-in. Needs `opencv-python` on top of the `vision` extra.
 
 ```
 pip install "golit[vision]"
 golit run examples/webcam_stream/app.py      # or examples/browser_camera/app.py
+
+pip install "golit[vision]" opencv-python     # the face_detect example also needs OpenCV
+golit run examples/face_detect/app.py
 ```
 
 ## Reference
