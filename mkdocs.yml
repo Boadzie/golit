@@ -131,6 +131,7 @@ nav:
   - Advanced:
       - advanced/index.md
       - Server-push updates (SSE): advanced/server-push.md
+      - Live data sources (polling): advanced/live-sources.md
       - WebSocket chat: advanced/websockets.md
       - Video streams (CV): advanced/video-streams.md
       - Audio recording: advanced/audio.md

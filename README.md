@@ -10,6 +10,7 @@
 - **Maps** — native **MapLibre GL** maps: **GeoDataFrame** vector + **rioxarray/xarray** raster + DuckDB spatial SQL (`golit.gis`)
 - **Components** — reactive input widgets + a shadcn-styled **`golit.ui`** library
 - **SSE** push channel with a pluggable pub/sub — in-memory single-node, **Redis** for a fleet
+- **Live sources** — `@app.poll` streams external data that changes on its own (a Google Sheet, an API); only real changes re-render and hit the wire
 - **Realtime** — WebSocket **chat**, **video** (server-side **MJPEG** + **browser-camera** CV), and **audio** (mic **recorder** → server) — `@app.stream` / `@app.on_frame` / `@app.on_audio`
 - **Tailwind + shadcn-styled** HTML, server-rendered (the `golit_pages` design system)
 
@@ -296,7 +297,7 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **198** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **205** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
 maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps +
 MVT vector tiles for large data; single-band, RGB-composite, tiled-COG raster maps;
