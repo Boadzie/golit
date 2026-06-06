@@ -97,6 +97,27 @@ def test_route_processes_a_frame_and_sends_it_back():
     assert int(arr[:8, :, 1].mean()) > 200  # the handler's green strip came back
 
 
+def test_route_echoes_source_when_handler_raises():
+    app = App(title="Cam")
+
+    @app.on_frame("boom")
+    def boom(frame):
+        raise RuntimeError("model exploded")  # a bad frame must not kill the stream
+
+    @app.view
+    def live() -> str:
+        return ui.camera("boom")
+
+    src = _jpeg(40, 40)
+    with TestClient(app=create_app(app)) as client:
+        with client.websocket_connect("/golit/camera/boom") as ws:
+            ws.send_bytes(src)
+            echoed = ws.receive_bytes()
+            ws.send_bytes(src)  # socket still alive — a second frame round-trips too
+            echoed2 = ws.receive_bytes()
+    assert echoed == src and echoed2 == src  # source echoed back, loop kept alive
+
+
 def test_unknown_camera_is_closed_with_4404():
     from litestar.exceptions import WebSocketDisconnect
 

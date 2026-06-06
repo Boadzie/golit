@@ -68,6 +68,22 @@ async def test_async_producer_is_supported():
     assert body.count(b"--golitframe") == 2
 
 
+async def test_mjpeg_ends_cleanly_when_producer_raises_mid_stream():
+    def produce():
+        yield b"\xff\xd8one\xff\xd9"
+        raise RuntimeError("camera died")  # must not bubble out of the stream
+
+    body = await _collect(produce)
+    assert body.count(b"--golitframe") == 1  # the good frame, then a clean end
+
+
+async def test_mjpeg_ends_cleanly_when_producer_raises_immediately():
+    def produce():
+        raise RuntimeError("no camera")
+
+    assert await _collect(produce) == b""  # no frames, no exception
+
+
 # -- the shared-source hub ----------------------------------------------------
 
 
@@ -122,6 +138,18 @@ async def test_shared_hub_releases_producer_when_last_viewer_leaves():
     if hub._task is not None:
         await asyncio.wait_for(hub._task, 2)
     assert got and released is True  # finally ran -> a real camera handle would be freed
+
+
+async def test_shared_hub_survives_producer_error():
+    def produce():
+        yield b"\xff\xd8one\xff\xd9"
+        raise RuntimeError("camera died")
+
+    hub = _StreamHub(produce)
+    got = await asyncio.wait_for(_take(hub, 5), 2)  # asks 5; producer makes 1 then errors
+    assert got == [b"\xff\xd8one\xff\xd9"]  # the good frame, then the viewer ends cleanly
+    if hub._task is not None:
+        await asyncio.wait_for(hub._task, 2)  # drive task finished (error was caught, not raised)
 
 
 async def test_shared_hub_ends_viewers_when_producer_stops():
