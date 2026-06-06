@@ -10,7 +10,7 @@
 - **Maps** — native **MapLibre GL** maps: **GeoDataFrame** vector + **rioxarray/xarray** raster + DuckDB spatial SQL (`golit.gis`)
 - **Components** — reactive input widgets + a shadcn-styled **`golit.ui`** library
 - **SSE** push channel with a pluggable pub/sub — in-memory single-node, **Redis** for a fleet
-- **Realtime** — WebSocket **chat** + **video**: server-side **MJPEG** webcam streams and **browser-camera** computer vision (`@app.stream` / `@app.on_frame`, `golit.ui.webcam` / `camera`)
+- **Realtime** — WebSocket **chat**, **video** (server-side **MJPEG** + **browser-camera** CV), and **audio** (mic **recorder** → server) — `@app.stream` / `@app.on_frame` / `@app.on_audio`
 - **Tailwind + shadcn-styled** HTML, server-rendered (the `golit_pages` design system)
 
 See [`project_scope.md`](project_scope.md) for the architecture and
@@ -214,6 +214,12 @@ install "golit[vision]"` (or `[vision-cv]` for OpenCV). See
 [`examples/browser_camera`](examples/browser_camera/app.py) (browser camera), and
 [`examples/face_detect`](examples/face_detect/app.py) (real OpenCV face detection).
 
+For **audio**, `ui.recorder(name)` captures the visitor's mic and uploads each clip as 16-bit
+WAV; the `@app.on_audio(name)` handler decodes it (Python's stdlib `wave` — no ffmpeg) and
+returns a result to show, or audio to play back. See
+[`examples/audio_recorder`](examples/audio_recorder/app.py) and
+[Audio recording](docs/advanced/audio.md).
+
 ## Components
 
 **Inputs** (reactive) — `slider`, `number`, `select`, `text`, `checkbox`, `upload`,
@@ -223,7 +229,7 @@ install "golit[vision]"` (or `[vision-cv]` for OpenCV). See
 `accordion`, `divider`, `metric`, `scorecard`, `alert`, `badge`, `progress`, `skeleton`,
 `spinner`, `table`, `markdown`, `code`, `json_view`, `heading`, `caption`.
 
-**Realtime** (`golit.ui`) — `chat`, `webcam`, `camera`.
+**Realtime** (`golit.ui`) — `chat`, `webcam`, `camera`, `recorder`.
 
 ```python
 import golit.ui as ui
@@ -289,13 +295,13 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **190** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **198** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
 maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps +
 MVT vector tiles for large data; single-band, RGB-composite, tiled-COG raster maps;
 WhiteboxTools terrain; Earth Engine overlays; spatial SQL — `golit.gis`), Litestar server
-(POST + SSE), Redis pub/sub fan-out, multi-worker deployment, realtime WebSocket chat and
-video (server-side MJPEG streams + browser-camera CV), the benchmark harness
+(POST + SSE), Redis pub/sub fan-out, multi-worker deployment, realtime WebSocket chat,
+video (server-side MJPEG streams + browser-camera CV), and audio (mic recorder), the benchmark harness
 ([`bench/`](bench/), with measured Golit-vs-Dash results), and the examples. **Deferred:** a
 standard-cloud-instance benchmark publication and the wider design suite in `golit_pages/`.
 
