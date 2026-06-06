@@ -316,8 +316,30 @@ CAMERA_BOOTSTRAP = """
     var ctx = canvas.getContext('2d');
     var ws, stream, lastUrl, sentAt = 0, closed = false, minGap = 1000 / fps;
 
-    function note(msg) { if (status) { status.textContent = msg; status.style.display = ''; } }
+    // Render the status overlay as an icon over a message (textContent, so a raw error
+    // name can't inject markup). `icon` is one of our own Material Symbols names.
+    function note(msg, icon) {
+      if (!status) return;
+      status.innerHTML =
+        '<div class="golit-camera-note flex flex-col items-center gap-2">' +
+        '<span class="material-symbols-outlined text-3xl">' + (icon || 'videocam') + '</span>' +
+        '<span class="golit-camera-note-msg"></span></div>';
+      status.querySelector('.golit-camera-note-msg').textContent = msg;
+      status.style.display = '';
+    }
     function hideNote() { if (status) status.style.display = 'none'; }
+    // Map a getUserMedia rejection to a plain-language [message, icon].
+    function cameraError(e) {
+      var n = (e && e.name) || '';
+      if (n === 'NotAllowedError' || n === 'SecurityError' || n === 'PermissionDeniedError')
+        return ['Camera blocked. Allow camera access in your browser, then reload.',
+                'videocam_off'];
+      if (n === 'NotFoundError' || n === 'DevicesNotFoundError' || n === 'OverconstrainedError')
+        return ['No camera found on this device.', 'no_photography'];
+      if (n === 'NotReadableError' || n === 'TrackStartError')
+        return ['Camera is in use by another app. Close it and reload.', 'videocam_off'];
+      return ['Could not access the camera' + (n ? ' (' + n + ').' : '.'), 'error'];
+    }
     function cleanup() {
       closed = true;
       if (ws) { try { ws.close(); } catch (e) {} }
@@ -326,8 +348,9 @@ CAMERA_BOOTSTRAP = """
     }
     el.__golitCameraCleanup = cleanup;
 
+    note('Starting camera…', 'videocam');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      note('Camera needs a secure context (https or localhost).'); return;
+      note('Camera needs a secure page — open this over https or on localhost.', 'lock'); return;
     }
     navigator.mediaDevices.getUserMedia({ video: { width: maxw }, audio: false })
       .then(function (s) {
@@ -335,7 +358,7 @@ CAMERA_BOOTSTRAP = """
         stream = s; video.srcObject = s; return video.play();
       })
       .then(function () { if (!closed) connect(); })
-      .catch(function (e) { note('Could not access camera: ' + ((e && e.name) || e)); });
+      .catch(function (e) { var m = cameraError(e); note(m[0], m[1]); });
 
     function connect() {
       var proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -344,10 +367,12 @@ CAMERA_BOOTSTRAP = """
       ws.binaryType = 'blob';
       ws.onopen = function () { hideNote(); capture(); };
       ws.onmessage = function (ev) { show(ev.data); };
-      ws.onerror = function () { note('Stream error.'); };
+      ws.onerror = function () { note('Could not reach the server.', 'wifi_off'); };
       ws.onclose = function (ev) {
         if (closed) return;
-        note(ev && ev.code === 4404 ? 'No camera handler named "' + name + '".' : 'Stream closed.');
+        if (ev && ev.code === 4404)
+          note('No camera handler named "' + name + '" on the server.', 'error');
+        else note('Camera stream closed.', 'wifi_off');
       };
     }
 
