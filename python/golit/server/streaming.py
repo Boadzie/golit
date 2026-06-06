@@ -21,6 +21,7 @@ fans the latest frame out to every viewer; the producer starts on the first view
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -29,6 +30,8 @@ from litestar import Request, get
 from litestar.exceptions import NotFoundException
 from litestar.params import FromPath
 from litestar.response import Stream
+
+_log = logging.getLogger("golit.stream")
 
 _BOUNDARY = "golitframe"
 _MEDIA_TYPE = f"multipart/x-mixed-replace; boundary={_BOUNDARY}"
@@ -67,18 +70,26 @@ def _next_jpeg(iterator: Any) -> Any:
 
 
 async def _mjpeg(produce: Any) -> AsyncIterator[bytes]:
-    """Drive a producer (called fresh per request) into a stream of MJPEG parts."""
-    frames = produce()
-    if hasattr(frames, "__anext__"):  # an async generator/iterator
-        async for frame in frames:
-            yield _part(_to_jpeg(frame))
-        return
-    iterator = iter(frames)
-    while True:
-        part = await anyio.to_thread.run_sync(_next_jpeg, iterator)
-        if part is _SENTINEL:
-            break
-        yield part
+    """Drive a producer (called fresh per request) into a stream of MJPEG parts.
+
+    A producer that raises (a camera read fails, a model errors) ends the stream
+    gracefully — logged, not crashed — so one bad frame closes the response cleanly
+    instead of bubbling a 500 mid-stream. Client disconnects (``GeneratorExit`` /
+    ``CancelledError``) are not ``Exception`` and propagate untouched, so cleanup still runs."""
+    try:
+        frames = produce()
+        if hasattr(frames, "__anext__"):  # an async generator/iterator
+            async for frame in frames:
+                yield _part(_to_jpeg(frame))
+            return
+        iterator = iter(frames)
+        while True:
+            part = await anyio.to_thread.run_sync(_next_jpeg, iterator)
+            if part is _SENTINEL:
+                break
+            yield part
+    except Exception:
+        _log.exception("stream producer failed; ending the feed")
 
 
 def _pull_jpeg(iterator: Any) -> Any:
@@ -119,8 +130,9 @@ class _StreamHub:
         ready.set()
 
     async def _drive(self) -> None:
-        frames = self._produce()
+        frames: Any = None
         try:
+            frames = self._produce()
             if hasattr(frames, "__anext__"):  # an async generator/iterator
                 async for frame in frames:
                     if self._viewers == 0:
@@ -133,12 +145,17 @@ class _StreamHub:
                     if jpeg is _SENTINEL:
                         break
                     self._publish(jpeg)
+        except Exception:
+            # A failed producer/encode ends the shared feed cleanly (viewers see _done and
+            # exit) rather than dying as an unretrieved task exception. A later viewer restarts.
+            _log.exception("shared stream producer failed; ending the feed")
         finally:
-            aclose = getattr(frames, "aclose", None)
-            if aclose is not None:
-                await aclose()
-            else:
-                await anyio.to_thread.run_sync(_close_sync, frames)
+            if frames is not None:
+                aclose = getattr(frames, "aclose", None)
+                if aclose is not None:
+                    await aclose()
+                else:
+                    await anyio.to_thread.run_sync(_close_sync, frames)
             self._latest = None
             self._done = True
             self._ready.set()  # release any viewer waiting on the next frame
