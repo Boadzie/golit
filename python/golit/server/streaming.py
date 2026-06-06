@@ -10,10 +10,17 @@ Sync producers are pulled (and arrays encoded) in a worker thread via ``anyio.to
 a blocking camera read or a CV model never stalls the event loop; async producers are awaited
 directly. The producer's ``try/finally`` runs when the client disconnects and the generator is
 closed, so a camera handle is released.
+
+By default the producer runs **once per viewer** (each request is its own generator) — right
+for synthetic feeds and a per-session camera. For a single shared device watched by many,
+``@app.stream(name, shared=True)`` runs the producer **once** behind a :class:`_StreamHub` that
+fans the latest frame out to every viewer; the producer starts on the first viewer and its
+``finally`` runs when the last one leaves.
 """
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -74,15 +81,114 @@ async def _mjpeg(produce: Any) -> AsyncIterator[bytes]:
         yield part
 
 
+def _pull_jpeg(iterator: Any) -> Any:
+    """Pull + encode the next frame of a sync producer in a worker thread (no multipart
+    wrapping — the hub stores raw JPEG and wraps per viewer). Sentinel at end."""
+    frame = next(iterator, _SENTINEL)
+    return _SENTINEL if frame is _SENTINEL else _to_jpeg(frame)
+
+
+def _close_sync(frames: Any) -> None:
+    """Close a finished sync generator so its ``finally`` (camera release) runs."""
+    close = getattr(frames, "close", None)
+    if close is not None:
+        close()
+
+
+class _StreamHub:
+    """One producer run fanned out to many viewers of a ``shared=True`` stream.
+
+    The producer starts on the first :meth:`subscribe` and is pulled by a single background
+    task that keeps the *latest* JPEG; every viewer waits for the next frame and yields it
+    (slow viewers simply drop intermediate frames — it's MJPEG, latest wins). When the last
+    viewer leaves, the loop stops and the producer's ``finally`` runs, releasing the device;
+    a later viewer restarts it. One hub lives per stream name in ``app.state.stream_hubs``.
+    """
+
+    def __init__(self, produce: Any) -> None:
+        self._produce = produce
+        self._latest: bytes | None = None
+        self._ready = asyncio.Event()  # replaced each frame; the old one is set to wake waiters
+        self._done = False  # producer has stopped — wake viewers so they end too
+        self._viewers = 0
+        self._task: asyncio.Task[None] | None = None
+
+    def _publish(self, jpeg: bytes) -> None:
+        self._latest = jpeg
+        ready, self._ready = self._ready, asyncio.Event()
+        ready.set()
+
+    async def _drive(self) -> None:
+        frames = self._produce()
+        try:
+            if hasattr(frames, "__anext__"):  # an async generator/iterator
+                async for frame in frames:
+                    if self._viewers == 0:
+                        break
+                    self._publish(await anyio.to_thread.run_sync(_to_jpeg, frame))
+            else:
+                iterator = iter(frames)
+                while self._viewers > 0:
+                    jpeg = await anyio.to_thread.run_sync(_pull_jpeg, iterator)
+                    if jpeg is _SENTINEL:
+                        break
+                    self._publish(jpeg)
+        finally:
+            aclose = getattr(frames, "aclose", None)
+            if aclose is not None:
+                await aclose()
+            else:
+                await anyio.to_thread.run_sync(_close_sync, frames)
+            self._latest = None
+            self._done = True
+            self._ready.set()  # release any viewer waiting on the next frame
+
+    def _ensure_running(self) -> None:
+        if self._task is None or self._task.done():
+            self._done = False
+            self._ready = asyncio.Event()
+            self._task = asyncio.ensure_future(self._drive())
+
+    async def subscribe(self) -> AsyncIterator[bytes]:
+        """Yield the latest JPEG as each new frame lands, for one viewer's lifetime —
+        ending when the producer stops (its frames run out or the last viewer leaves)."""
+        self._viewers += 1
+        self._ensure_running()
+        try:
+            while True:
+                ready = self._ready
+                await ready.wait()
+                if self._latest is not None:
+                    yield self._latest
+                if self._done:
+                    return
+        finally:
+            self._viewers -= 1
+
+
+async def _hub_mjpeg(hub: _StreamHub) -> AsyncIterator[bytes]:
+    """Wrap a hub subscription's raw JPEG frames as MJPEG parts."""
+    async for jpeg in hub.subscribe():
+        yield _part(jpeg)
+
+
 @get("/golit/stream/{name:str}")
 async def stream(name: FromPath[str], request: Request) -> Stream:
-    """Serve the MJPEG stream registered as ``name`` with ``@app.stream``; 404 if unknown."""
+    """Serve the MJPEG stream registered as ``name`` with ``@app.stream``; 404 if unknown.
+    A ``shared=True`` stream is fanned out from one :class:`_StreamHub`; otherwise each
+    request drives its own producer."""
     producers: dict[str, Any] = getattr(request.app.state, "streams", {})
     produce = producers.get(name)
     if produce is None:
         raise NotFoundException(f"no such stream: {name!r}")
+    shared: Any = getattr(request.app.state, "shared_streams", frozenset())
+    if name in shared:
+        hubs: dict[str, _StreamHub] = request.app.state.stream_hubs
+        body = _hub_mjpeg(hubs.setdefault(name, _StreamHub(produce)))
+    else:
+        body = _mjpeg(produce)
     return Stream(
-        _mjpeg(produce),
+        body,
         media_type=_MEDIA_TYPE,
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
     )

@@ -95,7 +95,8 @@ def create_app(
         ],
         state=State(
             {"sessions": sessions, "pubsub": pubsub, "sse": sse, "chat": chat,
-             "streams": app.streams, "frame_handlers": app.frame_handlers}
+             "streams": app.streams, "shared_streams": app.shared_streams,
+             "stream_hubs": {}, "frame_handlers": app.frame_handlers}
         ),
         on_startup=[_start_sse, *(on_startup or [])],
         on_shutdown=[_stop_sse, *(on_shutdown or [])],

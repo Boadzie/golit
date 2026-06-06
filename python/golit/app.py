@@ -27,6 +27,7 @@ class App:
         self._widgets: dict[str, Widget] = {}
         self._chat_handlers: dict[str | None, NodeFn] = {}
         self._streams: dict[str, NodeFn] = {}
+        self._shared_streams: set[str] = set()
         self._frame_handlers: dict[str, NodeFn] = {}
         self._built = False
         #: Optional page layout tree (see :mod:`golit.layout`); ``None`` stacks
@@ -88,7 +89,7 @@ class App:
 
         return deco
 
-    def stream(self, name: str) -> Callable[[NodeFn], NodeFn]:
+    def stream(self, name: str, *, shared: bool = False) -> Callable[[NodeFn], NodeFn]:
         """Register a video **frame producer** named ``name``, shown by
         :func:`golit.ui.webcam`. The decorated function returns an iterator of frames —
         JPEG ``bytes`` (e.g. from ``cv2.imencode``) or ``(H, W, 3)`` uint8 RGB arrays
@@ -109,10 +110,18 @@ class App:
                     cap.release()
 
         Sync or async (``async def`` + ``yield``) producers both work; sync frames are
-        pulled in a worker thread so a blocking camera read or model never stalls the loop."""
+        pulled in a worker thread so a blocking camera read or model never stalls the loop.
+
+        With ``shared=True`` the producer runs **once** no matter how many viewers connect:
+        a single background pull keeps the latest frame and fans it out to every ``<img>``,
+        so N viewers of one camera don't open N devices. The producer starts on the first
+        viewer and its ``finally`` runs when the last leaves. Leave it ``False`` (the default)
+        for synthetic feeds or a genuinely per-viewer source."""
 
         def deco(fn: NodeFn) -> NodeFn:
             self._streams[name] = fn
+            if shared:
+                self._shared_streams.add(name)
             return fn
 
         return deco
@@ -205,6 +214,11 @@ class App:
     def streams(self) -> dict[str, NodeFn]:
         """Registered video frame producers, keyed by stream name."""
         return self._streams
+
+    @property
+    def shared_streams(self) -> set[str]:
+        """Names of streams registered with ``shared=True`` (one producer, fanned out)."""
+        return self._shared_streams
 
     @property
     def frame_handlers(self) -> dict[str, NodeFn]:
