@@ -10,6 +10,7 @@
 - **Maps** — native **MapLibre GL** maps: **GeoDataFrame** vector + **rioxarray/xarray** raster + DuckDB spatial SQL (`golit.gis`)
 - **Components** — reactive input widgets + a shadcn-styled **`golit.ui`** library
 - **SSE** push channel with a pluggable pub/sub — in-memory single-node, **Redis** for a fleet
+- **Realtime** — WebSocket **chat** + **video**: server-side **MJPEG** webcam streams and **browser-camera** computer vision (`@app.stream` / `@app.on_frame`, `golit.ui.webcam` / `camera`)
 - **Tailwind + shadcn-styled** HTML, server-rendered (the `golit_pages` design system)
 
 See [`project_scope.md`](project_scope.md) for the architecture and
@@ -23,6 +24,8 @@ pip install "golit[charts]"       # interactive Plotly / Altair / Bokeh
 pip install "golit[sql]"          # DuckDB SQL nodes over Polars frames
 pip install "golit[gis]"          # native MapLibre maps from GeoDataFrames
 pip install "golit[gis-raster]"   # raster maps from rioxarray/xarray arrays
+pip install "golit[vision]"       # webcam / MJPEG video streams (Pillow)
+pip install "golit[vision-cv]"    # + OpenCV for real CV models (face detection)
 pip install "golit[redis]"        # Redis fan-out for multi-worker
 ```
 
@@ -178,14 +181,49 @@ fragment swaps in place on the initial load and after a POST/SSE. See
 [`examples/terrain_analysis/app.py`](examples/terrain_analysis/app.py) (terrain), and
 [`examples/earth_engine/app.py`](examples/earth_engine/app.py) (Earth Engine).
 
+## Realtime & video
+
+Some views don't re-render on a change — they hold a **live connection**.
+`golit.ui.chat(channel)` opens a WebSocket-backed chat panel (`@app.on_message` adds
+bot/moderation logic). For computer vision, `@app.stream(name)` + `ui.webcam(name)` push a
+**server-side MJPEG** feed the browser plays in a plain `<img>` — a host camera, a detector
+drawing boxes, a synthetic animation — and `shared=True` fans one producer out to many
+viewers. The mirror, `@app.on_frame(name)` + `ui.camera(name)`, streams the **visitor's own
+webcam** up over a WebSocket, runs your handler on each frame server-side, and paints the
+annotated result back.
+
+```python
+import numpy as np
+import golit.ui as ui
+
+@app.on_frame("faces")
+def detect(frame: np.ndarray) -> np.ndarray:   # (H, W, 3) uint8 RGB in and out
+    ...                                          # run your model, draw boxes
+    return frame
+
+@app.view
+def live() -> str:
+    return ui.camera("faces", title="Your camera")
+```
+
+Frames are JPEG `bytes` or `(H, W, 3)` RGB arrays (encoded with Pillow). Sync handlers run in
+a worker thread; one frame is in flight at a time, so a slow model lowers the rate instead of
+backing up, and a producer/handler that errors is logged without dropping the stream. `pip
+install "golit[vision]"` (or `[vision-cv]` for OpenCV). See
+[`examples/webcam_stream`](examples/webcam_stream/app.py) (server feed),
+[`examples/browser_camera`](examples/browser_camera/app.py) (browser camera), and
+[`examples/face_detect`](examples/face_detect/app.py) (real OpenCV face detection).
+
 ## Components
 
 **Inputs** (reactive) — `slider`, `number`, `select`, `text`, `checkbox`, `upload`,
 `radio`, `multiselect`, `switch`, `date`, `textarea`, `button`.
 
 **Display** (`golit.ui`) — `card`, `columns`, `grid`, `tabs`, `expander`,
-`accordion`, `divider`, `metric`, `alert`, `badge`, `progress`, `skeleton`,
+`accordion`, `divider`, `metric`, `scorecard`, `alert`, `badge`, `progress`, `skeleton`,
 `spinner`, `table`, `markdown`, `code`, `json_view`, `heading`, `caption`.
+
+**Realtime** (`golit.ui`) — `chat`, `webcam`, `camera`.
 
 ```python
 import golit.ui as ui
@@ -251,15 +289,15 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **158** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **190** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
 maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps +
 MVT vector tiles for large data; single-band, RGB-composite, tiled-COG raster maps;
 WhiteboxTools terrain; Earth Engine overlays; spatial SQL — `golit.gis`), Litestar server
-(POST + SSE), Redis pub/sub fan-out,
-multi-worker deployment, the benchmark harness ([`bench/`](bench/), with measured
-Golit-vs-Dash results), and the examples. **Deferred:** a standard-cloud-instance benchmark
-publication and the wider design suite in `golit_pages/`.
+(POST + SSE), Redis pub/sub fan-out, multi-worker deployment, realtime WebSocket chat and
+video (server-side MJPEG streams + browser-camera CV), the benchmark harness
+([`bench/`](bench/), with measured Golit-vs-Dash results), and the examples. **Deferred:** a
+standard-cloud-instance benchmark publication and the wider design suite in `golit_pages/`.
 
 ## Development
 
