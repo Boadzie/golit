@@ -16,6 +16,7 @@ just lowers the frame rate rather than building an unbounded backlog.
 from __future__ import annotations
 
 import inspect
+import logging
 from typing import Any
 
 import anyio
@@ -24,6 +25,8 @@ from litestar.exceptions import WebSocketDisconnect
 from litestar.params import FromPath
 
 from .streaming import _to_jpeg  # frame (array | bytes) -> JPEG bytes; reused as-is
+
+_log = logging.getLogger("golit.camera")
 
 _UNKNOWN_CAMERA = 4404  # private WS close code: no processor registered for this name
 
@@ -69,6 +72,15 @@ async def camera(socket: WebSocket, name: FromPath[str]) -> None:
     try:
         while True:
             jpeg_in = await socket.receive_bytes()
-            await socket.send_bytes(await _run(handler, jpeg_in))
+            try:
+                jpeg_out = await _run(handler, jpeg_in)
+            except Exception:
+                # A handler that raises on one frame (a bad model call, a malformed frame)
+                # must not kill the stream: the client keeps a single frame in flight and
+                # only sends the next after a reply, so we log and echo the source frame back
+                # to keep the loop alive instead of stalling the camera.
+                _log.exception("frame handler %r failed; echoing source frame", name)
+                jpeg_out = jpeg_in
+            await socket.send_bytes(jpeg_out)
     except WebSocketDisconnect:
         pass
