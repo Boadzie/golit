@@ -215,8 +215,9 @@ install "golit[vision]"` (or `[vision-cv]` for OpenCV). See
 [`examples/face_detect`](examples/face_detect/app.py) (real OpenCV face detection).
 
 For **audio**, `ui.recorder(name)` captures the visitor's mic and uploads each clip as 16-bit
-WAV; the `@app.on_audio(name)` handler decodes it (Python's stdlib `wave` — no ffmpeg) and
-returns a result to show, or audio to play back. See
+WAV (with inline playback + a download link for the clip); the `@app.on_audio(name)` handler
+decodes it (Python's stdlib `wave` — no ffmpeg) and returns a result to show, or audio to play
+back. See
 [`examples/audio_recorder`](examples/audio_recorder/app.py) and
 [Audio recording](docs/advanced/audio.md).
 

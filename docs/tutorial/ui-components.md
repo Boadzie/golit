@@ -68,7 +68,7 @@ That uniformity is the point: a `card` doesn't care whether you hand it a string
 | `chat(channel, *, author="You", title=None, …)` | A live, WebSocket-backed chat panel. |
 | `webcam(name, *, title=None, height=384, width=None)` | A live video panel showing a server-side MJPEG stream. |
 | `camera(name, *, title=None, height=384, width=640, fps=12, quality=0.6)` | The visitor's own webcam, processed server-side and painted back. |
-| `recorder(name, *, title=None, max_seconds=30, hint=None)` | A microphone recorder; the clip uploads as WAV and the `@app.on_audio` result is shown. |
+| `recorder(name, *, title=None, max_seconds=30, hint=None, playback=True, download=True)` | A microphone recorder; the clip uploads as WAV and the `@app.on_audio` result is shown, with inline playback + a download link for your clip. |
 
 These are different from the others: rather than rendering once, they hold a live connection and update on their own. `chat` opens a bidirectional WebSocket and appends messages as they arrive — see [WebSocket chat](../advanced/websockets.md). `webcam` shows a server-side frame producer (`@app.stream(name)`) as native MJPEG; `camera` streams the visitor's webcam up to an `@app.on_frame(name)` handler and displays the result — both under [Video streams](../advanced/video-streams.md). `recorder` captures the mic and hands each clip to an `@app.on_audio(name)` handler — see [Audio recording](../advanced/audio.md).
 

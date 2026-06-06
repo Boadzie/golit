@@ -62,10 +62,10 @@ Sync handlers — and a heavy transcribe — run in a worker thread, so the even
 ## The component
 
 ```python
-ui.recorder(name, *, title=None, max_seconds=30, hint=None)
+ui.recorder(name, *, title=None, max_seconds=30, hint=None, playback=True, download=True)
 ```
 
-`max_seconds` caps the clip length (it auto-stops at the limit); `hint` is an optional caption under the button.
+`max_seconds` caps the clip length (it auto-stops at the limit); `hint` is an optional caption under the button. `playback` (default) loads the clip you just recorded into an inline `<audio>` player so you can hear it; `download` (default) adds a link to save it as `recording.wav`. If the handler returns audio `bytes`, the player switches to playing that instead.
 
 ## How it works
 
