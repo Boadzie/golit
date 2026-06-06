@@ -119,6 +119,32 @@ To prove affinity + fan-out: open the app, move the slider (the chart/KPI/table
 swap — that's the local worker), then have a background source publish an
 invalidation and watch it arrive over `/events` on the *other* replicas' clients.
 
+## Verify the fan-out (automated)
+
+[`deploy/verify_scaling.py`](deploy/verify_scaling.py) turns that manual check into a
+one-command, self-validating proof. It runs two single-worker nodes that share one Redis (the
+same fan-out path as two hosts: *publish → Redis → every worker's SSE*). Node **A** publishes a
+`clock` invalidation every second; node **B** does not — yet an SSE client on **B** receives
+the `node:clock` events, so they can only have crossed Redis from A. A built-in **control**
+re-runs both nodes with Redis off (isolated in-memory pub/sub) and asserts B sees *nothing*,
+proving Redis is load-bearing rather than some local artifact.
+
+```bash
+# a Redis to share (podman or docker)
+podman run -d --rm --name golit-redis -p 6379:6379 docker.io/library/redis:7-alpine
+
+GOLIT_REDIS_URL=redis://localhost:6379 python deploy/verify_scaling.py
+# -> with Redis    -> node B saw node:clock: True
+#    without Redis -> node B saw node:clock: False
+#    PASS: cross-node fan-out works, and only because of Redis
+
+podman rm -f golit-redis
+```
+
+Point `GOLIT_REDIS_URL` at a Redis the two processes can both reach and the same script proves
+the path across **separate hosts** unchanged. ([`deploy/scaling_demo/app.py`](deploy/scaling_demo/app.py)
+is the tiny clock app it drives.)
+
 ## Operational notes
 
 - **Worker restart loses that worker's warm caches, not the session.** Without a
