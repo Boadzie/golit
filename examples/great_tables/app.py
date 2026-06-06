@@ -39,7 +39,7 @@ def filtered(
 def report(filtered: pl.DataFrame):
     if not filtered.height:
         return ui.alert("No regions above that revenue threshold.", kind="warning")
-    return (
+    return ui.gt_theme(  # style the GT to match golit's shadcn tables
         GT(filtered, rowname_col="Region")
         .tab_header(title="Regional Sales", subtitle="Revenue and YoY growth by region")
         .fmt_currency(columns="Revenue", decimals=0)

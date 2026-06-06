@@ -96,7 +96,8 @@ def report(sheet: pl.DataFrame | None):
     )
     if numeric:
         gt = gt.fmt_number(columns=numeric, decimals=2, use_seps=True)
-    return gt.tab_source_note(md("Updates live as the sheet changes — `@app.poll` → SSE."))
+    gt = gt.tab_source_note(md("Updates live as the sheet changes — `@app.poll` → SSE."))
+    return ui.gt_theme(gt)  # match golit's shadcn tables
 
 
 application = create_app(app)
