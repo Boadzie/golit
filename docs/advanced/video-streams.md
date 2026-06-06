@@ -78,7 +78,7 @@ Drop it into a `card`, a `grid`, a `tabs` panel — it composes like any other [
 
 ```mermaid
 sequenceDiagram
-    participant B as Browser &lt;img&gt;
+    participant B as Browser <img>
     participant R as GET /golit/stream/{name}
     participant P as your @app.stream producer
     participant T as worker thread
