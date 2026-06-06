@@ -572,6 +572,8 @@ def recorder(
     title: str | None = None,
     max_seconds: int = 30,
     hint: str | None = None,
+    playback: bool = True,
+    download: bool = True,
 ) -> str:
     """A microphone **recorder**: the visitor records a clip, it's uploaded to the server as
     16-bit PCM WAV, and the ``@app.on_audio(name)`` handler's result is shown back here.
@@ -591,8 +593,10 @@ def recorder(
             return ui.recorder("note", title="Voice note")
 
     ``max_seconds`` caps the recording length; ``hint`` is an optional caption under the button.
-    Needs a **secure context** — ``https`` or ``localhost`` — for mic access; otherwise it shows
-    a notice."""
+    With ``playback`` (default) the clip you just recorded is loaded into an inline player so you
+    can hear it; with ``download`` (default) a link saves it as ``recording.wav``. If the handler
+    returns audio ``bytes``, the player switches to that. Needs a **secure context** — ``https``
+    or ``localhost`` — for mic access; otherwise it shows a notice."""
     head = (
         f'<div class="px-1 font-headline text-lg font-bold tracking-tight">{esc(title)}</div>'
         if title
@@ -603,9 +607,17 @@ def recorder(
         if hint
         else ""
     )
+    download_html = (
+        '<a class="golit-recorder-download hidden inline-flex items-center gap-1 text-sm '
+        'text-primary hover:underline w-fit" download="recording.wav">'
+        '<span class="material-symbols-outlined text-base">download</span>Download</a>'
+        if download
+        else ""
+    )
     return (
         '<div class="golit-recorder flex flex-col gap-3 bg-surface-container-low rounded-xl p-4" '
-        f'data-golit-recorder="{esc(name)}" data-max-seconds="{int(max_seconds)}">'
+        f'data-golit-recorder="{esc(name)}" data-max-seconds="{int(max_seconds)}" '
+        f'data-playback="{1 if playback else 0}">'
         f"{head}"
         '<div class="flex items-center gap-3">'
         '<button type="button" class="golit-recorder-btn inline-flex items-center gap-2 '
@@ -618,6 +630,7 @@ def recorder(
         "</div>"
         f"{hint_html}"
         '<audio class="golit-recorder-audio w-full hidden" controls></audio>'
+        f"{download_html}"
         '<div class="golit-recorder-out text-sm"></div>'
         "</div>"
     )

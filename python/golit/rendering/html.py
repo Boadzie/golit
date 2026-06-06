@@ -451,8 +451,10 @@ RECORDER_BOOTSTRAP = """
     var status = el.querySelector('.golit-recorder-status');
     var out = el.querySelector('.golit-recorder-out');
     var player = el.querySelector('.golit-recorder-audio');
+    var dl = el.querySelector('.golit-recorder-download');
+    var playback = el.getAttribute('data-playback') !== '0';
     var recording = false, stream, ctx, proc, srcNode, chunks = [], total = 0;
-    var startedAt = 0, timer, lastUrl, closed = false, ws;
+    var startedAt = 0, timer, recUrl, srvUrl, closed = false, ws;  // local clip / server audio
 
     function note(msg) { if (status) status.textContent = msg || ''; }
     function fmt(sec) {
@@ -475,7 +477,8 @@ RECORDER_BOOTSTRAP = """
     function cleanup() {
       closed = true; teardown();
       if (ws) { try { ws.close(); } catch (e) {} }
-      if (lastUrl) URL.revokeObjectURL(lastUrl);
+      if (recUrl) URL.revokeObjectURL(recUrl);
+      if (srvUrl) URL.revokeObjectURL(srvUrl);
     }
     el.__golitRecCleanup = cleanup;
 
@@ -496,10 +499,9 @@ RECORDER_BOOTSTRAP = """
       ws.onmessage = function (ev) {
         note('');
         if (typeof ev.data === 'string') { if (out) out.innerHTML = ev.data; return; }
-        var u = URL.createObjectURL(ev.data);
-        if (lastUrl) URL.revokeObjectURL(lastUrl);
-        lastUrl = u;
-        if (player) { player.src = u; player.classList.remove('hidden'); }
+        if (srvUrl) URL.revokeObjectURL(srvUrl);
+        srvUrl = URL.createObjectURL(ev.data);  // handler returned audio — play it back
+        if (player) { player.src = srvUrl; player.classList.remove('hidden'); }
       };
       ws.onerror = function () { note('Connection error.'); };
       ws.onclose = function (ev) {
@@ -532,7 +534,10 @@ RECORDER_BOOTSTRAP = """
         if (icon) icon.textContent = 'stop';
         btn.classList.add('golit-recording');
         if (out) out.innerHTML = '';
-        if (player) player.classList.add('hidden');
+        if (recUrl) { URL.revokeObjectURL(recUrl); recUrl = null; }
+        if (srvUrl) { URL.revokeObjectURL(srvUrl); srvUrl = null; }
+        if (player) { player.classList.add('hidden'); player.removeAttribute('src'); }
+        if (dl) dl.classList.add('hidden');
         note('');
         timer = setInterval(function () {
           var sec = (Date.now() - startedAt) / 1000;
@@ -556,6 +561,9 @@ RECORDER_BOOTSTRAP = """
       setIdle();
       if (!samples.length) { note('Nothing recorded.'); return; }
       var wav = encodeWav(samples, rate);
+      recUrl = URL.createObjectURL(wav);                 // your own clip, for playback + download
+      if (playback && player) { player.src = recUrl; player.classList.remove('hidden'); }
+      if (dl) { dl.href = recUrl; dl.classList.remove('hidden'); }
       note('Processing…');
       if (!ws || ws.readyState > 1) connect();
       var send = function () { ws.send(wav); };
