@@ -116,3 +116,17 @@ def test_recorder_markup_escapes_and_carries_config():
     assert 'data-max-seconds="20"' in html
     assert "<x>" not in html and "&lt;x&gt;" in html
     assert "&lt;b&gt;" in html
+
+
+def test_recorder_playback_and_download_default_on():
+    html = ui.recorder("note")
+    assert 'data-playback="1"' in html  # local playback of your own clip
+    assert "golit-recorder-download" in html and 'download="recording.wav"' in html
+    assert "golit-recorder-audio" in html  # the inline player
+
+
+def test_recorder_playback_and_download_can_be_off():
+    html = ui.recorder("note", playback=False, download=False)
+    assert 'data-playback="0"' in html
+    assert "golit-recorder-download" not in html
+    assert "golit-recorder-audio" in html  # player stays (handler may still return audio)
