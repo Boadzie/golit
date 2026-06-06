@@ -64,6 +64,9 @@ def camera():
 !!! warning "Clean up in `finally`"
     Each request starts a **fresh** call to your producer. When the client closes the tab, Golit closes the generator — your `finally:` runs, so that's where a camera handle, file, or device is released. Without it you leak the device on every reconnect.
 
+!!! note "A failing producer ends the feed, not the server"
+    If your producer raises — a camera read fails, a model errors, a frame is malformed — Golit logs it and ends that feed cleanly, rather than bubbling a 500 mid-stream. For a `shared=True` stream the running viewers stop and the **next** viewer to connect restarts the producer, so a transient device hiccup self-heals on reconnect.
+
 ## The component
 
 ```python
@@ -177,6 +180,9 @@ ui.camera(name, *, title=None, height=384, width=640, fps=12, quality=0.6)
 
 !!! note "One frame in flight"
     The client captures the next frame only **after** the previous result comes back (then paces to `fps`). So there's never a backlog: a slow handler simply lowers the rate, and the displayed frame is always the most recent the server has finished. No queue to bound, no frames to drop.
+
+!!! note "A failing handler doesn't drop the stream"
+    If your `@app.on_frame` handler raises on a frame — a bad model call, a frame it can't parse — Golit logs it and sends the **original** frame back so the loop keeps going, instead of stalling the camera (the client waits for a reply before sending the next frame). The feed stays live; you'll see the un-annotated frame for that beat.
 
 !!! warning "Camera access needs a secure context"
     `getUserMedia` only works on **`https`** or **`localhost`**. `golit run` serves on `localhost`, so local dev is fine; in production the page must be HTTPS or the browser blocks the camera. (The [nginx upgrade headers](websockets.md#scaling) chat needs apply here too — it's a WebSocket.)
