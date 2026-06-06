@@ -189,13 +189,13 @@ Unlike a [`shared=True` `@app.stream`](#one-source-many-viewers-sharedtrue) (one
 
 - [`examples/webcam_stream/app.py`](https://github.com/boadzie/golit/tree/main/examples/webcam_stream) — **server → browser**. Runs with no camera: synthesizes frames with a box bouncing across the canvas and a fake `person 0.98` detection, the shape a real detector emits. Includes a commented OpenCV loop to swap in a real webcam.
 - [`examples/browser_camera/app.py`](https://github.com/boadzie/golit/tree/main/examples/browser_camera) — **browser → server**. Processes the visitor's own webcam: finds the brightest region of each frame and draws a labelled box that tracks it — a dependency-light stand-in for a detector.
-- [`examples/face_detect/app.py`](https://github.com/boadzie/golit/tree/main/examples/face_detect) — **browser → server**, with a *real* model. Runs OpenCV's bundled Haar-cascade face detector on each frame and boxes every face — the same `@app.on_frame` shape, with a network swapped in for the stand-in. Needs `opencv-python` on top of the `vision` extra.
+- [`examples/face_detect/app.py`](https://github.com/boadzie/golit/tree/main/examples/face_detect) — **browser → server**, with a *real* model. Runs OpenCV's bundled Haar-cascade face detector on each frame and boxes every face — the same `@app.on_frame` shape, with a network swapped in for the stand-in. Uses the `vision-cv` extra (adds OpenCV).
 
 ```
 pip install "golit[vision]"
 golit run examples/webcam_stream/app.py      # or examples/browser_camera/app.py
 
-pip install "golit[vision]" opencv-python     # the face_detect example also needs OpenCV
+pip install "golit[vision-cv]"                # adds OpenCV for the face_detect example
 golit run examples/face_detect/app.py
 ```
 

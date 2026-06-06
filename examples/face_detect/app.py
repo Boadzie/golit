@@ -8,7 +8,7 @@ so swapping in YOLO, MediaPipe, or your own network is a matter of changing the 
 The cascade ships **inside OpenCV** (`cv2.data.haarcascades`), so there's no model to download.
 Camera access needs a **secure context**: `localhost` (where `golit run` serves) or `https`.
 
-    pip install "golit[vision]" opencv-python
+    pip install "golit[vision-cv]"
     golit run examples/face_detect/app.py
 """
 
