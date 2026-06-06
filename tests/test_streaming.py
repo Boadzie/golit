@@ -6,9 +6,12 @@ infinite producer would hang the test client. Real cameras loop forever; tests d
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 import golit.ui as ui
 from golit import App, create_app
-from golit.server.streaming import _mjpeg, _part, _to_jpeg
+from golit.server.streaming import _mjpeg, _part, _StreamHub, _to_jpeg
 from litestar.testing import TestClient
 
 _JPEG_SOI = b"\xff\xd8"  # start-of-image marker every JPEG begins with
@@ -65,6 +68,73 @@ async def test_async_producer_is_supported():
     assert body.count(b"--golitframe") == 2
 
 
+# -- the shared-source hub ----------------------------------------------------
+
+
+async def _take(hub: _StreamHub, k: int) -> list[bytes]:
+    """Pull ``k`` frames from one hub viewer, then close the subscription cleanly."""
+    gen = hub.subscribe()
+    out: list[bytes] = []
+    try:
+        async for jpeg in gen:
+            out.append(jpeg)
+            if len(out) >= k:
+                break
+    finally:
+        await gen.aclose()
+    return out
+
+
+async def test_shared_hub_runs_one_producer_for_many_viewers():
+    runs = 0
+
+    def produce():
+        nonlocal runs
+        runs += 1
+        n = 0
+        while True:
+            n += 1
+            time.sleep(0.005)
+            yield b"\xff\xd8" + str(n).encode() + b"\xff\xd9"
+
+    hub = _StreamHub(produce)
+    a, b = await asyncio.gather(_take(hub, 3), _take(hub, 3))
+    if hub._task is not None:
+        await asyncio.wait_for(hub._task, 2)  # let it notice viewers==0 and stop
+    assert runs == 1  # one producer for both viewers, not one each
+    assert len(a) == 3 and len(b) == 3
+
+
+async def test_shared_hub_releases_producer_when_last_viewer_leaves():
+    released = False
+
+    def produce():
+        nonlocal released
+        try:
+            while True:
+                time.sleep(0.005)
+                yield b"\xff\xd8f\xff\xd9"
+        finally:
+            released = True
+
+    hub = _StreamHub(produce)
+    got = await _take(hub, 1)
+    if hub._task is not None:
+        await asyncio.wait_for(hub._task, 2)
+    assert got and released is True  # finally ran -> a real camera handle would be freed
+
+
+async def test_shared_hub_ends_viewers_when_producer_stops():
+    def produce():
+        for _ in range(2):
+            yield b"\xff\xd8x\xff\xd9"
+
+    hub = _StreamHub(produce)
+    # asks for more frames than the producer makes — the subscription must still finish
+    got = await asyncio.wait_for(_take(hub, 99), 2)
+    assert got == [b"\xff\xd8x\xff\xd9", b"\xff\xd8x\xff\xd9"]
+
+
 # -- the live route -----------------------------------------------------------
 
 
@@ -95,6 +165,25 @@ def test_route_serves_a_finite_mjpeg_stream():
 def test_unknown_stream_is_404():
     with TestClient(app=build_stream_app()) as client:
         assert client.get("/golit/stream/nope").status_code == 404
+
+
+def test_shared_route_serves_mjpeg_from_the_hub():
+    app = App(title="Shared")
+
+    @app.stream("shared_cam", shared=True)
+    def shared_cam():
+        for _ in range(3):
+            yield b"\xff\xd8frame\xff\xd9"
+
+    @app.view
+    def live() -> str:
+        return ui.webcam("shared_cam")
+
+    with TestClient(app=create_app(app)) as client:
+        resp = client.get("/golit/stream/shared_cam")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("multipart/x-mixed-replace")
+    assert resp.content.count(b"--golitframe") == 3
 
 
 # -- the webcam mount ---------------------------------------------------------
