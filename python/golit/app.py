@@ -30,6 +30,8 @@ class App:
         self._shared_streams: set[str] = set()
         self._frame_handlers: dict[str, NodeFn] = {}
         self._audio_handlers: dict[str, NodeFn] = {}
+        self._pollers: dict[str, tuple[NodeFn, float]] = {}
+        self._poll_cache: dict[str, Any] = {}
         self._built = False
         #: Optional page layout tree (see :mod:`golit.layout`); ``None`` stacks
         #: every view under one controls panel.
@@ -175,6 +177,43 @@ class App:
 
         return deco
 
+    def poll(self, name: str, *, interval: float = 2.0) -> Callable[[NodeFn], NodeFn]:
+        """Register a **live polled source** named ``name`` — external data that changes on
+        its own (a Google Sheet, an API, a file). The decorated function *fetches* the data;
+        Golit runs it every ``interval`` seconds in the background, and when the result's
+        content hash changes it updates the source and pushes the dependent views to every
+        connected browser over SSE — the same server-side-invalidation path streaming sources
+        use, so you write a plain ``@app.view`` and it just updates::
+
+            @app.poll("sheet", interval=3)
+            async def sheet() -> pl.DataFrame:
+                return await fetch_csv(SHEET_URL)     # whatever fetch you like
+
+            @app.view
+            def table(sheet) -> str:                  # depends on the polled source by name
+                return ui.table(sheet) if sheet is not None else ui.spinner(label="Loading…")
+
+        The fetch may be sync or ``async``; sync fetches run in a worker thread so a blocking
+        request never stalls the loop. Until the first fetch lands the source is ``None`` —
+        have views handle that. One poller runs per worker process. A fetch that raises is
+        logged and retried on the next tick (the last good value stays)."""
+        if interval <= 0:
+            raise ValueError("poll interval must be positive")
+
+        def deco(fn: NodeFn) -> NodeFn:
+            if name in self._defs:
+                raise ValueError(f"duplicate node {name!r}")
+            self._pollers[name] = (fn, float(interval))
+
+            def reader() -> Any:
+                return self._poll_cache.get(name)
+
+            reader.__name__ = name
+            self._register(reader, NodeKind.SOURCE)
+            return fn
+
+        return deco
+
     # -- resolution --------------------------------------------------------
     def build(self) -> None:
         """Resolve every parameter to an input/dependency/constant. Raises if a
@@ -255,6 +294,17 @@ class App:
     def audio_handlers(self) -> dict[str, NodeFn]:
         """Registered browser-mic clip handlers, keyed by recorder name."""
         return self._audio_handlers
+
+    @property
+    def pollers(self) -> dict[str, tuple[NodeFn, float]]:
+        """Registered live polled sources, keyed by node name → (fetch fn, interval seconds)."""
+        return self._pollers
+
+    @property
+    def poll_cache(self) -> dict[str, Any]:
+        """The latest value of each polled source; the background poller writes it, the
+        source node reads it (per worker process)."""
+        return self._poll_cache
 
     def node_def(self, node_id: str) -> NodeDef:
         return self._defs[node_id]

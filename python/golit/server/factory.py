@@ -14,6 +14,7 @@ from litestar.datastructures import State
 from ..app import App
 from .audio import audio
 from .chat import ChatHub
+from .polling import start_pollers, stop_pollers
 from .processing import camera
 from .pubsub import InMemoryPubSub, PubSub
 from .routes import chat_ws, events, index, update_node
@@ -98,8 +99,8 @@ def create_app(
             {"sessions": sessions, "pubsub": pubsub, "sse": sse, "chat": chat,
              "streams": app.streams, "shared_streams": app.shared_streams,
              "stream_hubs": {}, "frame_handlers": app.frame_handlers,
-             "audio_handlers": app.audio_handlers}
+             "audio_handlers": app.audio_handlers, "app_blueprint": app}
         ),
-        on_startup=[_start_sse, *(on_startup or [])],
-        on_shutdown=[_stop_sse, *(on_shutdown or [])],
+        on_startup=[_start_sse, start_pollers, *(on_startup or [])],
+        on_shutdown=[_stop_sse, stop_pollers, *(on_shutdown or [])],
     )
