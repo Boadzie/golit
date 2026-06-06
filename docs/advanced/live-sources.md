@@ -69,6 +69,8 @@ sequenceDiagram
 golit run examples/live_sheets/app.py
 ```
 
+A polled source composes with anything a view can return. [`examples/live_great_table/app.py`](https://github.com/boadzie/golit/tree/main/examples/live_great_table) feeds the same live sheet into a [Great Tables](../tutorial/views.md#returning-a-great-tables-table) `GT` object — a *formatted* display table that redraws itself over SSE, no client code (`pip install "golit[tables]"`).
+
 ## Reference
 
 - [`App.poll`](../reference/app.md) — the decorator.
