@@ -26,6 +26,15 @@ def test_gt_takes_priority_over_generic_repr_html():
     assert out.startswith('<div class="golit-great-table')
 
 
+def test_gt_theme_applies_golit_surface():
+    import golit.ui as ui
+
+    out = render_value(ui.gt_theme(GT(pl.DataFrame({"a": [1]})).tab_header("X")))
+    assert "golit-great-table" in out
+    assert "#e6e8ea" in out.lower()  # surface-container-high column labels
+    assert "c2c6d4" in out.lower()  # outline-variant hairline rules
+
+
 def test_view_returning_gt_renders_in_the_page():
     from golit import App, create_app
     from litestar.testing import TestClient
