@@ -55,6 +55,7 @@ That uniformity is the point: a `card` doesn't care whether you hand it a string
 | Component | Purpose |
 | --- | --- |
 | `table(df, *, max_rows=50, highlight=None)` | A styled table from a Polars frame; `highlight` emphasizes a column. |
+| `gt_theme(gt)` | Restyle a [Great Tables](https://posit-dev.github.io/great-tables/) `GT` to match golit's surface; return the themed `GT` from a view. See [Views](views.md#returning-a-great-tables-table). |
 | `markdown(src)` | A common-Markdown-subset renderer (headings, emphasis, lists, blockquote, fenced code, links, rules) — no external dependency. |
 | `code(src, *, lang=None)` | A monospaced code block with an optional language tag. |
 | `json_view(obj, *, indent=2)` | Pretty-printed JSON in a code block. |

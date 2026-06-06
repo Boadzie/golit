@@ -55,10 +55,11 @@ For a *polished* display table — formatted currency, spanners, source notes, e
 
 ```python
 from great_tables import GT
+import golit.ui as ui
 
 @app.view
 def report(filtered: pl.DataFrame):
-    return (
+    return ui.gt_theme(                       # match golit's shadcn tables
         GT(filtered, rowname_col="Region")
         .tab_header(title="Regional Sales")
         .fmt_currency(columns="Revenue", decimals=0)
@@ -66,7 +67,7 @@ def report(filtered: pl.DataFrame):
     )
 ```
 
-Needs the extra: `pip install "golit[tables]"`. See [`examples/great_tables`](https://github.com/boadzie/golit/tree/main/examples/great_tables).
+[`ui.gt_theme`](ui-components.md) restyles a `GT` to match golit's surface — clean body, a tinted uppercase column-label row, hairline rules — so it sits in the page like a native [`ui.table`](ui-components.md#rich-data) instead of Great Tables' default white card. It's optional: return a bare `GT` and it still renders, just with GT's own styling. Needs the extra: `pip install "golit[tables]"`. See [`examples/great_tables`](https://github.com/boadzie/golit/tree/main/examples/great_tables).
 
 ## Returning a chart
 
