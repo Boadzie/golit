@@ -118,6 +118,15 @@ def test_page_mounts_camera_and_bootstrap():
     assert "getUserMedia" in body  # the CAMERA_BOOTSTRAP shipped
 
 
+def test_camera_bootstrap_handles_denied_access():
+    from golit.rendering.html import CAMERA_BOOTSTRAP
+
+    assert "cameraError" in CAMERA_BOOTSTRAP  # rejections mapped to plain language
+    assert "NotAllowedError" in CAMERA_BOOTSTRAP  # permission denied
+    assert "NotReadableError" in CAMERA_BOOTSTRAP  # camera busy
+    assert "secure page" in CAMERA_BOOTSTRAP  # insecure-context notice, not a stuck spinner
+
+
 def test_camera_markup_escapes_and_carries_config():
     html = ui.camera("cam", title="<x>", width=320, fps=10, quality=0.5)
     assert 'data-golit-camera="cam"' in html
