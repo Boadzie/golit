@@ -299,15 +299,18 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **208** pytest, ruff + mypy clean): Rust
+**v1.0.0** — first stable release (see the [CHANGELOG](CHANGELOG.md)).
+
+Built end-to-end and green (**17** cargo + **209** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
-maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps +
-MVT vector tiles for large data; single-band, RGB-composite, tiled-COG raster maps;
-WhiteboxTools terrain; Earth Engine overlays; spatial SQL — `golit.gis`), Litestar server
-(POST + SSE), Redis pub/sub fan-out, multi-worker deployment, realtime WebSocket chat,
-video (server-side MJPEG streams + browser-camera CV), and audio (mic recorder), the benchmark harness
-([`bench/`](bench/), with measured Golit-vs-Dash results), and the examples. **Deferred:** a
-standard-cloud-instance benchmark publication and the wider design suite in `golit_pages/`.
+maps, auto-rendered Great Tables), the `golit.ui` component library, page layout, DuckDB SQL
+nodes, GIS (vector maps + MVT vector tiles for large data; single-band, RGB-composite, tiled-COG
+raster maps; WhiteboxTools terrain; Earth Engine overlays; spatial SQL — `golit.gis`), Litestar
+server (POST + SSE), Redis pub/sub fan-out, multi-worker deployment, live polled sources
+(`@app.poll`), realtime WebSocket chat, video (server-side MJPEG streams + browser-camera CV),
+and audio (mic recorder), the benchmark harness ([`bench/`](bench/), with measured Golit-vs-Dash
+results), and the examples. **Deferred:** a standard-cloud-instance benchmark publication and the
+wider design suite in `golit_pages/`.
 
 ## Development
 
