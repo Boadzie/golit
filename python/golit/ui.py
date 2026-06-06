@@ -49,6 +49,7 @@ __all__ = [
     "json_view",
     "heading",
     "caption",
+    "gt_theme",
     "chat",
     "webcam",
     "camera",
@@ -429,6 +430,64 @@ def heading(text: str, *, level: int = 2) -> str:
 def caption(text: str) -> str:
     """Small, muted helper text."""
     return f'<p class="golit-caption text-xs text-on-surface-variant">{esc(text)}</p>'
+
+
+# Golit's Material-3 light surface — mirrors the Tailwind tokens in rendering/html.py.
+_GT_FONT = [
+    "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica",
+    "Arial", "sans-serif",
+]
+
+
+def gt_theme(gt: Any) -> Any:
+    """Style a `great_tables` ``GT`` to match golit's shadcn tables, and return it.
+
+    Maps golit's Material-3 light surface onto Great Tables' ``tab_options`` — clean white body,
+    a tinted uppercase column-label row, hairline row rules instead of stripes, no outer borders
+    — so a returned ``GT`` sits in the page like a native :func:`table`. Apply it around your
+    built table::
+
+        return ui.gt_theme(GT(df).tab_header("Sales").fmt_currency("revenue"))
+
+    Your own ``tab_options`` / formatting stay; only the theme chrome is set. Takes (and returns)
+    a ``GT`` object — duck-typed, so golit needs no ``great_tables`` dependency to offer it."""
+    return gt.tab_options(
+        table_font_names=_GT_FONT,
+        table_font_size="14px",
+        table_background_color="#ffffff",  # surface-container-lowest
+        table_font_color="#191c1e",  # on-surface
+        table_font_color_light="#424752",  # on-surface-variant
+        table_border_top_style="none",
+        table_border_bottom_style="none",
+        table_border_left_style="none",
+        table_border_right_style="none",
+        heading_background_color="#f2f4f6",  # surface-container-low
+        heading_title_font_weight="700",
+        heading_title_font_size="18px",
+        heading_subtitle_font_size="13px",
+        heading_border_bottom_style="none",
+        column_labels_background_color="#e6e8ea",  # surface-container-high
+        column_labels_font_weight="700",
+        column_labels_font_size="11px",
+        column_labels_text_transform="uppercase",
+        column_labels_border_top_style="none",
+        column_labels_border_bottom_width="1px",
+        column_labels_border_bottom_color="#c2c6d4",  # outline-variant
+        data_row_padding="8px",
+        row_striping_include_table_body=False,
+        table_body_hlines_style="solid",
+        table_body_hlines_width="1px",
+        table_body_hlines_color="#c2c6d4",  # outline-variant
+        table_body_vlines_style="none",
+        table_body_border_top_style="none",
+        table_body_border_bottom_style="solid",
+        table_body_border_bottom_width="1px",
+        table_body_border_bottom_color="#c2c6d4",
+        source_notes_background_color="#f2f4f6",
+        source_notes_font_size="11px",
+        stub_background_color="#f2f4f6",
+        stub_border_style="none",
+    )
 
 
 # -- realtime -----------------------------------------------------------------
