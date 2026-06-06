@@ -11,9 +11,10 @@ serialize to markup. Resolution order (first match wins):
 6. a Polars ``DataFrame`` → an HTML table;
 7. a GeoPandas ``GeoDataFrame`` → a native MapLibre map (``golit.gis.geo_map``);
 8. a georeferenced xarray ``DataArray`` → a raster map (``golit.gis.raster``);
-9. anything exposing ``_repr_html_()`` (pandas, …);
-10. a Matplotlib figure → SVG;
-11. fallback: escaped ``repr`` in a ``<pre>``.
+9. a Great Tables ``GT`` object → its self-contained HTML (``great_tables``);
+10. anything exposing ``_repr_html_()`` (pandas, …);
+11. a Matplotlib figure → SVG;
+12. fallback: escaped ``repr`` in a ``<pre>``.
 """
 
 from __future__ import annotations
@@ -89,6 +90,17 @@ def _is_dataarray(value: Any) -> bool:
     return cls.__name__ == "DataArray" and (cls.__module__ or "").startswith("xarray")
 
 
+def _is_great_table(value: Any) -> bool:
+    cls = type(value)
+    return cls.__name__ == "GT" and (cls.__module__ or "").startswith("great_tables")
+
+
+def _great_table_html(value: Any) -> str:
+    # GT emits a self-contained table: HTML + a <style> block scoped to a generated id, no JS.
+    # Just wrap it so it scrolls on small screens; its own styles stay isolated.
+    return f'<div class="golit-great-table overflow-x-auto">{value.as_raw_html()}</div>'
+
+
 def _mpl_svg(fig: Any) -> str:
     buffer = io.StringIO()
     fig.savefig(buffer, format="svg")
@@ -131,6 +143,8 @@ def render_value(value: Any) -> str:
             return raster(value)
         except Exception:  # noqa: BLE001 - not georeferenced; fall back to the repr
             pass
+    if _is_great_table(value):
+        return _great_table_html(value)
     repr_html = getattr(value, "_repr_html_", None)
     if callable(repr_html):
         return _to_text(repr_html())
