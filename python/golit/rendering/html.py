@@ -419,6 +419,173 @@ CAMERA_BOOTSTRAP = """
 })();
 """
 
+# Drives golit.ui.recorder: capture the mic with the Web Audio API, encode a 16-bit PCM WAV in
+# the browser, and over a WebSocket to /golit/audio/<name> upload the clip and show the reply —
+# text (HTML the @app.on_audio handler returned) injected into the panel, or audio (a Blob)
+# played in the inline <audio>. WAV so the server decodes with stdlib `wave`, no ffmpeg.
+RECORDER_BOOTSTRAP = """
+(function () {
+  function encodeWav(samples, rate) {
+    var n = samples.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf), o = 0;
+    function str(s) { for (var i = 0; i < s.length; i++) v.setUint8(o++, s.charCodeAt(i)); }
+    function u32(x) { v.setUint32(o, x, true); o += 4; }
+    function u16(x) { v.setUint16(o, x, true); o += 2; }
+    str('RIFF'); u32(36 + n * 2); str('WAVE'); str('fmt '); u32(16); u16(1); u16(1);
+    u32(rate); u32(rate * 2); u16(2); u16(16); str('data'); u32(n * 2);
+    for (var i = 0; i < n; i++) {
+      var s = Math.max(-1, Math.min(1, samples[i]));
+      v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true); o += 2;
+    }
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
+  function initRecorder(el) {
+    if (el.__golitRec) return;
+    el.__golitRec = true;
+    var name = el.getAttribute('data-golit-recorder');
+    var maxSec = parseInt(el.getAttribute('data-max-seconds'), 10) || 30;
+    var btn = el.querySelector('.golit-recorder-btn');
+    var label = el.querySelector('.golit-recorder-label');
+    var icon = el.querySelector('.golit-recorder-icon');
+    var timeEl = el.querySelector('.golit-recorder-time');
+    var status = el.querySelector('.golit-recorder-status');
+    var out = el.querySelector('.golit-recorder-out');
+    var player = el.querySelector('.golit-recorder-audio');
+    var recording = false, stream, ctx, proc, srcNode, chunks = [], total = 0;
+    var startedAt = 0, timer, lastUrl, closed = false, ws;
+
+    function note(msg) { if (status) status.textContent = msg || ''; }
+    function fmt(sec) {
+      var m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    function setIdle() {
+      recording = false;
+      if (label) label.textContent = 'Record';
+      if (icon) icon.textContent = 'mic';
+      btn.classList.remove('golit-recording');
+    }
+    function teardown() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (proc) { try { proc.disconnect(); } catch (e) {} proc = null; }
+      if (srcNode) { try { srcNode.disconnect(); } catch (e) {} srcNode = null; }
+      if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; }
+      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    }
+    function cleanup() {
+      closed = true; teardown();
+      if (ws) { try { ws.close(); } catch (e) {} }
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+    }
+    el.__golitRecCleanup = cleanup;
+
+    function recorderError(e) {
+      var n = (e && e.name) || '';
+      if (n === 'NotAllowedError' || n === 'SecurityError')
+        return 'Mic blocked. Allow microphone access, then retry.';
+      if (n === 'NotFoundError') return 'No microphone found.';
+      if (n === 'NotReadableError') return 'Mic is in use by another app.';
+      return 'Could not access the microphone' + (n ? ' (' + n + ').' : '.');
+    }
+
+    function connect() {
+      var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      var url = proto + '://' + location.host + '/golit/audio/' + encodeURIComponent(name);
+      ws = new WebSocket(url);
+      ws.binaryType = 'blob';
+      ws.onmessage = function (ev) {
+        note('');
+        if (typeof ev.data === 'string') { if (out) out.innerHTML = ev.data; return; }
+        var u = URL.createObjectURL(ev.data);
+        if (lastUrl) URL.revokeObjectURL(lastUrl);
+        lastUrl = u;
+        if (player) { player.src = u; player.classList.remove('hidden'); }
+      };
+      ws.onerror = function () { note('Connection error.'); };
+      ws.onclose = function (ev) {
+        if (closed) return;
+        if (ev && ev.code === 4404) note('No recorder handler named "' + name + '".');
+      };
+    }
+
+    function begin() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        note('Mic needs a secure page (https or localhost).'); return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
+        if (closed) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+        stream = s;
+        var AC = window.AudioContext || window.webkitAudioContext;
+        ctx = new AC();
+        if (ctx.state === 'suspended' && ctx.resume) ctx.resume();  // some browsers start paused
+        srcNode = ctx.createMediaStreamSource(s);
+        proc = ctx.createScriptProcessor(4096, 1, 1);
+        chunks = []; total = 0;
+        proc.onaudioprocess = function (e) {
+          var d = e.inputBuffer.getChannelData(0);
+          chunks.push(new Float32Array(d)); total += d.length;
+        };
+        var sink = ctx.createGain(); sink.gain.value = 0;  // silent sink, no feedback
+        srcNode.connect(proc); proc.connect(sink); sink.connect(ctx.destination);
+        recording = true; startedAt = Date.now();
+        if (label) label.textContent = 'Stop';
+        if (icon) icon.textContent = 'stop';
+        btn.classList.add('golit-recording');
+        if (out) out.innerHTML = '';
+        if (player) player.classList.add('hidden');
+        note('');
+        timer = setInterval(function () {
+          var sec = (Date.now() - startedAt) / 1000;
+          if (timeEl) timeEl.textContent = fmt(sec);
+          if (sec >= maxSec) stop();
+        }, 200);
+      }).catch(function (e) { note(recorderError(e)); });
+    }
+
+    function flatten() {
+      var all = new Float32Array(total), off = 0;
+      for (var i = 0; i < chunks.length; i++) { all.set(chunks[i], off); off += chunks[i].length; }
+      return all;
+    }
+
+    function stop() {
+      if (!recording) return;
+      var rate = ctx ? ctx.sampleRate : 44100;
+      var samples = flatten();
+      teardown();
+      setIdle();
+      if (!samples.length) { note('Nothing recorded.'); return; }
+      var wav = encodeWav(samples, rate);
+      note('Processing…');
+      if (!ws || ws.readyState > 1) connect();
+      var send = function () { ws.send(wav); };
+      if (ws.readyState === 1) send();
+      else ws.addEventListener('open', send, { once: true });
+    }
+
+    btn.addEventListener('click', function () { if (recording) stop(); else begin(); });
+  }
+
+  function scan(root) {
+    root = root || document;
+    if (!root.querySelectorAll) return;
+    Array.prototype.forEach.call(
+      root.querySelectorAll('.golit-recorder[data-golit-recorder]'), initRecorder);
+  }
+  function start() {
+    document.addEventListener('htmx:load', function (e) {
+      scan((e.detail && e.detail.elt) || e.target);
+    });
+    document.addEventListener('htmx:beforeCleanupElement', function (e) {
+      if (e.target && e.target.__golitRecCleanup) e.target.__golitRecCleanup();
+    });
+    scan(document);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
+"""
+
 # Reactive-update flash: HTMX adds .htmx-settling to swapped fragments.
 GOLIT_CSS = """
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
@@ -428,6 +595,11 @@ GOLIT_CSS = """
 .golit-expander summary { list-style: none; }
 .golit-chev { transition: transform .2s ease; }
 .golit-expander[open] .golit-chev { transform: rotate(180deg); }
+.golit-recorder-btn.golit-recording { background: #dc2626; }
+.golit-recorder-btn.golit-recording .golit-recorder-icon {
+  animation: golit-pulse 1s ease-in-out infinite;
+}
+@keyframes golit-pulse { 50% { opacity: .45; } }
 .golit-view.htmx-settling { animation: golit-flash .7s ease-out; }
 @keyframes golit-flash {
   from { box-shadow: 0 0 0 2px #004d99 inset; }
@@ -491,6 +663,7 @@ def page(title: str, body: str) -> str:
 <script>{CHART_BOOTSTRAP}</script>
 <script>{CHAT_BOOTSTRAP}</script>
 <script>{CAMERA_BOOTSTRAP}</script>
+<script>{RECORDER_BOOTSTRAP}</script>
 </head>
 <body class="bg-surface text-on-surface font-body antialiased" hx-ext="sse" sse-connect="/events">
 <div class="max-w-6xl mx-auto px-6 py-10">

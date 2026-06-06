@@ -52,6 +52,7 @@ __all__ = [
     "chat",
     "webcam",
     "camera",
+    "recorder",
 ]
 
 
@@ -562,6 +563,63 @@ def camera(
         '<div class="golit-camera-status absolute inset-0 flex items-center justify-center '
         'text-center text-sm text-on-surface-variant px-4">Starting camera…</div>'
         "</div></div>"
+    )
+
+
+def recorder(
+    name: str,
+    *,
+    title: str | None = None,
+    max_seconds: int = 30,
+    hint: str | None = None,
+) -> str:
+    """A microphone **recorder**: the visitor records a clip, it's uploaded to the server as
+    16-bit PCM WAV, and the ``@app.on_audio(name)`` handler's result is shown back here.
+
+    Click to record, click to stop (or it auto-stops at ``max_seconds``). The clip travels over
+    a WebSocket (``/golit/audio/<name>``); whatever the handler returns is rendered into the
+    panel — a transcript, an analysis, any :mod:`golit.ui` component — or, if it returns audio
+    ``bytes``, played back in an inline player. The mic mirror of :func:`camera`. Example::
+
+        @app.on_audio("note")
+        def handle(wav: bytes):
+            ...                       # decode (stdlib `wave`), transcribe/analyze
+            return ui.alert("Got it", kind="success")
+
+        @app.view
+        def live() -> str:
+            return ui.recorder("note", title="Voice note")
+
+    ``max_seconds`` caps the recording length; ``hint`` is an optional caption under the button.
+    Needs a **secure context** — ``https`` or ``localhost`` — for mic access; otherwise it shows
+    a notice."""
+    head = (
+        f'<div class="px-1 font-headline text-lg font-bold tracking-tight">{esc(title)}</div>'
+        if title
+        else ""
+    )
+    hint_html = (
+        f'<p class="golit-recorder-hint text-xs text-on-surface-variant">{esc(hint)}</p>'
+        if hint
+        else ""
+    )
+    return (
+        '<div class="golit-recorder flex flex-col gap-3 bg-surface-container-low rounded-xl p-4" '
+        f'data-golit-recorder="{esc(name)}" data-max-seconds="{int(max_seconds)}">'
+        f"{head}"
+        '<div class="flex items-center gap-3">'
+        '<button type="button" class="golit-recorder-btn inline-flex items-center gap-2 '
+        'bg-primary text-on-primary rounded-lg px-4 py-2 text-sm font-semibold '
+        'hover:opacity-90 transition-all">'
+        '<span class="material-symbols-outlined text-xl golit-recorder-icon">mic</span>'
+        '<span class="golit-recorder-label">Record</span></button>'
+        '<span class="golit-recorder-time font-mono text-sm text-on-surface-variant">0:00</span>'
+        '<span class="golit-recorder-status text-sm text-on-surface-variant"></span>'
+        "</div>"
+        f"{hint_html}"
+        '<audio class="golit-recorder-audio w-full hidden" controls></audio>'
+        '<div class="golit-recorder-out text-sm"></div>'
+        "</div>"
     )
 
 
