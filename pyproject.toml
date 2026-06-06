@@ -72,6 +72,9 @@ vision = ["pillow>=10", "numpy>=1.26"]
 # example: cv2 face detection on each frame). opencv-python-headless = no GUI/system libs,
 # the right build for a server. Use plain opencv-python if you also need cv2.imshow locally.
 vision-cv = ["pillow>=10", "numpy>=1.26", "opencv-python-headless>=4.8"]
+# Great Tables display tables: a view returning a great_tables `GT` object is auto-detected and
+# rendered as its self-contained HTML (styles scoped, no JS). Builds from Polars/pandas frames.
+tables = ["great-tables>=0.13"]
 
 [project.scripts]
 golit = "golit.cli:main"
