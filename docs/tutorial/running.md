@@ -78,6 +78,56 @@ golit run app.py --host 0.0.0.0 --port 9000
 python -m golit run app.py
 ```
 
+## Splitting across modules
+
+A one-file `app.py` is fine to start, but a real app spreads its nodes across files. The key
+fact: `@app.source` / `@app.reactive` / `@app.view` register on the `app` instance **when the
+decorator runs** — at import. So two rules are all you need:
+
+1. **One shared `app`.** Put `app = App(...)` in its own module and have every node module
+   `from myapp import app`. Python caches modules, so they all decorate the *same* instance.
+2. **Import every node module before serving.** The entrypoint imports them for their
+   side-effects, then calls `create_app(app)`. Golit resolves the graph across *all* of them —
+   a view in `views.py` can depend on a reactive in `reactives.py` by name; files don't matter.
+
+```python title="app.py (entrypoint)"
+import reactives, sources, views   # noqa: F401 — importing registers their @app.* nodes
+from myapp import app
+from golit import create_app
+
+application = create_app(app)
+```
+
+`golit run app.py` executes that one file on its own (not as a package), so when the modules
+are plain siblings, put their folder on `sys.path` first:
+
+```python
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))   # then `import sources, reactives, views`
+```
+
+For an **installable project**, prefer a real package with relative imports and serve the
+import string directly — no `sys.path` line needed:
+
+```
+myapp/
+  __init__.py
+  app.py        # app = App(...)
+  sources.py    # from .app import app
+  reactives.py  #   "
+  views.py      #   "
+  main.py       # from . import sources, reactives, views; application = create_app(app)
+```
+
+```bash
+uvicorn myapp.main:application
+```
+
+The runnable [`examples/modular`](https://github.com/boadzie/golit/tree/main/examples/modular)
+shows the `golit run` layout end to end.
+
 ## The routes it serves
 
 Once running, your app exposes three endpoints (you rarely call them directly — HTMX does):
