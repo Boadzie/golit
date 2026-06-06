@@ -179,7 +179,9 @@ ui.camera(name, *, title=None, height=384, width=640, fps=12, quality=0.6)
     The client captures the next frame only **after** the previous result comes back (then paces to `fps`). So there's never a backlog: a slow handler simply lowers the rate, and the displayed frame is always the most recent the server has finished. No queue to bound, no frames to drop.
 
 !!! warning "Camera access needs a secure context"
-    `getUserMedia` only works on **`https`** or **`localhost`**. `golit run` serves on `localhost`, so local dev is fine; in production the page must be HTTPS or the browser blocks the camera and `ui.camera` shows a notice instead of a feed. (The [nginx upgrade headers](websockets.md#scaling) chat needs apply here too — it's a WebSocket.)
+    `getUserMedia` only works on **`https`** or **`localhost`**. `golit run` serves on `localhost`, so local dev is fine; in production the page must be HTTPS or the browser blocks the camera. (The [nginx upgrade headers](websockets.md#scaling) chat needs apply here too — it's a WebSocket.)
+
+    When the camera can't start — an insecure page, a denied permission, no device, or one already in use — `ui.camera` replaces the feed with a clear, icon-labelled notice (e.g. *"Camera blocked. Allow camera access in your browser, then reload."*) rather than a stuck spinner, so the visitor knows what to fix.
 
 Unlike `@app.stream` (one shared producer, fanned out as MJPEG), each `ui.camera` viewer has its **own** camera and its **own** WebSocket, so the handler runs per viewer — size your CV accordingly.
 
