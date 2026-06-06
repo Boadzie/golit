@@ -7,6 +7,7 @@
 - **SQL** — reactive nodes written as in-process **DuckDB** SQL over Polars frames (`golit.sql`)
 - **Litestar** orchestration; **HTMX** server-rendered fragment transport (no client framework)
 - **Charts** — Lets-Plot static SVG, plus interactive **Plotly / Altair / Bokeh / AnyChart**
+- **Tables** — styled tables from Polars, or return a **[Great Tables](https://posit-dev.github.io/great-tables/) `GT`** object for a polished display table (auto-detected)
 - **Maps** — native **MapLibre GL** maps: **GeoDataFrame** vector + **rioxarray/xarray** raster + DuckDB spatial SQL (`golit.gis`)
 - **Components** — reactive input widgets + a shadcn-styled **`golit.ui`** library
 - **SSE** push channel with a pluggable pub/sub — in-memory single-node, **Redis** for a fleet
@@ -25,6 +26,7 @@ pip install "golit[charts]"       # interactive Plotly / Altair / Bokeh
 pip install "golit[sql]"          # DuckDB SQL nodes over Polars frames
 pip install "golit[gis]"          # native MapLibre maps from GeoDataFrames
 pip install "golit[gis-raster]"   # raster maps from rioxarray/xarray arrays
+pip install "golit[tables]"       # Great Tables display tables (auto-rendered from a view)
 pip install "golit[vision]"       # webcam / MJPEG video streams (Pillow)
 pip install "golit[vision-cv]"    # + OpenCV for real CV models (face detection)
 pip install "golit[redis]"        # Redis fan-out for multi-worker
@@ -297,7 +299,7 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full topology and why `uvicorn
 
 ## Status
 
-Built end-to-end and green (**17** cargo + **205** pytest, ruff + mypy clean): Rust
+Built end-to-end and green (**17** cargo + **208** pytest, ruff + mypy clean): Rust
 kernel, reactive engine, rendering (static **and** interactive charts, native MapLibre
 maps), the `golit.ui` component library, page layout, DuckDB SQL nodes, GIS (vector maps +
 MVT vector tiles for large data; single-band, RGB-composite, tiled-COG raster maps;

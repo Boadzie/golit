@@ -14,9 +14,10 @@ Golit resolves a return value in this order — **first match wins**:
 6. Anything with **`to_svg()`** → wrapped as SVG.
 7. A **Polars `DataFrame`** → a styled HTML table.
 8. A **DuckDB relation** → materialized to Polars, then a table.
-9. Anything with **`_repr_html_()`** (e.g. pandas) → that HTML.
-10. A **Matplotlib** figure → SVG via `savefig`.
-11. Anything else → its `repr()`, escaped, in a `<pre>`.
+9. A **[Great Tables](https://posit-dev.github.io/great-tables/) `GT`** object → its self-contained HTML.
+10. Anything with **`_repr_html_()`** (e.g. pandas) → that HTML.
+11. A **Matplotlib** figure → SVG via `savefig`.
+12. Anything else → its `repr()`, escaped, in a `<pre>`.
 
 `None` renders as empty.
 
@@ -47,6 +48,25 @@ def table(filtered: pl.DataFrame) -> pl.DataFrame:
 ```
 
 The default table shows up to 50 rows with a "showing 50 of N" footer. For more control (row cap, column highlight), use [`golit.ui.table`](ui-components.md#rich-data).
+
+## Returning a Great Tables table
+
+For a *polished* display table — formatted currency, spanners, source notes, embedded bars — build a [Great Tables](https://posit-dev.github.io/great-tables/) `GT` object from your Polars (or pandas) frame and return it. Golit detects it and embeds its self-contained HTML — the styles are scoped to the table and there's no JavaScript, so it just works inside the page, and it re-renders reactively like any view:
+
+```python
+from great_tables import GT
+
+@app.view
+def report(filtered: pl.DataFrame):
+    return (
+        GT(filtered, rowname_col="Region")
+        .tab_header(title="Regional Sales")
+        .fmt_currency(columns="Revenue", decimals=0)
+        .fmt_percent(columns="Growth", decimals=1)
+    )
+```
+
+Needs the extra: `pip install "golit[tables]"`. See [`examples/great_tables`](https://github.com/boadzie/golit/tree/main/examples/great_tables).
 
 ## Returning a chart
 
