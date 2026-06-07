@@ -7,7 +7,7 @@ All notable changes to Golit are recorded here. The format follows
 ## [1.0.0] — 2026-06-06
 
 First stable release. Golit is a high-performance reactive **DAG** framework for Python —
-*Streamlit, until it goes to production* — with a Rust kernel and a server-rendered HTMX
+*reactive data apps that actually ship* — with a Rust kernel and a server-rendered HTMX
 transport, where update cost is proportional to the change, not the program.
 
 ### Reactive core

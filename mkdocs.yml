@@ -1,5 +1,5 @@
 site_name: Golit
-site_description: A high-performance reactive DAG framework for Python — Streamlit, until it goes to production.
+site_description: A high-performance reactive DAG framework for Python — reactive data apps that actually ship.
 site_author: Daniel Boadzie
 site_url: https://golit.dev/
 repo_url: https://github.com/boadzie/golit

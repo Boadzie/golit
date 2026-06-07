@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "golit"
 version = "1.0.0"
-description = "A high-performance Reactive DAG framework for Python — Streamlit, until it goes to production."
+description = "A high-performance Reactive DAG framework for Python — reactive data apps that actually ship."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }

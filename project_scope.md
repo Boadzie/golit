@@ -1,6 +1,6 @@
 # Golit
 
-> **Streamlit, until it goes to production.**
+> **Reactive data apps that actually ship.**
 >
 > Golit is a reactive DAG framework for Python. It maps your data dependencies, then on every interaction recomputes only the nodes that changed — not your whole script. Rust core. Polars data. Server-rendered SVG charts. Scales horizontally on Redis.
 

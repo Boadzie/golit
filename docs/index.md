@@ -7,7 +7,7 @@ hide:
 
 # Golit
 
-<p class="golit-tagline">Streamlit, until it goes to production.</p>
+<p class="golit-tagline">Reactive data apps that actually ship.</p>
 
 A high-performance **reactive DAG framework** for building data apps in Python. Golit maps your data dependencies once, then on every interaction recomputes **only the nodes that changed** — not your whole script.
 

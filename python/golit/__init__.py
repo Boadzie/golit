@@ -1,6 +1,6 @@
 """Golit — a reactive DAG framework for Python.
 
-Streamlit, until it goes to production.
+Reactive data apps that actually ship.
 """
 
 from __future__ import annotations
