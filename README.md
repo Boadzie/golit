@@ -346,4 +346,4 @@ make build    # release wheel
 
 ## License
 
-Golit is released under the **Apache License 2.0**.
+Golit is released under the **[Apache License 2.0](LICENSE)**. © 2026 Daniel Boadzie.
