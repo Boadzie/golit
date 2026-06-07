@@ -12,8 +12,11 @@ crate-type = ["cdylib", "rlib"]
 # NOTE: `extension-module` is intentionally NOT enabled here. maturin enables it
 # for wheel builds via [tool.maturin] features. Leaving it off lets `cargo test`
 # link libpython and run the kernel's unit tests without a wheel build.
+# `generate-import-lib` lets pyo3 synthesize the Windows python3.lib from the abi3
+# stable ABI, so Windows wheels cross-compile (cargo-xwin) without a Windows Python.
+# It's a no-op on non-Windows targets.
 [dependencies]
-pyo3 = { version = "0.23", features = ["abi3-py311"] }
+pyo3 = { version = "0.23", features = ["abi3-py311", "generate-import-lib"] }
 
 [profile.release]
 lto = "thin"
