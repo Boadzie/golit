@@ -1,0 +1,52 @@
+/* Blueprint Editorial — Golit's docs palette (accent Material Blue 800 #1565C0). */
+:root {
+  --md-primary-fg-color: #004d99;
+  --md-primary-fg-color--light: #1565c0;
+  --md-primary-fg-color--dark: #003a73;
+  --md-accent-fg-color: #1565c0;
+  --md-accent-fg-color--transparent: rgba(21, 101, 192, 0.1);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #1565c0;
+  --md-accent-fg-color: #a9c7ff;
+  --md-typeset-a-color: #a9c7ff;
+}
+
+/* Tighter, more editorial headings. */
+.md-typeset h1,
+.md-typeset h2 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* The landing hero. */
+.golit-hero {
+  text-align: center;
+  padding: 2.5rem 0 1rem;
+}
+.golit-hero .golit-tagline {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--md-default-fg-color--light);
+  margin: 0.25rem 0 1.25rem;
+}
+.golit-hero code {
+  font-size: 0.95em;
+}
+
+/* A subtle key-line under code-comment callouts in examples. */
+.md-typeset .golit-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  margin: 1.5rem 0;
+}
+.md-typeset .golit-grid > div {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  padding: 1rem 1.2rem;
+}
+.md-typeset .golit-grid h3 {
+  margin-top: 0;
+}
