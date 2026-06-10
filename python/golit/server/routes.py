@@ -29,6 +29,11 @@ from .session import COOKIE, SessionManager
 from .sse import SSEManager
 
 _OFFLOAD = os.environ.get("GOLIT_NO_OFFLOAD") != "1"
+# Mark the session cookie `Secure` (HTTPS-only) when deployed behind TLS. Default
+# off so local http:// development keeps its cookie; set GOLIT_SECURE_COOKIES=1 in
+# production. The cookie is always httponly + samesite=lax (cross-site POST can't
+# carry it, which is the CSRF guard for the state-changing /node route).
+_SECURE_COOKIES = os.environ.get("GOLIT_SECURE_COOKIES") == "1"
 
 
 def _manager(request: Request) -> SessionManager:
@@ -45,7 +50,16 @@ async def _dispatch(manager: SessionManager, cookie_sid, fn, *args):
 
 
 def _session_cookie(sid: str) -> list[Cookie]:
-    return [Cookie(key=COOKIE, value=sid, httponly=True, samesite="lax", path="/")]
+    return [
+        Cookie(
+            key=COOKIE,
+            value=sid,
+            httponly=True,
+            samesite="lax",
+            secure=_SECURE_COOKIES,
+            path="/",
+        )
+    ]
 
 
 def _html(body: str, sid: str, created: bool) -> Response:
