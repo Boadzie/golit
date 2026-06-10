@@ -80,14 +80,36 @@ class SessionManager:
         """Drop entries idle past the TTL. Because the map is ordered by access
         recency, the stale ones are a prefix — stop at the first live entry.
         Caller holds the lock."""
-        if self.ttl_seconds <= 0:
+        if self.ttl_seconds > 0:
+            cutoff = now - self.ttl_seconds
+            while self._sessions:
+                sid, entry = next(iter(self._sessions.items()))
+                if entry.seen >= cutoff:
+                    break
+                self._drop(sid)
+        self._prune_orphan_locks()
+
+    def _prune_orphan_locks(self) -> None:
+        """Reclaim per-session locks orphaned from their session.
+
+        The steady state is one lock per live session, dropped together in
+        :meth:`_drop`; this only fires when the lock map has *drifted* past the
+        session count (e.g. a lock outlived a session that was shed while a request
+        still held its reference). A lock that is currently **held** is kept — a
+        request is mid-flight — while an unlocked, session-less lock is safe to
+        remove: ``asyncio.Lock.acquire()`` returns synchronously when free, so no
+        coroutine is ever suspended between ``lock_for()`` and acquiring, and a later
+        ``lock_for`` simply mints a fresh lock that re-establishes the exclusion.
+        Caller holds the lock."""
+        if len(self._locks) <= len(self._sessions):
             return
-        cutoff = now - self.ttl_seconds
-        while self._sessions:
-            sid, entry = next(iter(self._sessions.items()))
-            if entry.seen >= cutoff:
-                break
-            self._drop(sid)
+        orphans = [
+            sid
+            for sid, lock in self._locks.items()
+            if sid not in self._sessions and not lock.locked()
+        ]
+        for sid in orphans:
+            del self._locks[sid]
 
     def _touch(self, sid: str, now: float) -> Session:
         """Mark a session most-recently-used and return it. Caller holds the lock."""
