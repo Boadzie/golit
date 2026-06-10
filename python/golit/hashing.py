@@ -2,18 +2,19 @@
 
 A node's *input signature* is a ``u64`` the kernel compares against the one stored
 at the node's last clean commit to decide whether to recompute (see
-``Graph.needs_recompute``). The engine builds that signature from two kinds of part
-(see :meth:`golit.engine.Session._input_signature`):
+``Graph.needs_recompute``). The kernel folds that signature in Rust (see
+``Graph.check_node``) from two kinds of part:
 
-* **scalar input values** — hashed by content via :func:`hash_value`. Cheap, and it
-  catches a control reverting to a previous value (a genuine memo hit).
+* **scalar input values** — hashed by content via :func:`hash_value`, pushed to the
+  kernel on each change (``Graph.commit_input``). Cheap, and it catches a control
+  reverting to a previous value (a genuine memo hit).
 * **upstream node outputs** — referenced by *epoch*, not content (see
   :class:`golit.registry.Registry`). Content-hashing a frame is O(rows) and, for a
   cheap node, dwarfs the recompute it guards; an epoch compare is O(1).
 
-:func:`combine` folds an ordered list of such ``u64`` parts into one signature.
-The frame/series content hashers below remain for the rare case of a frame-valued
-*input* (a widget default), not the hot path.
+This module supplies the Python-side half: :func:`hash_value` for the scalar (and
+the rare frame-valued *input* — a widget default) content hashes, and :func:`combine`,
+the FNV-1a fold that mirrors the kernel's ``combine_hashes`` exactly.
 
 Hashes only need to be stable *within a single process run*, so Python's builtin
 ``hash`` (per-process stable) is fine for scalars.
@@ -93,10 +94,3 @@ def combine(parts: Iterable[int]) -> int:
     for part in parts:
         h = ((h ^ (part & _U64)) * _FNV_PRIME) & _U64
     return h
-
-
-def signature_hash(values: list[Any]) -> int:
-    """Combine an ordered list of input *values* into one ``u64`` signature (FNV-1a
-    over their content hashes). Used for scalar-input commits; node-valued edges go
-    through epochs in the engine instead."""
-    return combine(hash_value(v) for v in values)
