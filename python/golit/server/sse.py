@@ -14,6 +14,7 @@ import os
 from collections import defaultdict
 from collections.abc import AsyncIterator
 
+from anyio import to_thread
 from litestar.response import ServerSentEventMessage
 
 from .pubsub import Invalidation, PubSub
@@ -51,13 +52,22 @@ class SSEManager:
 
     # -- invalidation dispatch --------------------------------------------
     async def dispatch(self, inv: Invalidation) -> None:
-        """Recompute the affected session(s) and enqueue the changed fragments."""
+        """Recompute the affected session(s) and enqueue the changed fragments.
+
+        Each recompute runs **under that session's per-session lock** — the same
+        lock the request path holds (see :meth:`SessionManager.lock_for`) — so a
+        server-pushed refresh never interleaves with a client ``POST`` mutating the
+        same in-place kernel graph + registry. The recompute is CPU-bound (Polars +
+        render), so it's offloaded to a worker thread to keep the event loop
+        responsive while the lock is held across the await."""
         targets = [inv.session] if inv.session is not None else list(self._queues)
         for sid in targets:
             session = self.sessions.get(sid)
             if session is None:
                 continue
-            for view_id, content in session.refresh(inv.node_id).items():
+            async with self.sessions.lock_for(sid):
+                changed = await to_thread.run_sync(session.refresh, inv.node_id)
+            for view_id, content in changed.items():
                 for queue in self._queues.get(sid, []):
                     queue.put_nowait((view_id, content))
 
