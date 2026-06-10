@@ -137,6 +137,7 @@ nav:
       - Audio recording: advanced/audio.md
       - Custom rendering: advanced/custom-rendering.md
       - Sessions & state: advanced/sessions.md
+      - Security & hardening: advanced/security.md
       - Deployment & scaling: advanced/deployment.md
   - Reference:
       - reference/index.md
