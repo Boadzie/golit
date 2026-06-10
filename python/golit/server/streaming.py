@@ -121,6 +121,11 @@ class _StreamHub:
         self._latest: bytes | None = None
         self._ready = asyncio.Event()  # replaced each frame; the old one is set to wake waiters
         self._done = False  # producer has stopped — wake viewers so they end too
+        # Viewer count is touched only from the event loop (subscribe coroutines and
+        # the drive loop) — never from the to_thread workers — so the +=/-= need no
+        # lock: there is no await between the read and the write. A new viewer that
+        # arrives before the drive loop notices `_viewers == 0` simply bumps it back
+        # up and reuses the still-running task, so no spurious producer restart.
         self._viewers = 0
         self._task: asyncio.Task[None] | None = None
 
