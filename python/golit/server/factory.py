@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from typing import Any
 
@@ -75,6 +75,10 @@ def create_app(
     *,
     pubsub: PubSub | None = None,
     session_store: SessionStore | None = None,
+    middleware: Sequence[Any] | None = None,
+    guards: Sequence[Any] | None = None,
+    dependencies: Mapping[str, Any] | None = None,
+    on_app_init: Sequence[Any] | None = None,
     on_startup: list[LifecycleHook] | None = None,
     on_shutdown: list[LifecycleHook] | None = None,
 ) -> Litestar:
@@ -84,7 +88,12 @@ def create_app(
     session-state backend; by default each is chosen from the environment (Redis
     when ``GOLIT_REDIS_URL`` is set, in-memory otherwise). Extra ``on_startup``
     hooks can launch background tasks (e.g. a ticker that publishes invalidations
-    to ``app.state.pubsub`` for the SSE channel)."""
+    to ``app.state.pubsub`` for the SSE channel).
+
+    ``middleware``, ``guards``, ``dependencies`` and ``on_app_init`` are forwarded
+    verbatim to the Litestar constructor — Litestar only accepts these at build
+    time, so this is how you bring **your own auth, rate limiting, or per-route
+    authorization** (Golit ships none). See *Security & hardening* in the docs."""
     app.build()
     sessions = SessionManager(app, store=session_store or session_store_from_env())
     if pubsub is None:
@@ -95,6 +104,10 @@ def create_app(
         route_handlers=[
             index, update_node, events, chat_ws, tile, vector_tile, stream, camera, audio
         ],
+        middleware=list(middleware or []),
+        guards=list(guards or []),
+        dependencies=dict(dependencies or {}),
+        on_app_init=list(on_app_init or []),
         state=State(
             {"sessions": sessions, "pubsub": pubsub, "sse": sse, "chat": chat,
              "streams": app.streams, "shared_streams": app.shared_streams,

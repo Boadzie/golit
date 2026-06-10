@@ -61,3 +61,25 @@ def test_post_unknown_input_returns_404():
         client.get("/")
         r = client.post("/node/ghost", data={"value": "1"})
         assert r.status_code == 404
+
+
+def test_create_app_forwards_guards_for_byo_auth():
+    """A guard passed to create_app gates every route — the BYO-auth contract."""
+    from litestar.connection import ASGIConnection
+    from litestar.exceptions import NotAuthorizedException
+    from litestar.handlers.base import BaseRouteHandler
+
+    def require_token(connection: ASGIConnection, _handler: BaseRouteHandler) -> None:
+        if connection.headers.get("x-token") != "secret":
+            raise NotAuthorizedException()
+
+    app = App(title="Guarded")
+
+    @app.view
+    def hello() -> str:
+        return "<p>hi</p>"
+
+    guarded = create_app(app, guards=[require_token])
+    with TestClient(app=guarded) as client:
+        assert client.get("/").status_code == 401  # no token → blocked
+        assert client.get("/", headers={"x-token": "secret"}).status_code == 200
