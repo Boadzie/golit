@@ -8,14 +8,36 @@ Manrope/Inter/JetBrains Mono, and Material Symbols. Components are shadcn-styled
 
 from __future__ import annotations
 
+import html
 import json
+import os
 
-# Pinned client libraries (vendored under client/static in a later pass).
-TAILWIND_SRC = "https://cdn.tailwindcss.com?plugins=forms,container-queries"
-HTMX_SRC = "https://unpkg.com/htmx.org@2.0.4"
-HTMX_SSE_SRC = "https://unpkg.com/htmx-ext-sse@2.2.2"
-HTMX_WS_SRC = "https://unpkg.com/htmx-ext-ws@2.0.3"
-ALPINE_SRC = "https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"
+# Origin serving the version-pinned client libraries (htmx, Alpine, MapLibre).
+# Override with GOLIT_ASSET_BASE to self-host or point at an internal mirror — it
+# must serve the *same* files, since the SRI hashes below still apply. Default unpkg.
+_ASSET_BASE = os.environ.get("GOLIT_ASSET_BASE", "https://unpkg.com").rstrip("/")
+
+# Tailwind uses the JIT "play" CDN: it compiles classes in the browser, which is why
+# it can't be vendored to a single static stylesheet without a build step that scans
+# every (incl. runtime-generated) class. Great for dev and fine for many internal
+# deployments; for a hardened build, point GOLIT_TAILWIND_SRC at a compiled stylesheet.
+# It is a dynamic script, so it can't carry an SRI hash.
+TAILWIND_SRC = os.environ.get(
+    "GOLIT_TAILWIND_SRC", "https://cdn.tailwindcss.com?plugins=forms,container-queries"
+)
+
+# Version-pinned libraries served with Subresource Integrity: the browser refuses a
+# file whose bytes don't match the hash, so a tampered/swapped CDN file can't execute.
+# Pinned versions are immutable, so these sha384 hashes are stable — regenerate them
+# when bumping a version (curl the file | openssl dgst -sha384 -binary | openssl base64).
+HTMX_SRC = f"{_ASSET_BASE}/htmx.org@2.0.4/dist/htmx.min.js"
+HTMX_SRI = "sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+HTMX_SSE_SRC = f"{_ASSET_BASE}/htmx-ext-sse@2.2.2/sse.js"
+HTMX_SSE_SRI = "sha384-fw+eTlCc7suMV/1w/7fr2/PmwElUIt5i82bi+qTiLXvjRXZ2/FkiTNA/w0MhXnGI"
+HTMX_WS_SRC = f"{_ASSET_BASE}/htmx-ext-ws@2.0.3/dist/ws.min.js"
+HTMX_WS_SRI = "sha384-UQRM5X6/SG8fQYKt4K+MgCmlaxETMLkkEH8yiky5TdOZzNY0EQ8RjP/S0kMU+w6r"
+ALPINE_SRC = f"{_ASSET_BASE}/alpinejs@3.14.8/dist/cdn.min.js"
+ALPINE_SRI = "sha384-X9kJyAubVxnP0hcA+AMMs21U445qsnqhnUF8EBlEpP3a42Kh/JwWjlv2ZcvGfphb"
 
 # CDN runtimes for interactive charts, loaded lazily by the bootstrap below —
 # only when an app actually emits a mount for that library. Bokeh is special:
@@ -31,14 +53,15 @@ CHART_CDN = {
     "anychart": ["https://cdn.anychart.com/releases/8.13.0/js/anychart-bundle.min.js"],
     # MapLibre GL JS — native, GPU vector maps (golit.gis). Its stylesheet is a
     # hard requirement, linked unconditionally in the shell head (see MAPLIBRE_CSS).
-    "maplibre": ["https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"],
+    "maplibre": [f"{_ASSET_BASE}/maplibre-gl@5.24.0/dist/maplibre-gl.js"],
 }
 BOKEH_CDN_BASE = "https://cdn.bokeh.org/bokeh/release/bokeh"
 BOKEH_DEFAULT_VERSION = "3.6.0"
 # MapLibre needs its CSS for controls/canvas positioning; unlike the chart runtimes
 # (lazy-loaded by the bootstrap) a stylesheet must be in <head>, so it is linked
 # there always. It's small and cached; the JS still loads lazily only when a map mounts.
-MAPLIBRE_CSS = "https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css"
+MAPLIBRE_CSS = f"{_ASSET_BASE}/maplibre-gl@5.24.0/dist/maplibre-gl.css"
+MAPLIBRE_CSS_SRI = "sha384-uTttxo/aOKbdE5RlD/SPzSDoDmNvGlUYPjONi2MN/b7c9HPSvW07OIuyP7uL6jxK"
 FONTS_HREF = (
     "https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&"
     "family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
@@ -643,7 +666,10 @@ def controls_panel(controls: list[str]) -> str:
 
 
 def page(title: str, body: str) -> str:
-    """Wrap rendered body markup in the full HTML document shell."""
+    """Wrap rendered body markup in the full HTML document shell. ``body`` is
+    already-rendered markup (trusted); ``title`` is escaped as it lands in both
+    ``<title>`` and the page ``<h1>``."""
+    title = html.escape(title)
     chart_cdn = (
         f"window.GOLIT_CHART_CDN={json.dumps(CHART_CDN)};"
         f"window.GOLIT_BOKEH_BASE={json.dumps(BOKEH_CDN_BASE)};"
@@ -659,14 +685,14 @@ def page(title: str, body: str) -> str:
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{FONTS_HREF}">
 <link rel="stylesheet" href="{SYMBOLS_HREF}">
-<link rel="stylesheet" href="{MAPLIBRE_CSS}">
+<link rel="stylesheet" href="{MAPLIBRE_CSS}" integrity="{MAPLIBRE_CSS_SRI}" crossorigin="anonymous">
 <script src="{TAILWIND_SRC}"></script>
 <script>{TAILWIND_CONFIG}</script>
 <style>{GOLIT_CSS}</style>
-<script src="{HTMX_SRC}" defer></script>
-<script src="{HTMX_SSE_SRC}" defer></script>
-<script src="{HTMX_WS_SRC}" defer></script>
-<script src="{ALPINE_SRC}" defer></script>
+<script src="{HTMX_SRC}" defer integrity="{HTMX_SRI}" crossorigin="anonymous"></script>
+<script src="{HTMX_SSE_SRC}" defer integrity="{HTMX_SSE_SRI}" crossorigin="anonymous"></script>
+<script src="{HTMX_WS_SRC}" defer integrity="{HTMX_WS_SRI}" crossorigin="anonymous"></script>
+<script src="{ALPINE_SRC}" defer integrity="{ALPINE_SRI}" crossorigin="anonymous"></script>
 <script>{chart_cdn}</script>
 <script>{CHART_BOOTSTRAP}</script>
 <script>{CHAT_BOOTSTRAP}</script>
