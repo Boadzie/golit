@@ -12,6 +12,7 @@ from .app import App
 from .data import sql
 from .engine import Session
 from .nodes import NodeKind
+from .rendering import escape
 from .server import create_app
 from .widgets import (
     Button,
@@ -52,6 +53,7 @@ __all__ = [
     "App",
     "Session",
     "create_app",
+    "escape",
     "sql",
     "NodeKind",
     "Widget",

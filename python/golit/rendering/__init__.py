@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from .html import controls_panel, oob_fragment, page, view_slot
 from .interactive import anychart, chart_spec, try_interactive
-from .protocol import Renderer, render_value
+from .protocol import Renderer, escape, render_value
 
 __all__ = [
     "render_value",
+    "escape",
     "Renderer",
     "anychart",
     "chart_spec",

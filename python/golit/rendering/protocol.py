@@ -30,6 +30,23 @@ from .charts import is_plot, plot_to_svg
 from .interactive import try_interactive
 
 
+def escape(value: Any) -> str:
+    """Escape ``value`` for safe interpolation into view markup.
+
+    A view that returns a ``str`` is treated as **trusted, developer-authored
+    markup** and emitted verbatim (see :func:`render_value`) — the same model as
+    returning an ``HTMLResponse``. That means any *untrusted* data you splice into a
+    returned HTML string (user input, a session value, an external API field) must be
+    escaped first, or it's an XSS sink::
+
+        return f"<p>Hello {golit.escape(name)}</p>"
+
+    Data that Golit renders for you — DataFrame cells, the repr fallback, GeoDataFrame
+    tooltip fields — is already escaped; this helper is for the markup you hand-write.
+    """
+    return html.escape("" if value is None else str(value))
+
+
 @runtime_checkable
 class Renderer(Protocol):
     """Objects that know how to render themselves to a markup fragment."""
