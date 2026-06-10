@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: rust (fmt · clippy · test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11" # pyo3 needs an interpreter to configure + link
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  python:
+    name: py${{ matrix.python-version }} (lint · type · test)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: astral-sh/setup-uv@v5
+      - name: Create the virtualenv
+        run: uv venv --python ${{ matrix.python-version }}
+      - name: Install tooling + dev deps
+        # uv pip install (never `uv sync`, which would prune the optional extras).
+        run: uv pip install maturin ruff mypy pytest pytest-asyncio httpx fakeredis
+      - name: Build the extension + install the test extras
+        # gis-terrain is omitted on purpose: WhiteboxTools downloads a binary at
+        # runtime, so its tests importorskip and skip cleanly here.
+        run: >
+          uv run maturin develop
+          -E sql,charts,gis,gis-vector-tiles,gis-raster,gis-tiles,gis-ee,vision,vision-cv,tables,redis
+      - name: Ruff
+        run: uv run ruff check .
+      - name: Mypy
+        run: uv run mypy
+      - name: Pytest
+        run: uv run pytest -q
