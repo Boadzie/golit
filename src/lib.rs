@@ -40,7 +40,9 @@ struct Graph {
 impl Graph {
     #[new]
     fn new() -> Self {
-        Graph { inner: CoreGraph::new() }
+        Graph {
+            inner: CoreGraph::new(),
+        }
     }
 
     /// Register a node. `kind` is one of input|source|reactive|view.
@@ -82,7 +84,9 @@ impl Graph {
 
     /// Does `id` need recomputation given the content hash of its inputs?
     fn needs_recompute(&self, id: &str, input_hash: u64) -> PyResult<bool> {
-        self.inner.needs_recompute(id, input_hash).map_err(to_py_err)
+        self.inner
+            .needs_recompute(id, input_hash)
+            .map_err(to_py_err)
     }
 
     /// Hot-path per-node decision: `(kind, needs_recompute, signature)` in one

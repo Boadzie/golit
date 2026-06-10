@@ -117,10 +117,16 @@ impl fmt::Display for GraphError {
                 write!(f, "node {id:?} cannot depend on itself")
             }
             GraphError::BadKind(k) => {
-                write!(f, "invalid node kind {k:?} (expected input|source|reactive|view)")
+                write!(
+                    f,
+                    "invalid node kind {k:?} (expected input|source|reactive|view)"
+                )
             }
             GraphError::NotBuilt => {
-                write!(f, "graph has not been built; call build() after registering nodes")
+                write!(
+                    f,
+                    "graph has not been built; call build() after registering nodes"
+                )
             }
             GraphError::Cycle(ids) => {
                 write!(f, "dependency cycle detected involving: {}", ids.join(", "))
@@ -266,10 +272,8 @@ impl Graph {
         // Kahn's algorithm. A min-heap on index yields a deterministic order
         // that respects insertion order among otherwise-ready nodes.
         let mut indeg: Vec<usize> = self.nodes.iter().map(|node| node.deps.len()).collect();
-        let mut ready: BinaryHeap<Reverse<usize>> = (0..n)
-            .filter(|&i| indeg[i] == 0)
-            .map(Reverse)
-            .collect();
+        let mut ready: BinaryHeap<Reverse<usize>> =
+            (0..n).filter(|&i| indeg[i] == 0).map(Reverse).collect();
         let mut order: Vec<usize> = Vec::with_capacity(n);
         while let Some(Reverse(u)) = ready.pop() {
             order.push(u);
@@ -310,7 +314,11 @@ impl Graph {
     /// The full build order: every node id, topologically sorted.
     pub fn topo_order(&self) -> Result<Vec<String>, GraphError> {
         self.ensure_built()?;
-        Ok(self.topo.iter().map(|&i| self.nodes[i].id.clone()).collect())
+        Ok(self
+            .topo
+            .iter()
+            .map(|&i| self.nodes[i].id.clone())
+            .collect())
     }
 
     /// Breadth-first closure over dependents starting from `seeds` (seeds
@@ -343,7 +351,10 @@ impl Graph {
 
     fn sorted_ids(&self, mut indices: Vec<usize>) -> Vec<String> {
         indices.sort_by_key(|&i| self.topo_pos[i]);
-        indices.into_iter().map(|i| self.nodes[i].id.clone()).collect()
+        indices
+            .into_iter()
+            .map(|i| self.nodes[i].id.clone())
+            .collect()
     }
 
     /// The recompute schedule for a set of changed seeds: the seeds plus every
@@ -492,7 +503,11 @@ impl Graph {
 
     pub fn deps_of(&self, id: &str) -> Result<Vec<String>, GraphError> {
         let i = self.idx(id)?;
-        Ok(self.nodes[i].deps.iter().map(|&d| self.nodes[d].id.clone()).collect())
+        Ok(self.nodes[i]
+            .deps
+            .iter()
+            .map(|&d| self.nodes[d].id.clone())
+            .collect())
     }
 
     /// All currently-dirty node ids, topologically ordered.
@@ -504,7 +519,10 @@ impl Graph {
             .copied()
             .filter(|&i| self.nodes[i].state == NodeState::Dirty)
             .collect();
-        Ok(dirty.into_iter().map(|i| self.nodes[i].id.clone()).collect())
+        Ok(dirty
+            .into_iter()
+            .map(|i| self.nodes[i].id.clone())
+            .collect())
     }
 
     /// View-kind node ids in topological order.
@@ -555,7 +573,10 @@ mod tests {
             &[("b", &["a"]), ("c", &["b"])],
         );
         assert_eq!(g.topo_order().unwrap(), vec!["a", "b", "c"]);
-        assert_eq!(g.dirty_subgraph(&["a".into()]).unwrap(), vec!["a", "b", "c"]);
+        assert_eq!(
+            g.dirty_subgraph(&["a".into()]).unwrap(),
+            vec!["a", "b", "c"]
+        );
         assert_eq!(g.dirty_subgraph(&["b".into()]).unwrap(), vec!["b", "c"]);
         assert_eq!(g.dirty_subgraph(&["c".into()]).unwrap(), vec!["c"]);
         assert_eq!(g.downstream("a").unwrap(), vec!["b", "c"]);
@@ -566,12 +587,20 @@ mod tests {
     fn diamond_has_no_duplicate_and_orders_join_last() {
         // a -> b, a -> c, b -> d, c -> d
         let g = graph(
-            &[("a", "source"), ("b", "reactive"), ("c", "reactive"), ("d", "view")],
+            &[
+                ("a", "source"),
+                ("b", "reactive"),
+                ("c", "reactive"),
+                ("d", "view"),
+            ],
             &[("b", &["a"]), ("c", &["a"]), ("d", &["b", "c"])],
         );
         assert_eq!(g.topo_order().unwrap(), vec!["a", "b", "c", "d"]);
         // d must appear exactly once and after both b and c.
-        assert_eq!(g.dirty_subgraph(&["a".into()]).unwrap(), vec!["a", "b", "c", "d"]);
+        assert_eq!(
+            g.dirty_subgraph(&["a".into()]).unwrap(),
+            vec!["a", "b", "c", "d"]
+        );
         assert_eq!(g.dirty_subgraph(&["b".into()]).unwrap(), vec!["b", "d"]);
     }
 
@@ -582,7 +611,10 @@ mod tests {
             &[("a", "input"), ("b", "view"), ("c", "view"), ("d", "view")],
             &[("b", &["a"]), ("c", &["a"]), ("d", &["a"])],
         );
-        assert_eq!(g.dirty_subgraph(&["a".into()]).unwrap(), vec!["a", "b", "c", "d"]);
+        assert_eq!(
+            g.dirty_subgraph(&["a".into()]).unwrap(),
+            vec!["a", "b", "c", "d"]
+        );
         assert_eq!(g.views().unwrap(), vec!["b", "c", "d"]);
     }
 
@@ -616,14 +648,20 @@ mod tests {
     fn duplicate_node_rejected() {
         let mut g = Graph::new();
         g.add_node("a", "input").unwrap();
-        assert_eq!(g.add_node("a", "view"), Err(GraphError::Duplicate("a".into())));
+        assert_eq!(
+            g.add_node("a", "view"),
+            Err(GraphError::Duplicate("a".into()))
+        );
     }
 
     #[test]
     fn unknown_dep_rejected() {
         let mut g = Graph::new();
         g.add_node("a", "reactive").unwrap();
-        assert_eq!(g.set_deps("a", &["ghost".into()]), Err(GraphError::Unknown("ghost".into())));
+        assert_eq!(
+            g.set_deps("a", &["ghost".into()]),
+            Err(GraphError::Unknown("ghost".into()))
+        );
     }
 
     #[test]
@@ -639,7 +677,10 @@ mod tests {
     #[test]
     fn bad_kind_rejected() {
         let mut g = Graph::new();
-        assert_eq!(g.add_node("a", "widget"), Err(GraphError::BadKind("widget".into())));
+        assert_eq!(
+            g.add_node("a", "widget"),
+            Err(GraphError::BadKind("widget".into()))
+        );
     }
 
     #[test]
