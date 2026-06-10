@@ -54,7 +54,24 @@ export GOLIT_TAILWIND_SRC=https://assets.internal.example.com/tailwind.css
 
 ## Authentication
 
-Golit ships **no** auth layer — that's intentionally yours to choose. Add a [Litestar middleware / guard](https://docs.litestar.dev/latest/usage/security/) around the app returned by `create_app` to enforce login, rate limits, or per-route authorization.
+Golit ships **no** auth layer — that's intentionally yours to choose. Instead, `create_app` forwards `middleware`, `guards`, `dependencies`, and `on_app_init` straight to Litestar (which only accepts them at construction time), so you bring your own.
+
+A **guard** is the simplest gate — a callable that runs before every route and aborts by raising:
+
+```python
+from golit import App, create_app
+from litestar.connection import ASGIConnection
+from litestar.exceptions import NotAuthorizedException
+from litestar.handlers.base import BaseRouteHandler
+
+def require_token(connection: ASGIConnection, handler: BaseRouteHandler) -> None:
+    if connection.headers.get("x-token") != EXPECTED:
+        raise NotAuthorizedException()
+
+litestar_app = create_app(blueprint, guards=[require_token])
+```
+
+For real logins (sessions, an identity attached to each request), pass a [Litestar authentication **middleware**](https://docs.litestar.dev/latest/usage/security/) instead — `create_app(blueprint, middleware=[MyAuthMiddleware])` — and it populates `request.user` for your views. For SSO without app code, front the app with a proxy (oauth2-proxy, Cloudflare Access, Tailscale).
 
 ## Production checklist
 
