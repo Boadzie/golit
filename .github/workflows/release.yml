@@ -26,8 +26,7 @@ jobs:
         platform:
           - { runner: ubuntu-latest,  target: x86_64 }
           - { runner: ubuntu-latest,  target: aarch64 }
-          - { runner: macos-13,       target: x86_64 }
-          - { runner: macos-14,       target: aarch64 }
+          - { runner: macos-14,       target: aarch64 } # Apple Silicon; Intel (macos-13/x86_64) dropped
           - { runner: windows-latest, target: x64 }
     steps:
       - uses: actions/checkout@v4
