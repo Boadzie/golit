@@ -4,6 +4,13 @@ All notable changes to Golit are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] — 2026-06-11
+
+### Packaging
+
+- Add PyPI **Project links** (Documentation, Repository, Changelog, Issues) so the docs site is
+  reachable from the project page. No code or API changes.
+
 ## [1.0.0] — 2026-06-06
 
 First stable release. Golit is a high-performance reactive **DAG** framework for Python —
@@ -72,4 +79,5 @@ transport, where update cost is proportional to the change, not the program.
 - 17 Rust + 209 Python tests; ruff + mypy clean; a benchmark harness (`bench/`) with measured
   Golit-vs-Dash results.
 
+[1.0.1]: https://github.com/Boadzie/golit/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Boadzie/golit/releases/tag/v1.0.0

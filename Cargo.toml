@@ -1,6 +1,6 @@
 [package]
 name = "golit"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "Reactive DAG kernel for Golit (dirty tracking, topological scheduling, propagation)."
 license = "Apache-2.0"

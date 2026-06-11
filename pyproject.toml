@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "golit"
-version = "1.0.0"
+version = "1.0.1"
 description = "A high-performance Reactive DAG framework for Python — reactive data apps that actually ship."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,6 +26,13 @@ dependencies = [
     # 405s without one. uvicorn auto-detects `websockets` (ws="auto").
     "websockets>=12",
 ]
+
+# PyPI sidebar links (the "Project links" panel on pypi.org/project/golit).
+[project.urls]
+Documentation = "https://boadzie.github.io/golit/"
+Repository = "https://github.com/Boadzie/golit"
+Changelog = "https://github.com/Boadzie/golit/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Boadzie/golit/issues"
 
 [project.optional-dependencies]
 # Multi-worker fan-out backend; only needed when GOLIT_REDIS_URL is set.
